@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="ru">
+
+<head>
+
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>Телевидение | ЭтоЯTV - Я есть телевидение!</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
+
+  <meta http-equiv="expires" content="Wed, 29 Yan 2008 00:20:00 GMT">
+  <meta name="description"
+    content="ЭтоЯTV - это сервис персонального телевидения, организации пользовательских трансляций, прямого эфира. ТВ программа, прямые эфиры, трансляции с веб-камер, записи видео для общения, знакомства, развлечения и ведения бизнеса. Организовывайте прямые трансляции как для своих друзей, коллег и партнеров, так и для более широкого круга зрителей.">
+  <meta name="keywords"
+    content="Yatv, ятв, Яtv, znd, нфем, Прямая трансляция, прямой эфир, трансляции, прямые трансляции, онлайн трансляции, смотреть видео, смотреть онлайн, тв, tv, онлайн тв, телеканал, телеканалы, тв онлайн, смотреть тв, телепрограмма, тв программа, видео онлайн, знакомства, live tv, ятв, online tv, трансляции с вебкамеры, запись с вебкамеры, видео, любительское видео, видеоприколы, видео бесплатно, интернет тв, video">
+  <link href="<%= CDN_BASE_URL %>/css/css_0.css?v=1.0.3" rel="stylesheet" type="text/css">
+
+  <style type="text/css">
+    .theme_default {
+      color: #c0c0b2;
+    }
+
+    .theme_default a {
+      color: #6fdeee;
+    }
+
+    .theme_default h1,
+    .theme_default h2,
+    .theme_default h3,
+    .theme_default h4,
+    .theme_default h5 {
+      color: #fff;
+    }
+
+    body {
+      background-color: #3e3e3e;
+      min-width: 1000px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+    }
+  </style>
+  <link href="<%= CDN_BASE_URL %>/css/css_1.css?v=1.0.1" type="text/css" rel="stylesheet">
+
+
+
+  <script type="text/javascript">
+    <!--
+    var xE_lang = {};
+    xE_lang['LANG'] = 'ru';
+    var xE_username = "";
+    var xE_mod = "tv";
+    var xE_do = "";
+    var xE_logged = false;
+    var xE_host = "etoyatv.top";
+    //-->
+  </script>
+  <script type="text/javascript" src="<%= CDN_BASE_URL %>/js/jquery.js"></script>
+  <script type="text/javascript">
+    jQuery.browser = {};
+    (function () {
+      jQuery.browser.msie = false;
+      jQuery.browser.version = 0;
+      if (navigator.userAgent.match(/MSIE ([0-9]+)\./)) {
+        jQuery.browser.msie = true;
+        jQuery.browser.version = RegExp.$1;
+      }
+      jQuery.browser.safari = /safari/.test(navigator.userAgent.toLowerCase());
+    })();
+    $(document).ready(function () {
+      $('.tabs a').click(function (e) {
+        if ($(this).attr('href').startsWith('#')) {
+          e.preventDefault();
+          $('.tabs a').removeClass('active');
+          $(this).addClass('active');
+          $('.textbg .text').hide();
+          $($(this).attr('href') + '_text').show();
+        }
+      });
+    });
+  </script>
+  <script type="text/javascript" src="<%= CDN_BASE_URL %>/js/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="<%= CDN_BASE_URL %>/js/jquery.jcarousel.min.js"></script>
+  <script type="text/javascript" src="<%= CDN_BASE_URL %>/js/toast.js"></script>
+</head>
+
+<body id="body" class="theme_default">
+
+  <script type="text/javascript">
+    <!--
+    // Removed minheight_layout script
+    //-->
+  </script>
+
+  
+<div id="header">
+    <div class="head">
+      <a href="/" class="logotype" title="Перейти на главную страницу ЭтоЯTV">
+        <img src="<%= CDN_BASE_URL %>/images/logo.svg" alt="ЭтоЯTV">
+      </a>
+      <div class="login_panel">
+        <div class="links">
+          <% if (user) { %>
+            <a href="/logout">Выход</a>
+            <% } else { %>
+              <a href="/login">Вход</a>
+              <a href="/register">Регистрация</a>
+              <% } %>
+        </div>
+
+
+        <form action="#search" name="global_search" method="get" onsubmit="return false;" id="search_input">
+          <div class="leftElement"><input type="text" class="query_string" value="Найти..." tabindex="1"><input
+              type="text" class="hidden_manipulator" tabindex="2"></div>
+          <div class="rightElement" rel="channels">Телеканал</div>
+          <div class="select">
+            <div class="option first first_selected" rel="channels">Телеканал</div>
+            <div class="option" rel="records">Запись</div>
+            <div class="option" rel="programs">Анонс</div>
+            <div class="option last" rel="users">Пользователя</div>
+          </div>
+        </form>
+        <script type="text/javascript">
+            $(document).ready(function () {
+              var form = $('#search_input');
+              var input = $('input.query_string', form);
+              var hidden_manipulator = $('input.hidden_manipulator', form);
+              var rightElement = $('.rightElement', form);
+              var select = $('.select', form);
+              var options = {
+                "channels": ["/ru/tv,channels", "Телеканал"],
+                "records": ["/ru/tv,records", "Запись"],
+                "programs": ["/ru/tv,programs", "Анонс"],
+                "users": ["/ru/account,userlist", "Пользователя"]
+              };
+
+              var currentPath = window.location.pathname;
+              var defaultCat = 'channels';
+              for (var key in options) {
+                if (currentPath.indexOf(options[key][0]) === 0) {
+                  defaultCat = key;
+                  break;
+                }
+              }
+              var targetOption = $('.option[rel="' + defaultCat + '"]', select);
+              if (targetOption.length) {
+                $('.option', select).removeClass('selected first_selected last_selected');
+                if (targetOption.hasClass('first')) { targetOption.addClass('first_selected'); }
+                else if (targetOption.hasClass('last')) { targetOption.addClass('last_selected'); }
+                else { targetOption.addClass('selected'); }
+                rightElement.html(targetOption.text()).attr('rel', targetOption.attr('rel'));
+              }
+
+              rightElement.on('click', function () {
+                hidden_manipulator.trigger('focus');
+                select.show();
+              });
+
+              select.mouseleave(function () {
+                select.hide();
+              });
+
+              $('.option', select).click(function () {
+                $('.option', select).removeClass('selected first_selected last_selected');
+                var option = $(this);
+                if (option.hasClass('first')) { option.addClass('first_selected'); }
+                else if (option.hasClass('last')) { option.addClass('last_selected'); }
+                else { option.addClass('selected'); }
+
+                var text = option.text();
+                var type = option.attr('rel');
+                rightElement.html(text).attr('rel', type);
+                select.hide();
+                input.trigger('focus');
+              });
+
+              $('.option', select).hover(
+                function () { $(this).addClass('hover'); },
+                function () { $(this).removeClass('hover'); }
+              );
+
+              input.focus(function () {
+                if (input.val() == 'Найти...') { input.val(''); }
+              });
+
+              input.keydown(function (event) {
+                if (event.keyCode == 13) { /* Enter */
+                  var text = input.val();
+                  var type = rightElement.attr('rel') || 'channels';
+                  var query = options[type][0] + '?q=' + encodeURIComponent(text);
+                  document.location.href = query;
+                  return false;
+                }
+                if (event.keyCode == 9) { /* Tab */
+                  hidden_manipulator.trigger('focus');
+                  select.show();
+                  return false;
+                }
+              });
+
+              hidden_manipulator.keydown(function (event) {
+                if (event.keyCode == 40) { /* Down */
+                  var selected = $('.selected, .first_selected, .last_selected', select);
+                  var next = selected.next('.option');
+                  if (next.hasClass('option')) {
+                    $('.option', select).removeClass('selected first_selected last_selected');
+                    if (next.hasClass('first')) { next.addClass('first_selected'); }
+                    else if (next.hasClass('last')) { next.addClass('last_selected'); }
+                    else { next.addClass('selected'); }
+                    var text = next.text();
+                    var type = next.attr('rel');
+                    rightElement.html(text).attr('rel', type);
+                  }
+                }
+                if (event.keyCode == 38) { /* Up */
+                  var selected = $('.selected, .first_selected, .last_selected', select);
+                  var prev = selected.prev('.option');
+                  if (prev.hasClass('option')) {
+                    $('.option', select).removeClass('selected first_selected last_selected');
+                    if (prev.hasClass('first')) { prev.addClass('first_selected'); }
+                    else if (prev.hasClass('last')) { prev.addClass('last_selected'); }
+                    else { prev.addClass('selected'); }
+                    var text = prev.text();
+                    var type = prev.attr('rel');
+                    rightElement.html(text).attr('rel', type);
+                  }
+                }
+                if (event.keyCode == 13 || event.keyCode == 27 || event.keyCode == 9) { /* Enter, Esc, Tab */
+                  select.hide();
+                  input.trigger('focus');
+                }
+                return false;
+              });
+            });
+        </script>
+      </div>
+      <div class="menu">
+
+        <div class="separator"></div>
+        <a href="/ru/tv,channels">Телеканалы</a>
+        <div class="separator"></div>
+        <a href="/ru/tv,records">Записи</a>
+        <div class="separator"></div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <% if (user) { %>
+    <div
+      style="background-color: #212121; border-top: 1px solid #111; border-bottom: 1px solid #111; height: 32px; line-height: 32px; font-size: 12px;">
+      <div style="width: 980px; margin: 0 auto; padding: 0 10px;">
+        <div style="float: left;">
+          <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(user.username) %>"
+            style="color: #6fdeee; margin-right: 15px; text-decoration: none;">&#128100; <%= user.username %></a>
+          <% if (user.staff_role && user.mask_mode !== 'user_mask') { %>
+            <a href="<%= ADMIN_URL %>" style="color: #ff4d4d; margin-right: 15px; font-weight: bold; text-decoration: none;">Одминпанель</a>
+          <% } %>
+          <a href="/ru/account,profile/"
+            style="color: #6fdeee; margin-right: 15px; text-decoration: none;">Настройки</a>
+          <a href="/ru/messages/" style="color: #6fdeee; text-decoration: none;">Сообщения <% if (typeof unreadMessagesCount !== 'undefined' && unreadMessagesCount > 0) { %><span style="color:#39b54a; font-weight:bold;">(<%= unreadMessagesCount %>)</span><% } %></a>
+        </div>
+        <div style="float: right;">
+          <% if (typeof userChannel !== 'undefined' && userChannel) { %>
+            <a href="/<%= userChannel.shortname %>" style="color: #6fdeee; text-decoration: none; <%= (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) ? 'margin-right: 15px;' : '' %>">Мой канал</a>
+          <% } else { %>
+            <a href="/channels/create" style="color: #6fdeee; text-decoration: none; <%= (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) ? 'margin-right: 15px;' : '' %>">Создать телеканал</a>
+          <% } %>
+          <% if (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) { %>
+            <a href="/ru/panel,dashboard" style="color: #6fdeee; text-decoration: none;">Панель управления</a>
+          <% } %>
+        </div>
+        <div style="clear: both;"></div>
+      </div>
+    </div>
+    <% } %>
+
+  <% if (typeof systemSettings !== 'undefined' && systemSettings.banner_enabled === '1' && currentPath.indexOf('/panel') !== 0) { %>
+    <div style="width: 100%; position: relative; z-index: 0;">
+      <div id="system-banner" style="width: 100%; max-width: 980px; margin: 0 auto; background-color: #fef08a; padding: 15px 20px; box-sizing: border-box; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+          <div style="flex-grow: 1; font-weight: 600; font-size: 15px; color: #713f12; text-align: left; line-height: 1.4;"><%- systemSettings.banner_text_short %></div>
+          <% if (systemSettings.banner_text_full) { %>
+            <a href="#" id="system-banner-toggle" onclick="var b = document.getElementById('system-banner-full'); if (b.style.display === 'none') { b.style.display = 'block'; this.innerText = 'Свернуть'; } else { b.style.display = 'none'; this.innerText = 'Подробнее'; } return false;" style="flex-shrink: 0; color: #b45309; text-decoration: none; font-size: 14px; font-weight: 700; border-bottom: 1px dashed #b45309; white-space: nowrap; padding: 4px 0;">Подробнее</a>
+          <% } %>
+        </div>
+        <% if (systemSettings.banner_text_full) { %>
+          <div id="system-banner-full" style="display: none; margin-top: 15px; font-size: 14px; line-height: 1.6; background: rgba(255, 255, 255, 0.5); padding: 15px 20px; border-radius: 8px; color: #422006; text-align: left; white-space: pre-line; word-break: break-word; border: 1px solid rgba(113, 63, 18, 0.1);"><%- systemSettings.banner_text_full %></div>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
+
+      <script type="text/javascript">
+        <!--
+          $(document).ready(function () {
+            $('.login_panel .login').attr('href', $('.login_panel .login').attr('href') + '?ref=' + document.location.href);
+
+          });
+        //-->
+      </script>

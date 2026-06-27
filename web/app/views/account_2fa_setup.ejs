@@ -1,0 +1,53 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks" style="width: 500px; margin: 50px auto; float: none;">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Настройка 2FA</div>
+</div>
+</div>
+<div class="block-content" style="text-align: center;">
+
+<% if (typeof error !== 'undefined' && error) { %>
+  <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold;"><%= error %></div>
+<% } %>
+
+<p style="color: #ccc; margin-bottom: 15px;">Отсканируйте этот QR-код в приложении Google Authenticator или Authy:</p>
+
+<img src="<%= qrImage %>" alt="QR Code" style="margin-bottom: 15px; border: 4px solid #fff; border-radius: 4px;">
+
+<p style="color: #ccc; margin-bottom: 15px;">Или введите секретный ключ вручную:</p>
+<div style="background: #111; padding: 10px; border-radius: 4px; font-family: monospace; color: #6fdeee; font-size: 16px; margin-bottom: 20px; display: inline-block; user-select: all;"><%= secret %></div>
+
+<form action="/account/2fa/verify" method="post">
+  <div style="margin-bottom: 15px;">
+    <input type="text" name="code" class="input-text" placeholder="Введите 6-значный код" required autocomplete="off" style="text-align: center; width: 200px; font-size: 16px;">
+  </div>
+  <button type="submit" style="background: #333; border: 1px solid #555; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Включить 2FA</button>
+  <br>
+  <a href="/ru/account,profile/#tab-security" style="display: inline-block; margin-top: 15px; color: #9ca3af; text-decoration: none;">Отмена</a>
+</form>
+
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

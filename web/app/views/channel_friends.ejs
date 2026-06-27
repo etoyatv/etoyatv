@@ -1,0 +1,73 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks">
+<div class="block_item"> 
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Фанаты телеканала</div>
+</div> 
+</div>
+<div class="block-content">
+<div style="padding: 15px;">
+<% if (fans.length > 0) { %>
+  <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+  <% fans.forEach(fan => { %>
+    <div style="display: flex; width: 250px; gap: 10px;">
+      <a href="/ru/account,userinfo?username=<%= fan.username %>">
+        <div class="border_logo">
+          <img src="<%= CDN_BASE_URL %><%= fan.avatar  %>" style="width: 100px; height: 100px; background: #000; border: none;">
+        </div>
+      </a>
+      <div style="padding-top: 5px;">
+        <a href="/ru/account,userinfo?username=<%= fan.username %>" style="color: #6fdeee; font-weight: bold; text-decoration: none;"><%= fan.username %></a>
+        <div style="color: #c0c0b2; font-size: 11px; margin-top: 5px;">
+          <% 
+             let activeText = '';
+             if (fan.last_active) {
+               const diff = Math.floor((new Date() - new Date(fan.last_active)) / 1000);
+               if (diff < 3600) activeText = 'Был недавно';
+               else if (diff < 86400) activeText = 'Был сегодня';
+               else activeText = 'Был давно';
+             } else {
+               activeText = 'Был давно';
+             }
+          %>
+          <%= activeText %><br>Зритель
+        </div>
+      </div>
+    </div>
+  <% }) %>
+  </div>
+<% } else { %>
+  <p style="color: #c0c0b2;">Нет фанатов</p>
+<% } %>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+</div>
+
+<div class="right_blocks"> 
+<%- include('partials/channel_sidebar', { activePage: 'friends', showDescription: false }) %>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,167 @@
+<%- include('../partials/header') %>
+
+  <style>
+    .channel-select-list {
+      margin: 10px 0;
+      border: 1px solid #111;
+      background: #1a1a1a;
+    }
+
+    .channel-select-row {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      border-bottom: 1px solid #111;
+      cursor: pointer;
+      color: #ccc;
+      font-size: 13px;
+    }
+
+    .channel-select-row:hover {
+      background: #2a2a2a;
+    }
+
+    .channel-select-row.selected {
+      background: #333;
+      color: #fff;
+    }
+
+    .channel-select-row:last-child {
+      border-bottom: none;
+    }
+
+    .channel-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 15px;
+      border-radius: 3px;
+      object-fit: cover;
+    }
+
+    .channel-name {
+      width: 150px;
+      font-weight: bold;
+    }
+
+    .channel-role {
+      width: 100px;
+      color: #999;
+    }
+
+    .channel-url {
+      flex-grow: 1;
+      text-align: left;
+      color: #3b9cd9;
+    }
+
+    .btn-select {
+      display: block;
+      width: 100%;
+      background: #444;
+      border: 1px solid #222;
+      color: #ddd;
+      padding: 10px;
+      text-align: center;
+      border-radius: 5px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+
+    .btn-select:hover {
+      background: #555;
+      color: #fff;
+    }
+  </style>
+
+  <div id="content">
+    <div class="left_blocks" style="width: 600px; margin: 50px auto; float: none;">
+      <div class="blackbox" id="select_block" style="width: auto;">
+        <div class="blackbox_tl"></div>
+        <div class="blackbox_tc"></div>
+        <div class="blackbox_tr"></div>
+        <div class="blackbox_cw">
+          <div class="blackbox_c" style="">
+            <div class="blackbox_ci">
+              <div class="block-head-bg"></div>
+              <div class="block-head">
+                <div class="block-head-right">
+                  <div class="block-title">Панель управления - выбор телеканала</div>
+                </div>
+              </div>
+              <div class="block-content" style="padding: 15px;">
+
+                <% if (availableChannels && availableChannels.length> 0) { %>
+                  <form id="selectChannelForm" action="/ru/panel,set_channel" method="POST">
+                    <input type="hidden" name="channel_id" id="selectedChannelId" value="">
+
+                    <div class="channel-select-list">
+                      <% availableChannels.forEach((ch, index)=> {
+                        let roleName = ch.panel_role;
+                        if (roleName === 'owner') roleName = 'владелец';
+                        if (roleName === 'reporter') roleName = 'репортер';
+                        if (roleName === 'editor') roleName = 'редактор';
+                        %>
+                        <div class="channel-select-row" data-id="<%= ch.id %>"
+                          onclick="selectChannel(this, <%= ch.id %>)">
+                          <img src="<%= CDN_BASE_URL %><%= ch.logo_url || '/images/default_channel_logo.png'  %>" class="channel-icon"
+                            alt="Logo">
+                          <div class="channel-name">
+                            <%= ch.name %>
+                          </div>
+                          <div class="channel-role">
+                            <%= roleName %>
+                          </div>
+                          <div class="channel-url">https://etoyatv.top/<%= ch.shortname %>/</div>
+                        </div>
+                        <% }) %>
+                    </div>
+
+                    <button type="button" class="btn-select" onclick="submitSelection()">ВЫБРАТЬ</button>
+                  </form>
+                  <% } else { %>
+                    <div style="text-align: center; padding: 30px; color: #ccc;">
+                      <p>У вас нет доступных телеканалов.</p>
+                      <a href="/channels/create"
+                        style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: #3b9cd9; color: #fff; text-decoration: none; border-radius: 3px;">Создать
+                        свой канал</a>
+                    </div>
+                    <% } %>
+
+              </div>
+              <div class="clear_both"></div>
+            </div>
+          </div>
+        </div>
+        <div class="blackbox_bl"></div>
+        <div class="blackbox_bc"></div>
+        <div class="blackbox_br"></div>
+      </div>
+    </div>
+    <div class="clear_both"></div>
+  </div>
+
+  <script>
+    function selectChannel(element, id) {
+      document.querySelectorAll('.channel-select-row').forEach(el => el.classList.remove('selected'));
+      element.classList.add('selected');
+      document.getElementById('selectedChannelId').value = id;
+    }
+
+    function submitSelection() {
+      const id = document.getElementById('selectedChannelId').value;
+      if (id) {
+        document.getElementById('selectChannelForm').submit();
+      } else {
+        alert('Пожалуйста, выберите телеканал из списка.');
+      }
+    }
+
+    // Auto-select first if available
+    const firstRow = document.querySelector('.channel-select-row');
+    if (firstRow) {
+      firstRow.click();
+    }
+  </script>
+
+  <%- include('../partials/footer') %>

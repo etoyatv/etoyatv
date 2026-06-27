@@ -1,0 +1,145 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<!-- LEFT COLUMN>> -->
+<div class="left_blocks"> 
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div style="height:500px; width:1px; margin-left:-1px; float:left;"></div>
+<div style="width:100%; float:left;"><div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Новости <%= (typeof cat !== 'undefined' && cat === 'channel' && typeof channelName !== 'undefined') ? 'телеканала ' + channelName : 'ЭтоЯTV' %></div>
+</div> 
+</div>
+<div class="block-content"> 
+<div class="news">
+  <% const months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря']; %>
+  <% news.forEach(function(item) { %>
+    <div class="item item-<%= item.id %>">
+      <div class="date"> 
+        <div class="day"><%= ('0' + new Date(item.created_at).getDate()).slice(-2) %></div> 
+        <%= months[new Date(item.created_at).getMonth()] %>
+      </div>
+      <div class="body">
+        <% if (typeof cat !== 'undefined' && cat === 'channel' && typeof shortname !== 'undefined' && shortname) { %>
+          <div class="title"><a href="/channels/<%= shortname %>/news/<%= item.id %>"><%= item.title %></a></div>
+        <% } else if (item.is_channel_news) { %>
+          <div class="title"><a href="/channels/<%= item.shortname %>/news/<%= item.id %>"><%= item.title %></a></div>
+        <% } else { %>
+          <div class="title"><a href="/ru/news,view,<%= item.id %>"><%= item.title %></a></div>
+        <% } %>
+        <div class="announce" style="white-space: pre-line; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;"><%= item.announce %></div>
+      </div>
+      <div class="clear_both"></div>
+    </div>
+  <% }) %>
+  <% if (news.length === 0) { %>
+    <p style="color: #c0c0b2;">Новостей пока нет.</p>
+  <% } %>
+</div>
+<br>
+
+<% if (totalPages > 1) { %>
+  <div class="dottedline"></div> 
+  <div class="pager">
+    <% 
+      let queryParams = '';
+      if (typeof cat !== 'undefined' && cat && typeof itemId !== 'undefined' && itemId) {
+        queryParams = '&cat=' + cat + '&item=' + itemId;
+      }
+    %>
+    <% for (let p = 1; p <= totalPages; p++) { %>
+      <% if (p === page) { %>
+        <div class="item active"><%= p %></div>
+      <% } else { %>
+        <div class="item"><a href="/ru/news?page=<%= p %><%= queryParams %>"><%= p %></a></div>
+      <% } %>
+    <% } %>
+    <div style="float:right;">
+      <% if (page > 1) { %>
+        <div class="item prev"><a href="/ru/news?page=<%= page - 1 %><%= queryParams %>">Предыдущая</a></div>
+      <% } else { %>
+        <div class="item prev">Предыдущая</div>
+      <% } %>
+      
+      <% if (page < totalPages) { %>
+        <div class="item next"><a href="/ru/news?page=<%= page + 1 %><%= queryParams %>">Следующая</a></div>
+      <% } else { %>
+        <div class="item next">Следующая</div>
+      <% } %>
+    </div>
+    <div class="clear_both"></div>
+  </div> 
+<% } %>
+
+</div>
+<div class="clear_both"></div></div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+
+</div>
+<!-- << LEFT COLUMN -->
+
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks">
+<% if (typeof cat !== 'undefined' && cat === 'channel' && typeof channel !== 'undefined' && channel) { %>
+<%- include('partials/channel_sidebar', { activePage: 'news' }) %>
+<% } %>
+
+<div class="blocks"> 
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Реклама</div>
+</div> 
+</div>
+<div class="block-content">
+  <% if (adsEnabled && adsConfig['sidebar_320x240'] && adsConfig['sidebar_320x240'].image) { %>
+    <div style="width: 320px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+      <% if (adsConfig['sidebar_320x240'].url) { %>
+        <a href="<%= adsConfig['sidebar_320x240'].url %>" target="_blank" style="display: block;">
+          <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+        </a>
+      <% } else { %>
+        <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+      <% } %>
+    </div>
+  <% } else if (!adsEnabled) { %>
+    <!-- Ad is disabled -->
+  <% } else { %>
+    <div style="width:320px; height:240px; background:#222; border:1px solid #333; color:#555; text-align:center; line-height:240px; margin: 0 auto;">Место для рекламы</div>
+  <% } %>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+
+</div> 
+</div>
+<!-- << RIGHT COLUMN -->
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Настройки | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .settings-layout {
+      display: flex;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+      gap: 30px;
+    }
+    
+    .settings-sidebar {
+      width: 280px;
+      flex-shrink: 0;
+    }
+    
+    .settings-nav {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .settings-nav-item {
+      display: block;
+      padding: 15px 20px;
+      color: #9ca3af;
+      text-decoration: none;
+      font-weight: 500;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.3s ease;
+    }
+    
+    .settings-nav-item:last-child {
+      border-bottom: none;
+    }
+    
+    .settings-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+    }
+    
+    .settings-nav-item.active {
+      background: rgba(0, 198, 255, 0.1);
+      color: #00c6ff;
+      border-left: 3px solid #00c6ff;
+    }
+    
+    .settings-content {
+      flex-grow: 1;
+    }
+    
+    .settings-box {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 30px;
+      margin-bottom: 20px;
+    }
+    
+    .settings-title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 20px;
+    }
+    
+    .settings-section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #00c6ff;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .settings-content .form-group {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      margin-bottom: 25px;
+    }
+    
+    .settings-content .form-group label {
+      display: block;
+      width: 100%;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    
+    .form-text {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-top: 5px;
+      margin-bottom: 10px;
+    }
+    
+    .form-control {
+      width: 100%;
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      font-family: 'Inter', sans-serif;
+    }
+    
+    .form-control:focus {
+      outline: none;
+      border-color: #00c6ff;
+      background: rgba(0, 198, 255, 0.05);
+    }
+    
+    textarea.form-control {
+      resize: vertical;
+      min-height: 100px;
+    }
+    
+    .btn-save {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-block;
+    }
+    
+    .btn-save:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 198, 255, 0.4);
+    }
+    /* Spinner */
+    .spinner-small {
+      display: inline-block;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      border-top: 2px solid #fff;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Toggle Switch */
+    .switch-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .switch-info {
+      flex-grow: 1;
+      padding-right: 20px;
+    }
+    
+    .switch-title {
+      font-weight: 700;
+      color: white;
+      margin-bottom: 4px;
+    }
+    
+    .switch-desc {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+    
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #00c6ff;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+    
+    .advanced-locked {
+      text-align: center;
+      padding: 60px 20px;
+      color: #9ca3af;
+    }
+    
+    .advanced-locked-icon {
+      font-size: 48px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+    
+    .alert-success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      color: #10b981;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+      .settings-layout {
+        flex-direction: column;
+      }
+      .settings-sidebar {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="settings-layout">
+    <div class="settings-sidebar">
+      <div class="settings-nav">
+        <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+        <% if (!isModOnly) { %>
+        <a href="#general" class="settings-nav-item active" onclick="switchTab('general')">Настройки сайта</a>
+        <a href="#ads" class="settings-nav-item" onclick="switchTab('ads')">Управление рекламой</a>
+        <% } %>
+        <a href="#personal" class="settings-nav-item <%= isModOnly ? 'active' : '' %>" onclick="switchTab('personal')">Личные настройки</a>
+        <% if (user && user.is_superadmin) { %>
+        <a href="#advanced" class="settings-nav-item" onclick="switchTab('advanced')">Продвинутые настройки</a>
+        <% } %>
+      </div>
+    </div>
+    
+    <div class="settings-content">
+      <% if (success_msg) { %>
+        <div class="alert-success"><%= success_msg %></div>
+      <% } %>
+      
+      <!-- GENERAL SETTINGS TAB -->
+      <% if (!isModOnly) { %>
+      <div id="tab-general" class="settings-tab-content">
+        <h2 class="settings-title">Настройки сайта</h2>
+        
+        <form action="/settings" method="POST">
+          <input type="hidden" name="form_type" value="main_settings">
+          
+          <div class="settings-box">
+            <h3 class="settings-section-title">Доступность сайта</h3>
+            
+            <div class="switch-row">
+              <div class="switch-info">
+                <div class="switch-title">Выключить сайт (Режим тех. обслуживания)</div>
+                <div class="switch-desc">Если включено, обычные пользователи увидят страницу ошибки с сообщением ниже. Админы и модераторы сохранят доступ.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" name="site_disabled" value="1" <%= settings.site_disabled === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+            </div>
+            
+            <div class="form-group">
+              <label>Сообщение об отключении сайта</label>
+              <textarea name="site_disabled_message" class="form-control" placeholder="Сайт временно отключен на техническое обслуживание..."><%= settings.site_disabled_message %></textarea>
+            </div>
+          </div>
+          
+          <div class="settings-box">
+            <h3 class="settings-section-title">Регистрация и Инвайты</h3>
+            
+            <div class="switch-row">
+              <div class="switch-info">
+                <div class="switch-title">Отключить регистрацию</div>
+                <div class="switch-desc">Полностью закрывает возможность создания новых аккаунтов.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" name="registration_disabled" value="1" <%= settings.registration_disabled === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+            </div>
+            
+            <div class="switch-row">
+              <div class="switch-info">
+                <div class="switch-title">Система «Инвайт-кодов»</div>
+                <div class="switch-desc">Если включено, регистрация будет возможна только по пригласительным кодам (если регистрация не отключена полностью).</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" name="invite_system_enabled" value="1" <%= settings.invite_system_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="settings-box">
+            <h3 class="settings-section-title">Трансляции (RTMP)</h3>
+            
+            <div class="switch-row">
+              <div class="switch-info">
+                <div class="switch-title">Заблокировать RTMP</div>
+                <div class="switch-desc">Блокирует запуск новых трансляций. Текущие трансляции будут прерваны (требует настройки на медиа-сервере).</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" name="rtmp_disabled" value="1" <%= settings.rtmp_disabled === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+          
+          <div class="settings-box">
+            <h3 class="settings-section-title">Информационный баннер</h3>
+            
+            <div class="switch-row">
+              <div class="switch-info">
+                <div class="switch-title">Включить верхний баннер</div>
+                <div class="switch-desc">Отображает информационный баннер под шапкой сайта на всех страницах (кроме студии).</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" name="banner_enabled" value="1" <%= settings.banner_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+            </div>
+            
+            <div class="form-group">
+              <label>Краткий текст баннера</label>
+              <div class="form-text">Текст, который будет виден всегда.</div>
+              <input type="text" name="banner_text_short" class="form-control" value="<%= settings.banner_text_short %>" placeholder="Важная информация...">
+            </div>
+            
+            <div class="form-group">
+              <label>Полный текст баннера (при разворачивании)</label>
+              <div class="form-text">Подробный текст, который показывается при нажатии "Развернуть". Поддерживает HTML.</div>
+              <textarea name="banner_text_full" class="form-control"><%= settings.banner_text_full %></textarea>
+            </div>
+          </div>
+          
+          <div class="settings-box">
+            <h3 class="settings-section-title">Модерация контента</h3>
+            
+            <div class="form-group">
+              <label>Запрещенные слова (через запятую)</label>
+              <div class="form-text">Слова из этого списка будут заменяться на *** в именах пользователей, названиях каналов и т.д.</div>
+              <textarea name="forbidden_words" class="form-control" placeholder="слово1, слово2, мат..."><%= settings.forbidden_words %></textarea>
+            </div>
+          </div>
+          
+          <div style="text-align: right; margin-bottom: 40px;">
+            <button type="submit" class="btn-save">Сохранить настройки</button>
+          </div>
+          
+        </form>
+        
+      </div>
+      <% } %>
+      
+      <!-- ADS SETTINGS TAB -->
+      <% if (!isModOnly) { %>
+      <div id="tab-ads" class="settings-tab-content" style="display: none;">
+        <h2 class="settings-title">Управление рекламой</h2>
+        <div class="settings-box">
+          <form id="adsToggleForm" action="/settings" method="POST" class="switch-row" style="margin-bottom:0;">
+            <input type="hidden" name="form_type" value="ads_settings">
+            <div class="switch-info">
+              <div class="switch-title">Глобально включить рекламу</div>
+              <div class="switch-desc">Если выключено, все рекламные блоки на сайте будут скрыты (останутся пустыми).</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+              <label class="switch">
+                <input type="checkbox" name="ads_enabled" value="1" <%= settings.ads_enabled === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+              <button type="submit" class="btn-save" style="padding: 8px 16px;">Сохранить</button>
+            </div>
+          </form>
+        </div>
+        
+        <div class="settings-box">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 class="settings-section-title" style="margin: 0; border: none; padding: 0;">Рекламные блоки</h3>
+            <button class="btn-save" style="padding: 8px 16px;" onclick="openAdsModal()">+ Добавить / Изменить блок</button>
+          </div>
+          <div class="form-text" style="margin-top: -15px; margin-bottom: 20px;">Настройте рекламные материалы для доступных позиций на сайте.</div>
+          
+          <div id="adsList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Ads will be rendered here by JS -->
+          </div>
+        </div>
+      </div>
+      <% } %>
+      
+      <!-- PERSONAL SETTINGS TAB -->
+      <div id="tab-personal" class="settings-tab-content" style="<%= isModOnly ? '' : 'display: none;' %>">
+        <h2 class="settings-title">Личные настройки администратора</h2>
+        <form action="/settings/personal" method="POST">
+          <div class="settings-box">
+            <h3 class="settings-section-title">Отображение контента</h3>
+            <div class="switch-row" style="margin-bottom:0;">
+              <div class="switch-info">
+                <div class="switch-title">Размытие 18+ обложек</div>
+                <div class="switch-desc">Если включено, обложки каналов и записей с меткой 18+ будут заблюрены в панели администратора.</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 15px;">
+                <label class="switch">
+                  <input type="checkbox" name="blur_18_plus" value="1" <%= user && user.blur_18_plus ? 'checked' : '' %>>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div class="settings-box">
+            <h3 class="settings-section-title">Маскировка</h3>
+            <div class="form-group" style="margin-bottom: 0;">
+               <label>Режим маскировки</label>
+               <div class="form-text" style="margin-bottom: 15px;">Выберите, как вы будете отображаться для других пользователей на сайте.</div>
+               <select name="mask_mode" class="form-control" style="background: rgba(255, 255, 255, 0.05); color: white; border: 1px solid rgba(255, 255, 255, 0.1);">
+                 <option value="disabled" style="color: black" <%= (!user || !user.mask_mode || user.mask_mode === 'disabled') ? 'selected' : '' %>>Отключен (показывать истинные права)</option>
+                 <option value="user_mask" style="color: black" <%= (user && user.mask_mode === 'user_mask') ? 'selected' : '' %>>Включен (маскировка под обычного пользователя)</option>
+                 <option value="invisible" style="color: black" <%= (user && user.mask_mode === 'invisible') ? 'selected' : '' %>>Включен (невидимка в чате)</option>
+               </select>
+            </div>
+          </div>
+
+          <div class="settings-box">
+            <h3 class="settings-section-title">Telegram Уведомления</h3>
+            
+            <!-- Telegram Binding Status & Controls -->
+            <div id="tg-binding-container" style="margin-bottom: 25px;">
+              <% if (notifSettings && notifSettings.tg_chat_id && notifSettings.tg_chat_id !== '') { %>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0, 198, 255, 0.05); border: 1px solid rgba(0, 198, 255, 0.2); padding: 15px; border-radius: 8px;">
+                  <div>
+                    <div style="font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00c6ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                      Telegram привязан (ID: <%= notifSettings.tg_chat_id %>)
+                    </div>
+                    <div class="form-text" style="margin: 5px 0 0 0;">Бот будет присылать лог-сообщения на этот аккаунт.</div>
+                  </div>
+                  <button type="button" class="btn-save" style="background: linear-gradient(135deg, #ef4444, #b91c1c); padding: 8px 16px;" onclick="unbindTelegram(event)">Отвязать</button>
+                </div>
+              <% } else if (notifSettings && notifSettings.tg_bind_code) { %>
+                <div style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2); padding: 20px; border-radius: 8px; text-align: center;">
+                  <div style="font-weight: bold; color: #f59e0b; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <div class="spinner-small" style="width: 16px; height: 16px; border: 2px solid #f59e0b; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    Ожидание запуска бота в Telegram...
+                  </div>
+                  <div style="font-size: 13px; color: #9ca3af; margin-bottom: 15px;">
+                    Мы сгенерировали токен привязки. Откройте Telegram и запустите бота для завершения привязки.
+                  </div>
+                  <div style="display: flex; gap: 10px; justify-content: center;">
+                    <a href="https://t.me/<%= botUsername || 'EtoYaTVBot' %>?start=<%= notifSettings.tg_bind_code %>" target="_blank" class="btn-save" style="background: #00c6ff; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                      Открыть Telegram
+                    </a>
+                    <button type="button" class="btn-save" style="background: rgba(255, 255, 255, 0.1); color: #fff;" onclick="unbindTelegram(event)">Отмена</button>
+                  </div>
+                </div>
+              <% } else { %>
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 20px; border-radius: 8px; text-align: center;">
+                  <% if (typeof botToken === 'undefined' || !botToken || typeof botUsername === 'undefined' || !botUsername) { %>
+                    <div style="color: #ef4444; margin-bottom: 0; font-size: 13px;">
+                      ⚠️ Telegram-бот не настроен на сервере в файле конфигурации (.env)
+                    </div>
+                  <% } else { %>
+                    <div style="color: #9ca3af; margin-bottom: 15px; font-size: 13px;">
+                      Вы можете привязать свой Telegram-аккаунт для автоматического получения системных логов.
+                    </div>
+                    <button type="button" class="btn-save" style="background: #00c6ff;" onclick="bindTelegram(event)">Привязать Telegram</button>
+                  <% } %>
+                </div>
+              <% } %>
+            </div>
+
+            <!-- Telegram Log Checkboxes -->
+            <div style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+              <h4 style="margin: 0 0 15px 0; color: #fff; font-size: 14px;">Какие типы логов присылать в бот:</h4>
+              
+              <div class="switch-row">
+                <div class="switch-info">
+                  <div class="switch-title" style="font-size: 14px; font-weight: normal;">Регистрация пользователей</div>
+                  <div class="switch-desc">Уведомлять о регистрации новых учетных записей.</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" name="notify_registration" value="1" <%= notifSettings && notifSettings.notify_registration ? 'checked' : '' %>>
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="switch-row">
+                <div class="switch-info">
+                  <div class="switch-title" style="font-size: 14px; font-weight: normal;">Создание контента</div>
+                  <div class="switch-desc">Уведомлять о создании каналов, записей, новостей, анонсов.</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" name="notify_creation" value="1" <%= notifSettings && notifSettings.notify_creation ? 'checked' : '' %>>
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="switch-row">
+                <div class="switch-info">
+                  <div class="switch-title" style="font-size: 14px; font-weight: normal;">Запуск трансляций и автопилотов</div>
+                  <div class="switch-desc">Уведомлять о начале стримов и старте записей эфиров.</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" name="notify_stream" value="1" <%= notifSettings && notifSettings.notify_stream ? 'checked' : '' %>>
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div class="switch-row">
+                <div class="switch-info">
+                  <div class="switch-title" style="font-size: 14px; font-weight: normal;">Удаление контента</div>
+                  <div class="switch-desc">Уведомлять об удалении каналов, записей, пользователей и других объектов.</div>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" name="notify_deletion" value="1" <%= notifSettings && notifSettings.notify_deletion ? 'checked' : '' %>>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          <div style="text-align: right; margin-bottom: 40px;">
+            <button type="submit" class="btn-save">Сохранить настройки</button>
+          </div>
+        </form>
+      </div>
+
+      
+      <!-- ADVANCED SETTINGS TAB -->
+      <% if (user && user.is_superadmin) { %>
+      <div id="tab-advanced" class="settings-tab-content" style="display: none;">
+        <h2 class="settings-title">Продвинутые настройки</h2>
+        <% if (typeof error_msg !== 'undefined' && error_msg) { %>
+          <div class="alert-success" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #ef4444; margin-bottom: 20px;"><%= error_msg %></div>
+        <% } %>
+        <div class="settings-box">
+          <h3 class="settings-section-title" style="color: #ef4444;">Редактирование конфигурации .env</h3>
+          <div class="alert-success" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); color: #f59e0b; margin-bottom: 20px;">
+            <strong>ВНИМАНИЕ!</strong> Будьте крайне осторожны при редактировании этого файла. Ошибки в параметрах подключения к базе данных или некорректные секреты сессий могут нарушить стабильную работу всей платформы ЭтоЯTV.
+          </div>
+          <form action="/settings/advanced" method="POST">
+            <div class="form-group">
+              <label>Файл .env конфигурации</label>
+              <textarea name="env_content" class="form-control" style="font-family: monospace; font-size: 13px; height: 450px; background: rgba(0,0,0,0.3); line-height: 1.5; color: #a7f3d0; border: 1px solid rgba(255,255,255,0.1);"><%= envContent %></textarea>
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+              <button type="submit" class="btn-save" style="background: linear-gradient(135deg, #ef4444, #b91c1c);">Сохранить .env настройки</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <% } %>
+      
+    </div>
+  </div>
+
+  <!-- ADS MODAL -->
+  <div id="adsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+    <div class="settings-content" style="background:#1a1a1a; padding:30px; border-radius:12px; width:100%; max-width:500px; border:1px solid rgba(255,255,255,0.1);">
+      <h3 class="settings-section-title">Настройка рекламного блока</h3>
+      <form id="adsForm" onsubmit="saveAdBlock(event)">
+        <div class="form-group">
+          <label>Позиция на сайте</label>
+          <select id="adPosition" class="form-control" required style="background:rgba(255,255,255,0.05); color:white; border:1px solid rgba(255,255,255,0.1);">
+            <option value="sidebar_320x240">Сайдбар (320x240) - Новости, Главная, Каналы</option>
+            <option value="header_970x90">Верхний блок (970x90) - Страница канала</option>
+            <option value="sidebar_320x100">Сайдбар малый (320x100) - ТВ Программа</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Изображение или GIF</label>
+          <input type="file" id="adFile" class="form-control" accept="image/png, image/jpeg, image/gif" style="padding: 8px;">
+          <div class="form-text">Оставьте пустым, чтобы сохранить текущее изображение. Рекомендуемые форматы: JPG, PNG, GIF. Макс: 5MB.</div>
+        </div>
+        <div class="form-group">
+          <label>Ссылка при клике (опционально)</label>
+          <input type="url" id="adUrl" class="form-control" placeholder="https://example.com">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button type="button" class="btn-save" style="background:rgba(255,255,255,0.1); color:white;" onclick="closeAdsModal()">Отмена</button>
+          <button type="submit" class="btn-save">Сохранить блок</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Config state
+    let rawAdsConfig = <%- settings.ads_config ? settings.ads_config : '{}' %>;
+    let adsConfig = Array.isArray(rawAdsConfig) ? {} : rawAdsConfig;
+    const CDN_BASE_URL = "<%= CDN_BASE_URL %>";
+    
+    function switchTab(tabId) {
+      document.querySelectorAll('.settings-tab-content').forEach(el => { el.style.display = 'none'; });
+      document.querySelectorAll('.settings-nav-item').forEach(el => { el.classList.remove('active'); });
+      document.getElementById('tab-' + tabId).style.display = 'block';
+      
+      const activeEl = document.querySelector(`.settings-nav-item[href="#${tabId}"]`);
+      if (activeEl) {
+        activeEl.classList.add('active');
+      }
+    }
+
+    function renderAdsList() {
+      const list = document.getElementById('adsList');
+      list.innerHTML = '';
+      
+      const positions = {
+        'sidebar_320x240': 'Сайдбар (320x240)',
+        'header_970x90': 'Верхний блок (970x90)',
+        'sidebar_320x100': 'Сайдбар малый (320x100)'
+      };
+
+      for (const [key, name] of Object.entries(positions)) {
+        let ads = adsConfig[key] || [];
+        if (!Array.isArray(ads)) ads = [ads]; // backward compatibility
+        
+        const container = document.createElement('div');
+        container.style.background = 'rgba(0,0,0,0.2)';
+        container.style.border = '1px solid rgba(255,255,255,0.05)';
+        container.style.borderRadius = '8px';
+        container.style.padding = '15px';
+        container.style.marginBottom = '20px';
+        
+        let html = `<div style="font-weight:600; margin-bottom:10px; color:#fff; display:flex; justify-content:space-between;">
+          <span>${name} (${ads.length})</span>
+          <button class="btn-save" style="padding:4px 8px; font-size:12px;" onclick="openAdsModal('${key}')">+ Добавить</button>
+        </div>`;
+        
+        if (ads.length === 0) {
+          html += `<div style="padding:15px; text-align:center; color:#555; background:#111; border-radius:4px;">Нет баннеров. Нажмите + Добавить.</div>`;
+        } else {
+          html += `<div style="display:flex; flex-wrap:wrap; gap:15px;">`;
+          ads.forEach((ad, index) => {
+            const imgSrc = ad.image.startsWith('http') ? ad.image : CDN_BASE_URL + ad.image;
+            html += `
+              <div style="background:#111; border:1px solid #333; border-radius:4px; padding:10px; width:200px;">
+                <div style="height:100px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; background:#000;">
+                  <img src="${imgSrc}" style="max-width:100%; max-height:100%; object-fit:contain;">
+                </div>
+                <div style="font-size:11px; color:#888; margin-bottom:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  ${ad.url ? `Ссылка: <a href="${ad.url}" target="_blank" style="color:#00c6ff;">${ad.url}</a>` : 'Без ссылки'}
+                </div>
+                <button class="btn-save" style="width:100%; padding:4px; font-size:11px; background:#ef4444;" onclick="deleteAd('${key}', ${index})">Удалить</button>
+              </div>
+            `;
+          });
+          html += `</div>`;
+        }
+        
+        container.innerHTML = html;
+        list.appendChild(container);
+      }
+    }
+
+    function openAdsModal(position) {
+      document.getElementById('adsModal').style.display = 'flex';
+      document.getElementById('adPosition').value = position;
+      document.getElementById('adUrl').value = '';
+      document.getElementById('adFile').value = '';
+    }
+
+    function closeAdsModal() {
+      document.getElementById('adsModal').style.display = 'none';
+    }
+
+    async function deleteAd(position, index) {
+      if (!confirm('Удалить этот баннер?')) return;
+      if (Array.isArray(adsConfig[position])) {
+        adsConfig[position].splice(index, 1);
+      }
+      await saveConfigToServer();
+      renderAdsList();
+    }
+
+    async function saveAdBlock(e) {
+      e.preventDefault();
+      const position = document.getElementById('adPosition').value;
+      const url = document.getElementById('adUrl').value;
+      const fileInput = document.getElementById('adFile');
+      
+      if (!fileInput.files || !fileInput.files[0]) {
+        alert('Пожалуйста, выберите файл для нового баннера.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('ad_file', fileInput.files[0]);
+      formData.append('slotType', position);
+      
+      try {
+        const res = await fetch('/settings/ads/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (!Array.isArray(adsConfig[position])) {
+            adsConfig[position] = adsConfig[position] && adsConfig[position].image ? [adsConfig[position]] : [];
+          }
+          adsConfig[position].push({ image: data.url, url: url });
+          await saveConfigToServer();
+          closeAdsModal();
+          renderAdsList();
+        } else {
+          alert('Ошибка: ' + data.message);
+        }
+      } catch (err) {
+        alert('Ошибка при загрузке');
+      }
+    }
+
+    async function saveConfigToServer() {
+      try {
+        const formData = new URLSearchParams();
+        formData.append('ads_config', JSON.stringify(adsConfig));
+        
+        const res = await fetch('/settings/ads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: formData
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert('Не удалось сохранить настройки на сервере.');
+        }
+      } catch (e) {
+        alert('Сетевая ошибка при сохранении.');
+      }
+    }
+
+    // Telegram action helpers
+    function bindTelegram(e) {
+      e.preventDefault();
+      document.getElementById('tg-bind-form').submit();
+    }
+    
+    function unbindTelegram(e) {
+      e.preventDefault();
+      if (confirm('Вы уверены, что хотите отвязать Telegram?')) {
+        document.getElementById('tg-unbind-form').submit();
+      }
+    }
+
+    // Initial render
+    document.addEventListener('DOMContentLoaded', () => {
+      renderAdsList();
+
+      // Switch tab based on URL hash if present
+      const hash = window.location.hash.substring(1);
+      if (hash && ['general', 'ads', 'personal', 'advanced'].includes(hash)) {
+        const isSuperAdmin = <%= (user && user.is_superadmin) ? 'true' : 'false' %>;
+        if (hash !== 'advanced' || isSuperAdmin) {
+          const isModeratorOnly = <%= isModOnly ? 'true' : 'false' %>;
+          if (!isModeratorOnly || hash === 'personal') {
+            switchTab(hash);
+          }
+        }
+      }
+
+      // Check telegram status if waiting for bind
+      <% if (notifSettings && notifSettings.tg_bind_code) { %>
+        (function() {
+          const checkStatus = setInterval(async () => {
+            try {
+              const res = await fetch('/settings/personal/telegram/status');
+              const data = await res.json();
+              if (data.bound) {
+                clearInterval(checkStatus);
+                window.location.reload();
+              }
+            } catch (err) {
+              console.error('Error checking telegram bind status:', err);
+            }
+          }, 2000);
+        })();
+      <% } %>
+    });
+  </script>
+
+  <!-- Hidden Forms for Telegram Binding -->
+  <form id="tg-bind-form" action="/settings/personal/telegram/bind-link" method="POST" style="display:none;"></form>
+  <form id="tg-unbind-form" action="/settings/personal/telegram/unbind" method="POST" style="display:none;"></form>
+</body>
+</html>

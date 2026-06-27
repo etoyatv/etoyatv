@@ -1,0 +1,57 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks" style="width: 500px; margin: 50px auto; float: none;">
+<div class="blackbox" id="login_block" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Двухфакторная аутентификация</div>
+</div>
+</div>
+<div class="block-content">
+<% if (typeof error !== 'undefined' && error) { %>
+  <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= error %></div>
+<% } %>
+<% if (typeof success !== 'undefined' && success) { %>
+  <div style="color: #6fdeee; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= success %></div>
+<% } %>
+<div style="text-align: center; margin-bottom: 20px; color: #ccc;">
+  Для завершения входа введите 6-значный код из приложения (Google Authenticator) или один из резервных кодов.
+</div>
+<form action="/login/2fa" method="post" style="padding: 0 0 20px 10px;">
+
+  <div class="forms-item">
+    <div class="label" style="width: 150px;">Код 2FA:<span class="blue">*</span></div>
+    <input type="text" name="code" class="input-text" autocomplete="off" required style="width: 200px;">
+    <div class="clear_both"></div>
+  </div>
+  <div class="forms-item" style="margin-top:20px;">
+    <div class="label" style="width: 150px;"></div>
+    <div style="float:left;">
+      <button type="submit" style="background: #333; border: 1px solid #555; padding: 5px 15px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Подтвердить</button>
+      <a href="/login" style="margin-left: 15px; color: #6fdeee; text-decoration: none; font-size: 12px;">Вернуться назад</a>
+    </div>
+    <div class="clear_both"></div>
+  </div>
+</form>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

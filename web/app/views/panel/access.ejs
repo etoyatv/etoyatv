@@ -1,0 +1,61 @@
+<%- include('../panel_layout', { activeMenu: 'settings', activeSubmenu: 'access', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Настройки &gt; Доступ', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <span style="margin-right: 15px; color: #888;">Панель управления</span>
+        <span style="margin-right: 15px; color: #888;">Настройки</span>
+        <span style="color: #333;">Доступ</span>
+    </div>
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        <div style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            Права по умолчанию
+        </div>
+        
+        <form action="/ru/panel,settings,access" method="POST">
+            <div class="form-group" style="display: flex;">
+                <label style="width: 150px; color: #8c989e;">Уровень доступа:</label>
+                <div style="flex-grow: 1;">
+                    <label style="display: block; margin-bottom: 5px; color: #c0c0b2;"><input type="radio" name="access_level" value="public" ${ locals.panelChannel && locals.panelChannel.access_level !== 'password' ? 'checked' : '' }> Открытый (Телеканал доступен всем)</label>
+                    <label style="display: block; margin-bottom: 5px; color: #c0c0b2;"><input type="radio" name="access_level" value="password" ${ locals.panelChannel && locals.panelChannel.access_level === 'password' ? 'checked' : '' } onchange="document.getElementById('pwd-wrap').style.display=this.checked?'block':'none'"> По паролю (Телеканал доступен только знающим пароль)</label>
+                    <div id="pwd-wrap" style="display: ${ locals.panelChannel && locals.panelChannel.access_level === 'password' ? 'block' : 'none' }; margin-left: 20px; margin-top: 5px;">
+                        <input type="text" name="password" class="form-control" placeholder="Введите пароль..." value="${ (locals.panelChannel && locals.panelChannel.password) ? escapeHtml(locals.panelChannel.password) : '' }">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group" style="display: flex; margin-top: 15px;">
+                <label style="width: 150px; color: #8c989e;">Ограничение:</label>
+                <div style="flex-grow: 1;">
+                    <label style="color: #c0c0b2;"><input type="checkbox" name="is_18_plus" ${ locals.panelChannel && locals.panelChannel.is_18_plus ? 'checked' : '' }> Только для взрослых</label>
+                </div>
+            </div>
+            
+            <div class="form-group" style="display: flex; margin-top: 20px;">
+                <div style="width: 150px;"></div>
+                <button type="submit" class="btn btn-blue" style="padding: 8px 20px;">Сохранить</button>
+            </div>
+        </form>
+
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Доступ</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                На этой странице Вы можете настроить уровень доступа к Вашему телеканалу и загруженным видеофайлам. В том числе разрешить или запретить размещение плеера с трансляцией или видеофайлом на сторонних сайтах.
+            </div>
+        </div>
+        
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">А знаете ли вы?</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Вы можете ограничить просмотр своего телеканала, сделав его доступным только по паролю.
+            </div>
+        </div>
+    </div>
+</div>
+
+` }) %>

@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= pageTitle %></title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .form-group { display: flex; align-items: flex-start; margin-bottom: 25px; gap: 20px; }
+    .form-group > label { width: 250px; font-weight: bold; margin-bottom: 0; padding-top: 8px; flex-shrink: 0; }
+    .form-control { flex-grow: 1; max-width: 400px; padding: 8px; border: 1px solid #444; border-radius: 4px; background: #2a2a2a; color: #fff; font-family: 'Inter', sans-serif; }
+    .info-section { margin-top: 40px; border-top: 1px solid #444; padding-top: 25px; }
+    .info-row { margin-bottom: 15px; display: flex; align-items: center; gap: 15px; }
+    .info-row strong { width: 250px; flex-shrink: 0; }
+    .avatar-preview { width: 100px; height: 100px; border: 1px solid #444; background-size: cover; background-position: center; flex-shrink: 0; border-radius: 4px; }
+    .avatar-controls { display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+    .char-counter { font-size: 12px; color: #888; margin-top: 5px; text-align: right; max-width: 400px; }
+    
+    @media (max-width: 768px) {
+      .form-group { flex-direction: column; gap: 10px; }
+      .form-group > label { width: 100%; padding-top: 0; }
+      .form-control { max-width: 100%; width: 100%; }
+      .info-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+      .info-row strong { width: 100%; }
+      div[style*="max-width: 550px"] { flex-direction: column; max-width: 100% !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <h2>Редактирование канала - <%= channel.name %> (id: <%= channel.id %>)</h2>
+      <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+      
+
+
+      <form action="/channels/<%= channel.id %>/edit" method="POST" enctype="multipart/form-data">
+        
+        <div class="form-group">
+          <label>Название канала:</label>
+          <input type="text" name="name" value="<%= channel.name %>" class="form-control" maxlength="77" required <%= isModOnly ? 'disabled' : '' %>>
+        </div>
+
+        <div class="form-group">
+          <label>URL адрес:</label>
+          <div style="display: flex; gap: 10px; max-width: 550px;">
+            <input type="text" name="shortname" value="<%= channel.shortname %>" class="form-control" maxlength="32" pattern="[a-zA-Z0-9_-]+" title="Только латинские буквы, цифры, дефис и подчеркивание" style="flex-grow: 1;" <%= isModOnly ? 'disabled' : '' %>>
+            <a href="<%= APP_URL %>/ru/panel,select?channel_id=<%= channel.id %>" target="_blank" class="btn-black-border" style="text-decoration:none; display:inline-block; line-height: 20px;">Перейти в управление каналом</a>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Описание:</label>
+          <div style="flex-grow: 1; max-width: 400px; width: 100%;">
+            <textarea id="descInput" name="description" class="form-control" rows="4" maxlength="200" oninput="document.getElementById('descCount').innerText = this.value.length;" style="width: 100%; max-width: 100%; resize: none;" <%= isModOnly ? 'disabled' : '' %>><%= channel.description || '' %></textarea>
+            <div class="char-counter"><span id="descCount"><%= (channel.description || '').length %></span>/200</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Аватар канала:</label>
+          <div style="display: flex; gap: 20px;">
+            <div class="avatar-preview" style="background-image: url('<%= channel.logo_url && channel.logo_url.startsWith('/') ? CDN_BASE_URL + channel.logo_url : CDN_BASE_URL + '/images/logo_cort.png' %>');">
+            </div>
+            <% if (!isModOnly) { %>
+            <div class="avatar-controls">
+              <input type="file" name="avatar" id="avatarInput" accept="image/*" style="display: none;" onchange="validateAndSubmit(this)">
+              <button type="button" class="btn-black-border" onclick="document.getElementById('avatarInput').click()">Загрузить новую</button>
+              
+              <% if (channel.logo_url && channel.logo_url !== '/images/logo_cort.png') { %>
+                <button type="button" class="btn-black-border" onclick="document.getElementById('deleteAvatarForm').submit()">Удалить аватар</button>
+              <% } else { %>
+                <button type="button" class="btn-black-border" disabled style="opacity: 0.5;">Удалить аватар</button>
+              <% } %>
+            </div>
+            <% } %>
+          </div>
+        </div>
+        
+        <div class="info-section">
+          <h3>Дополнительная информация:</h3>
+          
+          <div class="info-row">
+            <strong>Дата создания канала:</strong> <%= formatDate(channel.created_at) %>
+          </div>
+          
+          <div class="info-row">
+            <strong>Дата последнего вещания канала:</strong> <%= channel.live_started_at ? formatDate(channel.live_started_at) : 'Никогда' %> 
+            <% if (channel.is_live) { %> <span style="color:red; font-weight:bold;">[В ЭФИРЕ]</span> <% } %>
+          </div>
+
+          <div class="info-row">
+            <strong>Статус канала:</strong> 
+            <span style="flex-grow: 1;">
+              <% if (channel.status === 'deleted') { %>Удаленный
+              <% } else if (channel.status === 'banned') { %>
+                Заблокированный (срок: <%= channel.banned_until ? formatDate(channel.banned_until) : 'бессрочно' %>)
+                <% if (channel.ban_reason) { %><br><span style="font-size: 12px; color: #ff4d4d;">Причина: <%= channel.ban_reason %></span><% } %>
+              <% } else { %>Активный<% } %>
+            </span>
+            <div style="display:flex; gap:10px;">
+              <% if (channel.status === 'banned') { %>
+                <button type="button" class="btn-black-border" onclick="document.getElementById('unbanForm').submit()">Разбанить</button>
+              <% } else { %>
+                <button type="button" class="btn-black-border" onclick="openBanModal()">Заблокировать</button>
+              <% } %>
+              <% if (!isModOnly) { %>
+              <button type="button" class="btn-black-border" onclick="document.getElementById('deleteForm').submit()">
+                <%= channel.status === 'deleted' ? 'Отменить удаление' : 'Удалить полностью' %>
+              </button>
+              <% } %>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <strong>Занятое место на CDN:</strong>
+            <span id="cdnQuotaText" style="flex-grow: 1;"><%= usageGB %> ГБ (Лимит <%= quotaGB %> ГБ)</span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="openQuotaModal()">Изменить лимит</button>
+            <% } %>
+            <input type="hidden" name="cdn_quota_gb" id="cdnQuotaInput" value="<%= quotaGB %>">
+          </div>
+
+          <div class="info-row">
+            <strong>RTMP поток:</strong> 
+            <span style="flex-grow: 1;"><%= streamKey ? (isModOnly ? 'Скрыто для модераторов' : channel.shortname + '?key=' + streamKey) : 'Нет ключа' %></span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="document.getElementById('resetKeyForm').submit()">Заменить ключ</button>
+            <% } %>
+          </div>
+
+          <div class="info-row">
+            <strong>Служебный канал:</strong> 
+            <span style="flex-grow: 1;"><%= isServiceChannel ? 'Да' : 'Нет' %></span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="document.getElementById('toggleServiceForm').submit()">Переключить</button>
+            <% } %>
+          </div>
+          
+          <div style="margin-top:20px; font-weight:bold;">Команда канала:</div>
+          <div class="info-row">
+            <strong>Владелец:</strong> 
+            <span style="flex-grow: 1;">
+              <a href="<%= APP_URL %>/ru/account,userinfo/?username=<%= channel.owner_username %>" target="_blank" style="color: #3b9cd9; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= channel.owner_username %></a> (id: <%= channel.user_id %>)
+            </span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="openOwnerModal()">Изменить владельца</button>
+            <% } %>
+          </div>
+
+          <div class="info-row">
+            <strong>Команда канала:</strong> 
+            <span style="flex-grow: 1;">
+              <% if (team.length > 0) { %>
+                <%- team.map(t => {
+                  let roles = [];
+                  if(t.is_reporter) roles.push('Репортер');
+                  if(t.is_moderator) roles.push('Модератор');
+                  if(t.is_editor) roles.push('Редактор');
+                  let rolesStr = roles.length > 0 ? ` - ${roles.join(', ')}` : '';
+                  let escapedUsername = escapeHtml(t.username || '');
+                  return `<a href="${APP_URL}/ru/account,userinfo/?username=${encodeURIComponent(t.username)}" target="_blank" style="color: #3b9cd9; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escapedUsername}</a> (id: ${t.user_id})${rolesStr}`;
+                }).join('<br>') %>
+              <% } else { %>
+                Никого нет
+              <% } %>
+            </span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="openTeamModal()">Изменить команду</button>
+            <% } %>
+          </div>
+
+        </div>
+
+        <div class="info-section">
+          <h3>Привилегии:</h3>
+          
+          <label class="checkbox-group">
+            <input type="checkbox" name="is_premium" value="1" <%= channel.is_premium ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Премиум-статус канала (отображает плашку ПРЕМИУМ)
+          </label>
+          
+          <label class="checkbox-group">
+            <input type="checkbox" name="is_verified" value="1" <%= channel.is_verified ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Подтвержденный статус (зеленая галочка рядом с именем)
+          </label>
+        </div>
+
+        <div class="info-section">
+          <h3>Запреты:</h3>
+          
+          <label class="checkbox-group">
+            <input type="checkbox" name="rtmp_disabled" value="1" <%= channel.rtmp_disabled ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Запретить вещание по RTMP
+          </label>
+          
+          <label class="checkbox-group">
+            <input type="checkbox" name="autopilot_disabled" value="1" <%= channel.autopilot_disabled ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Запретить автопилот
+          </label>
+          
+          <label class="checkbox-group">
+            <input type="checkbox" name="chat_disabled" value="1" <%= channel.chat_disabled ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Запретить чат (выключить чат навсегда)
+          </label>
+
+          <label class="checkbox-group">
+            <input type="checkbox" name="design_disabled" value="1" <%= channel.design_disabled ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Запретить изменение дизайна
+          </label>
+        </div>
+
+        <div style="margin-top: 30px; display:flex; gap:15px;">
+          <% if (!isModOnly) { %>
+          <button type="submit" class="btn-black-border" style="width: 150px; font-weight:bold;">Сохранить</button>
+          <% } %>
+          <a href="/channels" class="btn-black-border" style="width: 150px; text-align:center; text-decoration:none; display:inline-block; line-height:30px;">Назад</a>
+        </div>
+        
+        <p style="margin-top:30px; font-size: 12px; color: #888;">Примечание: Служебный канал может быть только один. При назначении нового служебного канала, предыдущий автоматически потеряет этот статус. Новости служебного канала публикуются на главной странице сайта и в общем разделе новостей как официальные объявления от команды проекта.</p>
+
+      </form>
+      
+      <!-- Hidden forms for actions -->
+      <form id="unbanForm" action="/channels/<%= channel.id %>/toggle_status" method="POST" style="display:none;">
+        <input type="hidden" name="action_type" value="unban">
+      </form>
+      <form id="deleteAvatarForm" action="/channels/<%= channel.id %>/delete_avatar" method="POST" style="display:none;"></form>
+      <form id="deleteForm" action="/channels/<%= channel.id %>/delete" method="POST" style="display:none;"></form>
+      <form id="resetKeyForm" action="/channels/<%= channel.id %>/reset_stream_key" method="POST" style="display:none;"></form>
+      <form id="toggleServiceForm" action="/channels/<%= channel.id %>/toggle_service" method="POST" style="display:none;"></form>
+      
+    </main>
+    
+    <!-- Modals -->
+    <div id="quotaModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title">Изменить лимит CDN</h3>
+        <div class="modal-body">
+          <div class="form-group" style="width: 100%;">
+            <label>Новый лимит (в ГБ):</label>
+            <input type="number" id="quotaModalInput" class="form-control" value="<%= quotaGB %>" step="0.01" style="width:100%;">
+          </div>
+          <p style="font-size: 12px; color: #888; margin-top: 10px;">Новый лимит будет применен после нажатия кнопки "Сохранить" внизу страницы.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-black-border" onclick="applyQuotaModal()">Применить</button>
+          <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="ownerModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title">Изменить владельца канала</h3>
+        <form action="/channels/<%= channel.id %>/change_owner" method="POST">
+          <div class="modal-body">
+            <div class="form-group" style="width: 100%; position: relative;">
+              <label>ID или Username нового владельца:</label>
+              <input type="text" name="new_owner" id="newOwnerInput" class="form-control" required style="width:100%;" autocomplete="off" oninput="fetchAutocomplete(this.value, 'newOwnerDropdown', 'newOwnerInput')">
+              <div id="newOwnerDropdown" class="autocomplete-dropdown" style="display:none; position:absolute; width:100%; background:#111; border:1px solid #333; z-index:100; max-height:200px; overflow-y:auto; border-radius:4px; margin-top:5px;"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-black-border">Изменить</button>
+            <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <div id="teamModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title">Изменить команду канала</h3>
+        <form action="/channels/<%= channel.id %>/add_team" method="POST">
+          <div class="modal-body">
+            <p>Чтобы удалить пользователя из команды, введите его ID и не выбирайте ни одну из ролей.</p>
+            <div class="form-group" style="width: 100%; position: relative;">
+              <label>ID или Username пользователя:</label>
+              <input type="text" name="team_user" id="teamUserInput" class="form-control" required style="width:100%;" autocomplete="off" oninput="fetchAutocomplete(this.value, 'teamUserDropdown', 'teamUserInput')">
+              <div id="teamUserDropdown" class="autocomplete-dropdown" style="display:none; position:absolute; width:100%; background:#111; border:1px solid #333; z-index:100; max-height:200px; overflow-y:auto; border-radius:4px; margin-top:5px;"></div>
+            </div>
+            <label class="checkbox-group">
+              <input type="checkbox" name="is_reporter" value="1">
+              Сделать репортером
+            </label>
+            <label class="checkbox-group">
+              <input type="checkbox" name="is_moderator" value="1">
+              Сделать модератором
+            </label>
+            <label class="checkbox-group">
+              <input type="checkbox" name="is_editor" value="1">
+              Сделать редактором
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-black-border">Применить</button>
+            <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="banModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 style="margin-top:0; margin-bottom: 20px;">Блокировка канала</h3>
+        <form action="/channels/<%= channel.id %>/toggle_status" method="POST">
+          <input type="hidden" name="action_type" value="ban">
+          
+          <div style="margin-bottom: 15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Причина блокировки:</label>
+            <textarea name="ban_reason" class="form-control" rows="3" style="width:100%; max-width:100%; resize:none;" required placeholder="Опишите причину блокировки. Владелец не увидит причину, она для внутреннего пользования."></textarea>
+          </div>
+          
+          <div style="margin-bottom: 15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Тип блокировки:</label>
+            <div style="display:flex; gap: 15px;">
+              <label style="display:flex; align-items:center; gap:5px; font-size:14px;">
+                <input type="radio" name="ban_type" value="permanent" checked onchange="document.getElementById('banDateInputContainer').style.display = 'none'; document.getElementById('banDateInput').removeAttribute('required');"> Навсегда
+              </label>
+              <label style="display:flex; align-items:center; gap:5px; font-size:14px;">
+                <input type="radio" name="ban_type" value="temporary" onchange="document.getElementById('banDateInputContainer').style.display = 'block'; document.getElementById('banDateInput').setAttribute('required', 'required');"> До времени
+              </label>
+            </div>
+          </div>
+          
+          <div id="banDateInputContainer" style="margin-bottom: 20px; display: none;">
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">Снять блокировку:</label>
+            <input type="datetime-local" name="banned_until" id="banDateInput" class="form-control" style="width: 100%;">
+          </div>
+          
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+            <button type="submit" class="btn-black-border" style="background:#ff4d4d; color:white; border-color:#ff4d4d;">Заблокировать</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  <script>
+    function openBanModal() {
+      document.getElementById('banModal').classList.add('active');
+    }
+
+    function openQuotaModal() { document.getElementById('quotaModal').classList.add('active'); }
+      function applyQuotaModal() {
+        const newQuota = document.getElementById('quotaModalInput').value;
+        if(newQuota && !isNaN(newQuota)) {
+          document.getElementById('cdnQuotaInput').value = newQuota;
+          document.getElementById('cdnQuotaText').innerHTML = '<%= usageGB %> ГБ (Будет лимит ' + newQuota + ' ГБ)';
+          closeModals();
+        }
+      }
+      function openOwnerModal() { document.getElementById('ownerModal').classList.add('active'); }
+      function openTeamModal() { document.getElementById('teamModal').classList.add('active'); }
+      function closeModals() {
+        document.getElementById('quotaModal').classList.remove('active');
+        document.getElementById('ownerModal').classList.remove('active');
+        document.getElementById('teamModal').classList.remove('active');
+        document.getElementById('banModal').classList.remove('active');
+      }
+
+      let autocompleteTimeout = null;
+      function fetchAutocomplete(query, dropdownId, inputId) {
+        const dropdown = document.getElementById(dropdownId);
+        clearTimeout(autocompleteTimeout);
+        
+        if (query.length < 1) {
+          dropdown.style.display = 'none';
+          return;
+        }
+
+        autocompleteTimeout = setTimeout(async () => {
+          try {
+            const response = await fetch(`/channels/api/users_search?q=${encodeURIComponent(query)}`);
+            if (response.ok) {
+              const users = await response.json();
+              if (users.length > 0) {
+                dropdown.innerHTML = users.map(u => 
+                  `<div style="padding: 10px; border-bottom: 1px solid #333; cursor: pointer; color: #fff;" 
+                        onmouseover="this.style.background='#222'" 
+                        onmouseout="this.style.background='none'"
+                        onclick="document.getElementById('${inputId}').value = '${u.id}'; document.getElementById('${dropdownId}').style.display='none';">
+                    ${u.username} (id: ${u.id})
+                  </div>`
+                ).join('');
+                dropdown.style.display = 'block';
+              } else {
+                dropdown.innerHTML = `<div style="padding: 10px; color: #888;">Пользователи не найдены</div>`;
+                dropdown.style.display = 'block';
+              }
+            }
+          } catch (e) {
+            console.error('Autocomplete error:', e);
+          }
+        }, 300);
+      }
+
+      // Hide dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (!e.target.closest('.autocomplete-dropdown') && e.target.id !== 'newOwnerInput' && e.target.id !== 'teamUserInput') {
+          document.querySelectorAll('.autocomplete-dropdown').forEach(el => el.style.display = 'none');
+        }
+      });
+
+      function validateAndSubmit(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+        if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+          alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp).");
+          input.value = '';
+          return;
+        }
+
+        if (file.size > 4 * 1024 * 1024) {
+          alert("Размер файла превышает лимит 4 МБ.");
+          input.value = '';
+          return;
+        }
+
+        input.form.submit();
+      }
+    </script>
+  </div>
+</body>
+</html>

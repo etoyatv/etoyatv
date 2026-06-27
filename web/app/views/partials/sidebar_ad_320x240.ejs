@@ -1,0 +1,31 @@
+<div class="blocks">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div><div class="blackbox_tc"></div><div class="blackbox_tr"></div>
+<div class="blackbox_cw"><div class="blackbox_c" style=""><div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right"><div class="block-title">Реклама</div></div> 
+</div>
+<div class="block-content">
+  <% if (adsEnabled && adsConfig['sidebar_320x240'] && adsConfig['sidebar_320x240'].image) { %>
+    <div style="width: 320px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+      <% if (adsConfig['sidebar_320x240'].url) { %>
+        <a href="<%= adsConfig['sidebar_320x240'].url %>" target="_blank" style="display: block;">
+          <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+        </a>
+      <% } else { %>
+        <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+      <% } %>
+    </div>
+  <% } else if (!adsEnabled) { %>
+    <!-- Ad is disabled -->
+  <% } else { %>
+    <div style="width: 320px; height: 240px; background: #333; display: flex; align-items: center; justify-content: center; color: #777; margin: 0 auto;">Место для рекламы</div>
+  <% } %>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div><div class="blackbox_bc"></div><div class="blackbox_br"></div>
+</div>
+</div>

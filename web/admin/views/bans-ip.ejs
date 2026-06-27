@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Блокировки по IP | Панель управления</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <%- include('partials/header') %>
+  <div class="layout-container">
+    <%- include('partials/sidebar', { currentPath: '/bans/ip' }) %>
+    <main class="main-content">
+      <style>
+        .table-container {
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          overflow: hidden;
+          margin-top: 20px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+        }
+        th, td {
+          padding: 12px 15px;
+          text-align: left;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+          word-break: break-word;
+          white-space: normal;
+        }
+        th {
+          font-weight: 600;
+          color: #9ca3af;
+          background: rgba(0,0,0,0.2);
+        }
+        tr:last-child td {
+          border-bottom: none;
+        }
+        .btn-action {
+          padding: 8px 15px;
+          cursor: pointer;
+        }
+      </style>
+      <div class="content-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Блокировки по IP</h1>
+        <button type="button" class="btn-action" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; font-weight: bold; color: #fff;" onclick="openAddIpBanModal()">+ Добавить блокировку</button>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>IP-адрес</th>
+              <th>Тип бана</th>
+              <th>Кем выдан</th>
+              <th>Причина</th>
+              <th>Дата блокировки</th>
+              <th>Действие</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% bans.forEach(b => { %>
+              <tr>
+                <td>
+                  <strong><%= b.ip_address %></strong>
+                </td>
+                <td>
+                  <% if (b.ban_type === 'full') { %>
+                    <span style="color: #ff4d4d; font-weight: bold;">Полный бан</span>
+                  <% } else { %>
+                    <span style="color: #e6a23c; font-weight: bold;">Аккаунт (зритель)</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (b.banned_by_username) { %>
+                    <%= b.banned_by_username %>
+                  <% } else { %>
+                    <span style="color: #888;">Система</span>
+                  <% } %>
+                </td>
+                <td>
+                  <%= b.reason ? b.reason : 'Не указана' %>
+                </td>
+                <td>
+                  <%= formatDate(b.created_at, userTimezone, 'DD.MM.YYYY HH:mm:ss') %>
+                </td>
+                <td>
+                  <form action="/bans/ip/<%= encodeURIComponent(b.ip_address) %>/unban" method="POST" style="display: inline;">
+                    <button type="submit" class="btn-action btn-danger" onclick="event.preventDefault(); const form = this.closest('form'); yatvConfirm('Вы уверены, что хотите разблокировать этот IP?', () => { form.submit(); });">Разблокировать</button>
+                  </form>
+                </td>
+              </tr>
+            <% }); %>
+            <% if (bans.length === 0) { %>
+              <tr>
+                <td colspan="6" style="text-align: center; padding: 30px; color: #888;">
+                  Блокировок по IP не найдено
+                </td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+
+      <!-- Pagination & Limits -->
+      <div class="pagination-section" style="margin-top: 20px;">
+        <form action="/bans/ip" method="GET" class="limit-selector">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/bans/ip?page=<%= page - 1 %>&limit=<%= limit %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/bans/ip?page=<%= page + 1 %>&limit=<%= limit %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+      <!-- Add IP Ban Modal -->
+      <div id="addIpBanModal" class="modal-overlay">
+        <div class="modal-content">
+          <h3 class="modal-title">Ручная блокировка IP-адреса</h3>
+          <form action="/bans/ip/add" method="POST">
+            <div class="modal-body">
+              <div class="form-group">
+                <label>IP-адрес:</label>
+                <input type="text" name="ip_address" class="form-control" placeholder="192.168.1.1" required>
+              </div>
+              
+              <div class="form-group" style="margin-top: 15px;">
+                <label>Тип блокировки:</label>
+                <div style="margin-top: 5px;">
+                  <label style="display: block; margin-bottom: 5px;">
+                    <input type="radio" name="ip_ban_type" value="account" checked> Только аккаунт (режим зрителя)
+                  </label>
+                  <label style="display: block;">
+                    <input type="radio" name="ip_ban_type" value="full"> Полный бан (запрет доступа к сайту)
+                  </label>
+                </div>
+              </div>
+              
+              <div class="form-group" style="margin-top: 15px; width: 100%;">
+                <label>Причина:</label>
+                <textarea name="reason" class="form-control" style="min-height: 120px; width: 100%; resize: none; box-sizing: border-box;" placeholder="Причина блокировки" maxlength="200"></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="submit" class="btn-black-border">Заблокировать</button>
+              <button type="button" class="btn-black-border" onclick="closeAddIpBanModal()">Отмена</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <script>
+        function openAddIpBanModal() {
+          document.getElementById('addIpBanModal').classList.add('active');
+        }
+        function closeAddIpBanModal() {
+          document.getElementById('addIpBanModal').classList.remove('active');
+        }
+      </script>
+
+    </main>
+  </div>
+</body>
+</html>

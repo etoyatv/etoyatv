@@ -1,0 +1,919 @@
+<%- include('partials/header', { activeMenu: 'channels' }) %>
+    <style type="text/css">
+        .theme_default {
+            color: #C0C0B2;
+        }
+
+        .theme_default a {
+            color: #6FDEEE;
+        }
+
+        .theme_default h1,
+        .theme_default h2,
+        .theme_default h3,
+        .theme_default h4,
+        .theme_default h5 {
+            color: #FFFFFF;
+        }
+    </style>
+
+    <div id="content">
+
+        <!-- LEFT COLUMN>> -->
+        <div class="left_blocks">
+            <!-- PLAYER -->
+            <div class="block_item">
+                <div class="blackbox" id="record_block" style="width: auto;">
+                    <div class="blackbox_tl"></div>
+                    <div class="blackbox_tc"></div>
+                    <div class="blackbox_tr"></div>
+                    <div class="blackbox_cw">
+                        <div class="blackbox_c">
+                            <div class="blackbox_ci">
+                                <div class="block-head-bg"></div>
+                                <div class="block-head">
+                                    <div class="block-head-right">
+                                        <div class="block-title">
+                                            <%= record.title %><% if(record.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %>
+                                        </div>
+                                        <div class="block-buttons">
+                                            <a href="#" onclick="toggleFavorite('<%= record.id %>'); return false;"
+                                                title="Добавить в избранное" class="block-buttons-bg-last">
+                                                <span class="block-head-icon-star"
+                                                    style="<%= isFavorited ? 'background-position: -80px -16px; opacity: 1;' : '' %>"
+                                                    id="favorite-icon-<%= record.id %>"></span>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="block-content" style="padding: 10px;">
+                                    <div id="record" style="position: relative; width: 561px; height: 331px; background: #000; font-family: Tahoma, Arial, sans-serif; overflow: hidden;" class="custom-player-wrapper">
+    <% if (record.is_18_plus && locals.user && (!locals.hasBirthdate || locals.userAge < 18)) { %>
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: #fff; position: absolute; top: 0; left: 0; z-index: 20;">
+          <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">Внимание! Контент 18+</div>
+          <div style="font-size: 14px; margin-bottom: 25px; text-align: center; max-width: 80%;">Для просмотра этого видео вам должно быть больше 18 лет, и дата рождения должна быть указана в <a href="/ru/account,profile" style="color: #6fdeee;">профиле</a>.</div>
+        </div>
+    <% } else { %>
+      <% if (record.is_18_plus) { %>
+        <div id="etoyatv-18plus-overlay"
+          style="display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-family: Tahoma, sans-serif; z-index: 20;">
+          <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">Внимание! Контент 18+</div>
+          <div style="font-size: 16px; margin-bottom: 25px;">Подтвердите, что вам уже исполнилось 18 лет.</div>
+          <button onclick="confirm18Plus()"
+            style="padding: 10px 20px; background: #3b9cd9; color: #fff; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;">Мне есть 18 лет</button>
+        </div>
+        <script>
+          function confirm18Plus() {
+            localStorage.setItem('etoyatv_global_18plus', 'true');
+            document.getElementById('etoyatv-18plus-overlay').style.display = 'none';
+            const video = document.getElementById('record-video');
+            if (video) video.play().catch(e => console.error('Play error after 18+ confirmation:', e));
+          }
+        </script>
+      <% } %>
+    <% if (record.hls_url) { %>
+        <video id="record-video" width="100%" height="100%" style="background: #000; object-fit: contain; cursor: pointer;" disablePictureInPicture>
+            <!-- HLS Source will be attached via JS -->
+            Your browser does not support HTML video.
+        </video>
+        <!-- Loading Spinner -->
+        <div id="record-spinner" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;">
+          <svg width="24" height="24" viewBox="0 0 24 24" style="animation: yatv-spin 1s steps(8, end) infinite;">
+            <circle cx="12" cy="2" r="2.5" fill="rgba(255,255,255,1)" />
+            <circle cx="19.07" cy="4.93" r="2" fill="rgba(255,255,255,0.8)" />
+            <circle cx="22" cy="12" r="1.5" fill="rgba(255,255,255,0.6)" />
+            <circle cx="19.07" cy="19.07" r="1.5" fill="rgba(255,255,255,0.4)" />
+            <circle cx="12" cy="22" r="1.5" fill="rgba(255,255,255,0.2)" />
+            <circle cx="4.93" cy="19.07" r="1.5" fill="rgba(255,255,255,0.1)" />
+            <circle cx="2" cy="12" r="1.5" fill="rgba(255,255,255,0.1)" />
+            <circle cx="4.93" cy="4.93" r="1.5" fill="rgba(255,255,255,0.1)" />
+          </svg>
+        </div>
+        <style>@keyframes yatv-spin { to { transform: rotate(360deg); } }</style>
+    <% } else { %>
+        <div style="width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #1a1e20; color: #fff;">
+          <svg width="24" height="24" viewBox="0 0 24 24" style="animation: yatv-spin 1s steps(8, end) infinite; margin-bottom: 20px;">
+            <circle cx="12" cy="2" r="2.5" fill="rgba(255,255,255,1)" />
+            <circle cx="19.07" cy="4.93" r="2" fill="rgba(255,255,255,0.8)" />
+            <circle cx="22" cy="12" r="1.5" fill="rgba(255,255,255,0.6)" />
+            <circle cx="19.07" cy="19.07" r="1.5" fill="rgba(255,255,255,0.4)" />
+            <circle cx="12" cy="22" r="1.5" fill="rgba(255,255,255,0.2)" />
+            <circle cx="4.93" cy="19.07" r="1.5" fill="rgba(255,255,255,0.1)" />
+            <circle cx="2" cy="12" r="1.5" fill="rgba(255,255,255,0.1)" />
+            <circle cx="4.93" cy="4.93" r="1.5" fill="rgba(255,255,255,0.1)" />
+          </svg>
+            <div style="font-size: 16px; font-weight: bold; margin-bottom: 5px;">Видео обрабатывается</div>
+            <div style="font-size: 12px; color: #8c989e; text-align: center; max-width: 80%;">
+                Сервер нарезает видео для обеспечения<br>высокого качества трансляции.<br>Пожалуйста, обновите страницу через пару минут.
+            </div>
+        </div>
+    <% } %>
+
+    <!-- Overlay buttons (Right) -->
+    <div class="player-actions player-ui" style="position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; z-index: 10; opacity: 0; transition: opacity 0.3s;">
+        <button title="Поделиться" onclick="copyCurrentUrl()" style="width: 30px; height: 30px; background: rgba(50,50,50,0.9); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; border-radius: 4px; display: flex; justify-content: center; align-items: center; transition: background 0.2s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+        </button>
+        <button title="Пожаловаться" onclick="openReportModal('record', <%= record.id %>)" style="width: 30px; height: 30px; background: rgba(50,50,50,0.9); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; border-radius: 4px; display: flex; justify-content: center; align-items: center; transition: background 0.2s;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f39c12" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </button>
+        <button title="Добавить в плейлист / Избранное" id="player-fav-btn" onclick="if(window.toggleFavoriteRecord) { window.toggleFavoriteRecord('<%= record.id %>'); } return false;" style="width: 30px; height: 30px; background: rgba(50,50,50,0.9); border: 1px solid rgba(255,255,255,0.1); color: #fff; cursor: pointer; border-radius: 4px; display: flex; justify-content: center; align-items: center; transition: background 0.2s;">
+            <svg id="player-fav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="<%= isFavorited ? '#f00' : '#6fdeee' %>" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+        </button>
+    </div>
+
+    <!-- Bottom Controls: 3 Blocks -->
+    <!-- Left Block (Play/Pause) -->
+    <div class="player-ui" style="box-sizing: border-box; position: absolute; bottom: 10px; left: 10px; width: 44px; height: 28px; background: rgba(55,55,55,0.9); border-radius: 4px; z-index: 10; display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        <button id="btn-play" style="background: transparent; border: none; color: #fff; cursor: pointer; outline: none; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; padding: 0;">
+            <svg id="icon-play" width="14" height="14" viewBox="0 0 24 24" fill="#eee" style="display: block; margin-left: 2px;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <svg id="icon-pause" width="14" height="14" viewBox="0 0 24 24" fill="#eee" style="display: none;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+        </button>
+    </div>
+
+    <!-- Center Block (Progress) -->
+    <div class="player-ui" style="box-sizing: border-box; position: absolute; bottom: 10px; left: 64px; right: 165px; height: 28px; background: rgba(55,55,55,0.9); padding: 0 12px; border-radius: 4px; z-index: 10; display: flex; align-items: center; gap: 12px; opacity: 0; transition: opacity 0.3s; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        <div id="progress-container" style="flex: 1; height: 4px; background: rgba(255,255,255,0.15); cursor: pointer; border-radius: 2px; position: relative;">
+            <div id="progress-bar" style="width: 0%; height: 100%; background: #6fdeee; border-radius: 2px; position: absolute; top: 0; left: 0;"></div>
+            <!-- Thumb hidden by default to match YATV style, appears on hover or drag -->
+            <div id="progress-thumb" style="width: 10px; height: 10px; background: #fff; border-radius: 50%; position: absolute; top: -3px; left: 0%; transform: translateX(-50%); display: none; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>
+        </div>
+        <div id="time-display" style="color: #bbb; font-size: 11px; white-space: nowrap; font-variant-numeric: tabular-nums;">00:00 / 00:00</div>
+    </div>
+
+    <!-- Right Block (Controls) -->
+    <div class="player-ui" style="box-sizing: border-box; position: absolute; bottom: 10px; right: 10px; height: 28px; background: rgba(55,55,55,0.9); padding: 0 10px; border-radius: 4px; z-index: 10; display: flex; align-items: center; gap: 10px; opacity: 0; transition: opacity 0.3s; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        <!-- Volume -->
+        <div style="position: relative; display: flex; align-items: center; justify-content: center; height: 100%;" class="volume-container">
+            <button id="btn-vol" style="background: transparent; border: none; color: #fff; cursor: pointer; outline: none; padding: 0; display: flex; align-items: center; height: 100%;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </button>
+            <div class="volume-slider-wrapper" style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(50,50,50,0.95); border-radius: 4px; display: none; height: 90px; width: 30px; padding-bottom: 10px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 -2px 5px rgba(0,0,0,0.5);">
+                <!-- Invisible bridge to prevent hover loss -->
+                <div style="position: absolute; bottom: -10px; left: 0; width: 100%; height: 15px; background: transparent;"></div>
+                <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" style="position: absolute; top: 40px; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
+            </div>
+        </div>
+
+        <!-- Fullscreen -->
+        <button id="btn-fs" style="background: transparent; border: none; color: #fff; cursor: pointer; outline: none; padding: 0; display: flex; align-items: center; height: 100%;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+
+        <!-- Quality Toggle -->
+        <button id="btn-quality" style="background: transparent; border: none; color: #eee; font-size: 11px; cursor: pointer; outline: none; font-weight: bold; padding: 0; transition: color 0.2s;">SD</button>
+        
+        <!-- Logo -->
+        <a href="/" style="font-weight: 900; color: #fff; font-size: 13px; text-decoration: none; padding: 0; letter-spacing: -0.5px; font-family: Arial, sans-serif;">ЭтоЯTV</a>
+    </div>
+    <% } %> <!-- End of 18+ block else -->
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('record-video');
+            if (!video) return;
+            const hlsUrl = "<%- record.hls_url ? CDN_BASE_URL + record.hls_url + '?t=' + record.size_bytes : '' %>";
+            const videoSource = document.getElementById('video-source');
+            let hls = null;
+            const recordSpinner = document.getElementById('record-spinner');
+
+            if (video) {
+                video.addEventListener('loadstart', () => { if(recordSpinner) recordSpinner.style.display = 'block'; });
+                video.addEventListener('waiting', () => { if(recordSpinner) recordSpinner.style.display = 'block'; });
+                video.addEventListener('playing', () => { if(recordSpinner) recordSpinner.style.display = 'none'; });
+                video.addEventListener('canplay', () => { if(recordSpinner) recordSpinner.style.display = 'none'; });
+            }
+
+            if (hlsUrl) {
+                if (Hls.isSupported()) {
+                    hls = new Hls({
+                        maxMaxBufferLength: 30, // keep buffer short for faster seeking
+                    });
+                    hls.loadSource(hlsUrl);
+                    hls.attachMedia(video);
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        console.log('HLS manifest loaded, found ' + hls.levels.length + ' quality level(s)');
+                        let maxHlsHeight = 0;
+                        if (hls.levels && hls.levels.length > 0) {
+                            maxHlsHeight = Math.max(...hls.levels.map(l => l.height || 0));
+                        }
+                        
+                        if (hls.levels.length > 1 && maxHlsHeight >= 720) {
+                            btnQuality.style.display = 'block';
+                            isHD = true;
+                        } else {
+                            btnQuality.style.display = 'none';
+                            isHD = false;
+                        }
+                        updateQualityUI();
+                        setHlsQuality();
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Safari native HLS support
+                    video.src = hlsUrl;
+                }
+            }
+
+            const btnPlay = document.getElementById('btn-play');
+            const iconPlay = document.getElementById('icon-play');
+            const iconPause = document.getElementById('icon-pause');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressThumb = document.getElementById('progress-thumb');
+            const timeDisplay = document.getElementById('time-display');
+            const btnVol = document.getElementById('btn-vol');
+            const volContainer = document.querySelector('.volume-container');
+            const volSliderWrapper = document.querySelector('.volume-slider-wrapper');
+            const volSlider = document.getElementById('vol-slider');
+            const btnFs = document.getElementById('btn-fs');
+            const btnQuality = document.getElementById('btn-quality');
+            const playerWrapper = document.querySelector('.custom-player-wrapper');
+            const uis = document.querySelectorAll('.player-ui');
+
+            let isHD = false;
+            let hideTimeout;
+
+            // Restore volume from localStorage
+            const savedVol = localStorage.getItem('yatv_volume');
+            if (savedVol !== null) {
+                video.volume = parseFloat(savedVol);
+                volSlider.value = savedVol;
+            } else {
+                video.volume = 1;
+                volSlider.value = 1;
+            }
+            updateVolIcon();
+
+            document.querySelectorAll('.player-actions button').forEach(btn => {
+                btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(70,70,70,0.9)');
+                btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(50,50,50,0.9)');
+            });
+
+            progressContainer.addEventListener('mouseenter', () => progressThumb.style.display = 'block');
+            progressContainer.addEventListener('mouseleave', () => progressThumb.style.display = 'none');
+
+            volContainer.addEventListener('mouseenter', () => volSliderWrapper.style.display = 'block');
+            volContainer.addEventListener('mouseleave', () => volSliderWrapper.style.display = 'none');
+
+            function showControls() {
+                uis.forEach(ui => ui.style.opacity = '1');
+                clearTimeout(hideTimeout);
+                hideTimeout = setTimeout(() => {
+                    if (!video.paused) {
+                        uis.forEach(ui => ui.style.opacity = '0');
+                    }
+                }, 3000);
+            }
+
+            playerWrapper.addEventListener('mousemove', showControls);
+            playerWrapper.addEventListener('mouseleave', () => {
+                if (!video.paused) {
+                    uis.forEach(ui => ui.style.opacity = '0');
+                }
+            });
+
+            playerWrapper.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                let currentVol = video.volume;
+                if (e.deltaY < 0) {
+                    currentVol = Math.min(1, currentVol + 0.05);
+                } else {
+                    currentVol = Math.max(0, currentVol - 0.05);
+                }
+                video.volume = currentVol;
+                video.muted = currentVol == 0;
+                
+                if (!video.muted && video.paused) {
+                    video.play().catch(err => {});
+                    iconPlay.style.display = 'none';
+                    iconPause.style.display = 'block';
+                }
+
+                volSlider.value = currentVol;
+                localStorage.setItem('yatv_volume', currentVol);
+                localStorage.setItem('yatv_muted', video.muted);
+                updateVolIcon();
+            });
+
+            function formatTime(seconds) {
+                if(isNaN(seconds)) return "00:00";
+                seconds = Math.floor(seconds);
+                let m = Math.floor(seconds / 60);
+                let s = seconds % 60;
+                return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+            }
+
+            let isNaturallyHD = false;
+            video.addEventListener('loadedmetadata', () => {
+                timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+                if (video.videoHeight >= 720) {
+                    isNaturallyHD = true;
+                    isHD = true;
+                } else {
+                    isNaturallyHD = false;
+                    isHD = false;
+                    if (!hls) btnQuality.style.display = 'none';
+                }
+                updateQualityUI();
+            });
+
+            let viewCounted = false;
+            video.addEventListener('timeupdate', () => {
+                const percent = (video.currentTime / video.duration) * 100;
+                progressBar.style.width = percent + '%';
+                progressThumb.style.left = percent + '%';
+                timeDisplay.textContent = formatTime(video.currentTime) + ' / ' + formatTime(video.duration);
+                
+                if (percent >= 10 && !viewCounted) {
+                    viewCounted = true;
+                    fetch('/api/records/<%= record.id %>/view', { method: 'POST' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success && data.views !== undefined) {
+                            const vcount = document.getElementById('record-views-count');
+                            if (vcount) vcount.innerText = data.views;
+                        }
+                    });
+                }
+            });
+
+            progressContainer.addEventListener('click', (e) => {
+                const rect = progressContainer.getBoundingClientRect();
+                const pos = (e.clientX - rect.left) / rect.width;
+                video.currentTime = pos * video.duration;
+            });
+
+            function togglePlay() {
+                if (video.paused) {
+                    video.play();
+                    iconPlay.style.display = 'none';
+                    iconPause.style.display = 'block';
+                } else {
+                    video.pause();
+                    iconPlay.style.display = 'block';
+                    iconPause.style.display = 'none';
+                    showControls();
+                }
+            }
+
+            btnPlay.addEventListener('click', togglePlay);
+            video.addEventListener('click', togglePlay);
+            
+            document.addEventListener('keydown', (e) => {
+                if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                if (e.key === 'ArrowRight') {
+                    video.currentTime = Math.min(video.duration, video.currentTime + 5);
+                    showControls();
+                } else if (e.key === 'ArrowLeft') {
+                    video.currentTime = Math.max(0, video.currentTime - 5);
+                    showControls();
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    let vol = video.volume;
+                    if (e.key === 'ArrowUp') {
+                        vol = Math.min(1, vol + 0.1);
+                    } else {
+                        vol = Math.max(0, vol - 0.1);
+                    }
+                    video.volume = vol;
+                    video.muted = vol == 0;
+                    
+                    if (!video.muted && video.paused) {
+                        video.play().catch(err => {});
+                        iconPlay.style.display = 'none';
+                        iconPause.style.display = 'block';
+                    }
+
+                    volSlider.value = vol;
+                    localStorage.setItem('yatv_volume', vol);
+                    localStorage.setItem('yatv_muted', video.muted);
+                    updateVolIcon();
+                    showControls();
+                } else if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    togglePlay();
+                }
+            });
+            
+            video.addEventListener('ended', () => {
+                iconPlay.style.display = 'block';
+                iconPause.style.display = 'none';
+                showControls();
+            });
+
+            volSlider.addEventListener('input', (e) => {
+                video.volume = e.target.value;
+                video.muted = video.volume == 0;
+
+                if (!video.muted && video.paused) {
+                    video.play().catch(err => {});
+                    iconPlay.style.display = 'none';
+                    iconPause.style.display = 'block';
+                }
+
+                localStorage.setItem('yatv_volume', video.volume);
+                localStorage.setItem('yatv_muted', video.muted);
+                updateVolIcon();
+            });
+
+            function updateVolIcon() {
+                if (video.volume == 0 || video.muted) {
+                    btnVol.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+                } else {
+                    btnVol.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>';
+                }
+            }
+
+            btnVol.addEventListener('click', () => {
+                const isMuted = !video.muted;
+                video.muted = isMuted;
+                
+                if (isMuted) {
+                    video.dataset.vol = video.volume;
+                    video.volume = 0;
+                    volSlider.value = 0;
+                } else {
+                    video.volume = video.dataset.vol || 1;
+                    volSlider.value = video.volume;
+                }
+                
+                if (!isMuted && video.paused) {
+                    video.play().catch(err => {});
+                    iconPlay.style.display = 'none';
+                    iconPause.style.display = 'block';
+                }
+                
+                localStorage.setItem('yatv_volume', video.volume);
+                localStorage.setItem('yatv_muted', isMuted);
+                updateVolIcon();
+            });
+
+            btnFs.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    playerWrapper.requestFullscreen().catch(err => {
+                        console.log("Error attempting to enable full-screen mode");
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+
+            function setHlsQuality() {
+                if (hls && hls.levels.length > 0) {
+                    if (isHD) {
+                        hls.currentLevel = hls.levels.length - 1; // Highest quality
+                    } else {
+                        hls.currentLevel = 0; // Lowest quality (SD)
+                    }
+                }
+            }
+
+            function updateQualityUI() {
+                btnQuality.textContent = isHD ? 'HD' : 'SD';
+                btnQuality.style.color = isHD ? '#fff' : '#ccc';
+                if (!hls) {
+                    if (!isHD && isNaturallyHD) {
+                        video.style.filter = 'blur(1.5px)';
+                    } else {
+                        video.style.filter = 'none';
+                    }
+                } else {
+                    video.style.filter = 'none'; // HLS natively handles resolution
+                }
+            }
+
+            btnQuality.addEventListener('click', () => {
+                isHD = !isHD;
+                updateQualityUI();
+                setHlsQuality();
+            });
+            
+            // Start paused by default
+            video.pause();
+            iconPlay.style.display = 'block';
+            iconPause.style.display = 'none';
+            showControls();
+        });
+    </script>
+</div>
+                                </div>
+                                <div class="clear_both"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blackbox_bl"></div>
+                    <div class="blackbox_bc"></div>
+                    <div class="blackbox_br"></div>
+                </div>
+            </div>
+            <!-- PLAYER -->
+
+            <!-- RECORDS LIST>> -->
+            <div class="block_item">
+                <div class="blackbox" style="width: auto;">
+                    <div class="blackbox_tl"></div>
+                    <div class="blackbox_tc"></div>
+                    <div class="blackbox_tr"></div>
+                    <div class="blackbox_cw">
+                        <div class="blackbox_c">
+                            <div class="blackbox_ci">
+                                <div class="block-head-bg"></div>
+                                <div class="block-head">
+                                    <div class="block-head-right">
+                                        <div class="block-title">Другие записи телеканала <%- `(<a href="/ru/channel,records?shortname=${record.shortname}" title="Все записи телеканала" class="darkblue">Все</a>)` %></div>
+                                        <div class="block-buttons">
+                                            <a href="/ru/channel,records?shortname=<%= record.shortname %>"
+                                                title="Все записи телеканала" class="block-buttons-bg-last"><span
+                                                    class="block-head-icon-archive"></span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="block-content">
+                                    <div id="records_list">
+                                        <div class="records_list">
+                                            <% if (otherRecords && otherRecords.length> 0) { %>
+                                                <% otherRecords.forEach(function(rec, index) { %>
+                                                    <div
+                                                        class="item <%= index === 0 ? 'first' : '' %> <%= index === otherRecords.length - 1 ? 'last item_end' : '' %>">
+                                                        <div class="record_item" style="position: relative;">
+                                                            <a href="/ru/tv,viewrecord,<%= rec.id %>" class="thumb"
+                                                                style="background: #000 url('<%= CDN_BASE_URL %><%= rec.thumbnail_url || '/images/default_record_thumb.png' %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden;">
+                                                                <% if (rec.is_18_plus) { %>
+                                                                <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(5px); background: rgba(0,0,0,0.1); z-index: 1;"></div>
+                                                                <% } %>
+                                                                <span class="border_thumb" style="position: relative; z-index: 2;">
+                                                                    <div class="record_time">
+                                                                        <%= ('0' + Math.floor(rec.duration /
+                                                                            3600)).slice(-2) %>:<%= ('0' +
+                                                                                Math.floor((rec.duration % 3600) /
+                                                                                60)).slice(-2) %>:<%= ('0' +
+                                                                                    (rec.duration % 60)).slice(-2) %>
+                                                                    </div>
+                                                                </span>
+                                                            </a>
+                                                            <div class="info">
+                                                                <div class="title"><a
+                                                                        href="/ru/tv,viewrecord,<%= rec.id %>">
+                                                                        <%= rec.title %>
+                                                                    </a><% if(rec.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div>
+                                                                <div class="channel"><span
+                                                                        class="label">Телеканал:</span> <a
+                                                                        href="/<%= record.shortname %>">
+                                                                        <%= record.channel_name %>
+                                                                    </a></div>
+                                                                <div class="date"><span class="label">Дата:</span> <span class="white"><%= formatDate(rec.created_at, userTimezone) %></span></div>
+                                                                <div class="views"><span
+                                                                        class="label">Просмотров:</span> <span
+                                                                        class="white">
+                                                                        <%= rec.views %>
+                                                                    </span></div>
+                                                            </div>
+                                <div style="position: absolute; right: 0; top: 0;">
+                                  <% if (locals.user) { %>
+                                  <div style="background: #111; padding: 0 6px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <span id="record_fans_count_<%= rec.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;"><%= rec.fans_count || 0 %></span>
+                                    <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;" style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>" id="record_fan_icon_<%= rec.id %>" style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                  </div>
+                                  <% } %>
+                                </div>
+
+                                                        </div>
+                                                        <div class="clear_both"></div>
+                                                    </div>
+                                                    <% }); %>
+                                                        <% } else { %>
+                                                            <p style="color: #c0c0b2;">Нет других записей</p>
+                                                            <% } %>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="clear_both"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blackbox_bl"></div>
+                    <div class="blackbox_bc"></div>
+                    <div class="blackbox_br"></div>
+                </div>
+            </div>
+            <!-- << RECORDS LIST -->
+
+            <!-- COMMENTS LIST>> -->
+            <a name="comments"></a>
+            <div class="block_item">
+                <div class="blackbox" style="width: auto;">
+                    <div class="blackbox_tl"></div>
+                    <div class="blackbox_tc"></div>
+                    <div class="blackbox_tr"></div>
+                    <div class="blackbox_cw">
+                        <div class="blackbox_c">
+                            <div class="blackbox_ci">
+                                <div class="block-head-bg"></div>
+                                <div class="block-head">
+                                    <div class="block-head-right">
+                                        <div class="block-title">Комментарии <%- `(<span class="darkblue" id="comments_count_label">${typeof totalComments !== 'undefined' ? totalComments : (comments ? comments.length : 0)}</span>)` %></div>
+                                    </div>
+                                </div>
+                                <div class="block-content">
+                                    <div id="comments_list">
+                                        <div id="comment_add_form" style="display: block;">
+                                            <% if (user) { %>
+                                                <form action="#" onsubmit="event.preventDefault(); addComment(<%= record.id %>);" method="post">
+                                                    <textarea class="input-textarea" id="commentText" name="text" cols="10" rows="10" style="width: 540px; height: 50px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; padding: 5px;" maxlength="300" required></textarea>
+                                                    
+                                                    <div class="button button_grey" style="width: 120px; margin-top: 10px;">
+                                                    <div class="button_left"></div>
+                                                    <input type="submit" class="button_right" style="width: 108px" value="Отправить">
+                                                    </div> 
+                                                    <div class="clear_both"></div>
+                                                </form>
+                                            <% } else { %>
+                                                <p style="color: #c0c0b2; margin-bottom: 20px;">Пожалуйста, <a href="/login" style="color: #6fdeee;">войдите</a> или <a href="/register" style="color: #6fdeee;">зарегистрируйтесь</a>, чтобы оставить комментарий.</p>
+                                            <% } %>
+                                            </div>
+                                            
+                                            <div class="comments" id="record_comments_container">
+                                                <%- include('partials/record_comments_list') %>
+                                            </div>
+                                    </div>
+                                </div>
+                                <div class="clear_both"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blackbox_bl"></div>
+                    <div class="blackbox_bc"></div>
+                    <div class="blackbox_br"></div>
+                </div>
+            </div>
+            <!-- << COMMENTS LIST -->
+        </div>
+        <!-- << LEFT COLUMN -->
+
+        <!-- RIGHT COLUMN>> -->
+        <div class="right_blocks">
+            <div class="blocks">
+                <div class="blackbox" style="width: auto;">
+                    <div class="blackbox_tl"></div>
+                    <div class="blackbox_tc"></div>
+                    <div class="blackbox_tr"></div>
+                    <div class="blackbox_cw">
+                        <div class="blackbox_c">
+                            <div class="blackbox_ci">
+                                <div class="block-head-bg"></div>
+                                <div class="block-head">
+                                    <div class="block-head-right">
+                                        <div class="block-title">Описание записи</div>
+                                    </div>
+                                </div>
+                                <div class="block-content">
+                                    <div id="recordinfo">
+                                        <h3 class="darkblue title">
+                                            <%= record.title %>
+                                        </h3>
+                                        <% if (record.description) { %>
+                                            <div class="description" style="color: #c0c0b2; margin-bottom: 10px;">
+                                                <div class="readmore" style="word-break: break-all; white-space: pre-wrap;"><%= record.description %></div>
+                                            </div>
+                                            <% } %>
+                                                <div class="dottedline"></div>
+                                                <div class="info" style="margin-top: 10px;">
+                                                    <div class="params">
+                                                        <div class="label"
+                                                            style="float:left; width:120px; color:#8c989e;">В избранном:
+                                                        </div>
+                                                        <div class="value white" id="likes_count_<%= record.id %>">
+                                                            <%= likesCount %> чел.
+                                                        </div>
+                                                        <div class="clear_both"></div>
+                                                    </div>
+                                                    <div class="params" style="margin-top: 5px;">
+                                                        <div class="label"
+                                                            style="float:left; width:120px; color:#8c989e;">Дата
+                                                            создания:</div>
+                                                        <div class="value white">
+                                                            <%= formatDate(record.created_at, userTimezone) %> г.
+                                                        </div>
+                                                        <div class="clear_both"></div>
+                                                    </div>
+                                                    <div class="params" style="margin-top: 5px;">
+                                                        <div class="label"
+                                                            style="float:left; width:120px; color:#8c989e;">Просмотров:
+                                                        </div>
+                                                        <div class="value white" id="record-views-count">
+                                                            <%= record.views %>
+                                                        </div>
+                                                        <div class="clear_both"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="clear_both"></div>
+                                    </div>
+                                </div>
+                                <div class="clear_both"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blackbox_bl"></div>
+                    <div class="blackbox_bc"></div>
+                    <div class="blackbox_br"></div>
+                </div>
+            </div>
+
+            <div class="blocks">
+                <div class="blackbox" style="width: auto;">
+                    <div class="blackbox_tl"></div>
+                    <div class="blackbox_tc"></div>
+                    <div class="blackbox_tr"></div>
+                    <div class="blackbox_cw">
+                        <div class="blackbox_c">
+                            <div class="blackbox_ci">
+                                <div class="block-head-bg"></div>
+                                <div class="block-head">
+                                    <div class="block-head-right">
+                                        <div class="block-title">Информация о телеканале</div>
+                                    </div>
+                                </div>
+                                <div class="block-content">
+                                    <div class="channelinfoblock" style="padding: 10px;">
+                                        <div class="right">
+                                            <h1 class="title darkblue" style="margin:0;"><a
+                                                    href="/<%= record.shortname %>"
+                                                    style="color: #00a0e3; text-decoration: none;">
+                                                    <%= record.channel_name %>
+                                                </a></h1>
+                                            <div style="margin-top: 5px; color:#8c989e; font-size:11px;">Автор: <a
+                                                    href="/ru/account,userinfo/?username=<%= encodeURIComponent(record.owner_username) %>"
+                                                    style="color:#6fdeee;">
+                                                    <%= record.owner_username %>
+                                                </a></div>
+                                        </div>
+                                        <div class="clear_both"></div>
+                                    </div>
+                                </div>
+                                <div class="clear_both"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="blackbox_bl"></div>
+                    <div class="blackbox_bc"></div>
+                    <div class="blackbox_br"></div>
+                </div>
+            </div>
+            <%- include('partials/sidebar_ad_320x240') %>
+        </div>
+        <!-- << RIGHT COLUMN -->
+        <div class="clear_both"></div>
+
+        <script>
+            function toggleFavorite(id) {
+                if (window.toggleFavoriteRecord) {
+                    window.toggleFavoriteRecord(id);
+                }
+            }
+            
+            function copyCurrentUrl() {
+                const text = window.location.href;
+                function fallbackCopyTextToClipboard(text) {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.style.top = "0";
+                    textArea.style.left = "0";
+                    textArea.style.position = "fixed";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            alert('Ссылка скопирована в буфер обмена!');
+                        } else {
+                            prompt("Скопируйте ссылку:", text);
+                        }
+                    } catch (err) {
+                        prompt("Скопируйте ссылку:", text);
+                    }
+                    document.body.removeChild(textArea);
+                }
+                
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('Ссылка скопирована в буфер обмена!');
+                    }).catch(() => fallbackCopyTextToClipboard(text));
+                } else {
+                    fallbackCopyTextToClipboard(text);
+                }
+            }
+            function refreshCommentsCount(recordId) {
+                fetch('/api/records/' + recordId + '/comments_count')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && document.getElementById('comments_count_label')) {
+                        document.getElementById('comments_count_label').innerText = data.count;
+                    }
+                });
+            }
+
+            function loadComments(event, recordId, page) {
+                if (event) event.preventDefault();
+                fetch('/api/records/' + recordId + '/comments_html?cpage=' + page)
+                .then(res => res.text())
+                .then(html => {
+                    document.getElementById('record_comments_container').innerHTML = html;
+                });
+            }
+
+            function addComment(recordId) {
+                const text = document.getElementById('commentText').value;
+                if (!text.trim()) return;
+                fetch('/api/records/' + recordId + '/comment', { 
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('commentText').value = '';
+                        loadComments(null, recordId, 1);
+                        refreshCommentsCount(recordId);
+                    } else {
+                        alert(data.error || 'Ошибка при добавлении комментария');
+                    }
+                });
+            }
+            
+            function deleteComment(recordId, commentId) {
+                yatvConfirm('Вы уверены, что хотите удалить комментарий?', () => {
+                    fetch('/api/records/' + recordId + '/comment/' + commentId, { method: 'DELETE' })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            loadComments(null, recordId, 1);
+                            refreshCommentsCount(recordId);
+                        } else {
+                            alert(data.error || 'Ошибка при удалении комментария');
+                        }
+                    });
+                });
+            }
+        </script>
+    </div>
+    
+
+
+
+<script>
+window.toggleFavoriteRecord = async function(recordId) {
+  try {
+    const res = await fetch(`/api/records/${recordId}/favorite`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const isFav = data.favorited; // It returns "favorited" from the API, not "isFan"!
+      
+      // 1. Update elements from "Другие записи телеканала" (if any)
+      const countEl = document.getElementById('record_fans_count_' + recordId);
+      const iconEl = document.getElementById('record_fan_icon_' + recordId);
+      if (countEl) countEl.innerText = data.count;
+      if (iconEl) {
+        if (isFav) {
+          iconEl.classList.add('active');
+        } else {
+          iconEl.classList.remove('active');
+        }
+      }
+      
+      // 2. Update elements from "Описание записи" (main block)
+      const oldIcon = document.getElementById('favorite-icon-' + recordId);
+      const oldLikes = document.getElementById('likes_count_' + recordId);
+      if (oldIcon) {
+          if (isFav) {
+              oldIcon.style.backgroundPosition = '-80px -16px';
+              oldIcon.style.opacity = '1';
+          } else {
+              oldIcon.style.backgroundPosition = '';
+              oldIcon.style.opacity = '';
+          }
+      }
+      if (oldLikes) {
+          oldLikes.innerText = data.count + ' чел.';
+      }
+      
+      // 3. Update player overlay button if it's the main record
+      if (recordId == '<%= record.id %>') {
+         const playerFavIcon = document.getElementById('player-fav-icon');
+         if (playerFavIcon) {
+            playerFavIcon.setAttribute('stroke', isFav ? '#f00' : '#6fdeee');
+         }
+      }
+    } else {
+      alert(data.error || 'Пожалуйста, авторизуйтесь для добавления в избранное.');
+    }
+  } catch (e) {
+    alert('Ошибка соединения');
+  }
+};
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление пользователями | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="users-header-stats">
+        <p>Всего существует <strong><%= total %></strong> пользователей (из них: заблокированных: <strong><%= banned %></strong>, удаленных: <strong><%= deleted %></strong>)</p>
+      </div>
+
+      <div class="users-list">
+        <% users.forEach(u => { %>
+          <div class="user-list-card <%= u.deleted_at ? 'deleted' : '' %> <%= u.is_banned ? 'banned' : '' %>">
+            <div class="u-card-avatar" style="background-image: url('<%= CDN_BASE_URL %><%= u.avatar %>');"></div>
+            
+            <div class="u-card-info">
+              <div class="u-card-title">
+                <strong><%= u.username %></strong> <span class="u-card-id">(id: <%= u.id %>)</span>
+              </div>
+              <div class="u-card-email">
+                Почта: <%= u.email ? u.email : '(удалено)' %>
+              </div>
+              <div class="u-card-status">
+                Статус: 
+                <% if (u.deleted_at) { %>
+                  <span class="status-deleted">Удаленный</span>
+                <% } else if (u.is_banned) { %>
+                  <span class="status-banned">Заблокированный</span>
+                <% } else { %>
+                  <span class="status-active">Активный</span>
+                <% } %>
+              </div>
+            </div>
+            
+            <% 
+              let canEdit = false;
+              if (user.is_superadmin) {
+                canEdit = true;
+              } else if (user.staff_role === 'admin') {
+                canEdit = !u.is_superadmin;
+              } else if (user.staff_role === 'moderator') {
+                canEdit = !u.staff_role;
+              }
+            %>
+            
+            <% if (canEdit) { %>
+            <div class="u-card-actions">
+              <a href="/users/<%= u.id %>/edit" class="btn-action" style="text-decoration:none; display:inline-block; text-align:center;">Редактировать</a>
+              
+              <button type="button" class="btn-action" style="width: 140px;" onclick="openBanModal('<%= u.id %>', '<%= u.username %>', <%= u.is_banned ? 'true' : 'false' %>, '<%= u.banned_until ? formatDate(u.banned_until, userTimezone, 'YYYY-MM-DD') : '' %>', decodeURIComponent('<%= encodeURIComponent(u.ban_reason || '') %>'), <%= u.show_ban_reason ? 'true' : 'false' %>)">
+                <%= u.is_banned ? 'Изменить бан / Разбан' : 'Бан' %>
+              </button>
+
+              <button type="button" class="btn-action <%= u.deleted_at ? 'btn-restore' : 'btn-danger' %>" onclick="openDeleteModal('<%= u.id %>', '<%= u.username %>', <%= u.deleted_at ? 'true' : 'false' %>, decodeURIComponent('<%= encodeURIComponent(u.delete_reason || '') %>'))">
+                <%= u.deleted_at ? 'Восстановить' : 'Удалить полностью' %>
+              </button>
+            </div>
+            <% } %>
+          </div>
+        <% }) %>
+      </div>
+
+      <!-- Pagination & Limits -->
+      <div class="pagination-section">
+        <form action="/users" method="GET" class="limit-selector">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/users?page=<%= page - 1 %>&limit=<%= limit %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/users?page=<%= page + 1 %>&limit=<%= limit %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Modals -->
+    <div id="banModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title" id="banModalTitle">Выдача блокировки</h3>
+        <form action="" method="POST" id="banForm">
+          <div class="modal-body">
+            <div class="radio-group" id="banRadioGroup">
+              <label>
+                <input type="radio" name="ban_type" id="banTypeTemp" value="temporary" checked onchange="toggleBanDate(true)"> Временный
+              </label>
+              <label>
+                <input type="radio" name="ban_type" id="banTypePerm" value="permanent" onchange="toggleBanDate(false)"> Бессрочный
+              </label>
+              <label id="banTypeUnbanLabel" style="color: #ff4d4d; display: none;">
+                <input type="radio" name="ban_type" id="banTypeUnban" value="unban" onchange="toggleBanDate(false)"> Снять блокировку
+              </label>
+            </div>
+            
+            <div class="form-group" id="banDateGroup">
+              <label>Срок бана:</label>
+              <input type="date" name="banned_until" id="banDateInput" class="form-control" value="">
+            </div>
+            
+            <div id="ipBanGroup" style="display: none; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+              <label class="checkbox-group" style="margin-top: 0; color: #ff4d4d; font-weight: bold;">
+                <input type="checkbox" name="ban_ip" id="banIpInput" value="1" onchange="toggleIpBanType(this.checked)">
+                Блокировка по IP-адресу
+              </label>
+              <div id="ipBanTypeGroup" style="display: none; margin-top: 10px; margin-left: 20px;">
+                <label>
+                  <input type="radio" name="ip_ban_type" value="account" checked> Только аккаунт (режим зрителя)
+                </label>
+                <br>
+                <label style="margin-top: 5px; display: inline-block;">
+                  <input type="radio" name="ip_ban_type" value="full"> Полный бан (запрет доступа к сайту)
+                </label>
+              </div>
+            </div>
+            
+            <div class="form-group" style="width: 100%;">
+              <label>Причина:</label>
+              <textarea name="reason" id="banReasonInput" class="form-control" style="min-height: 120px; width: 100%; resize: none; box-sizing: border-box;" maxlength="200"></textarea>
+            </div>
+            
+            <label class="checkbox-group">
+              <input type="checkbox" name="show_reason" id="banShowReasonInput" value="1">
+              Показать причину блокировки пользователю
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-black-border">Выдать</button>
+            <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title" id="deleteModalTitle">Удаление аккаунта</h3>
+        <form action="" method="POST" id="deleteForm">
+          <div class="modal-body">
+            <div id="deleteWarning" class="modal-warning"></div>
+            <input type="hidden" name="action_type" id="deleteActionType" value="delete">
+            <div class="form-group" id="deleteReasonGroup" style="width: 100%;">
+              <label>Причина:</label>
+              <textarea name="reason" id="deleteReasonInput" class="form-control" style="min-height: 120px; width: 100%; resize: none; box-sizing: border-box;"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" id="deleteSubmitBtn" class="btn-black-border">Удалить</button>
+            <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function openBanModal(id, username, isBanned, bannedUntil, reason, showReason) {
+        document.getElementById('banModalTitle').innerText = `Выдача блокировки пользователю ${username} (ID: ${id})`;
+        document.getElementById('banForm').action = `/users/${id}/ban`;
+        
+        document.getElementById('banDateInput').value = bannedUntil || '';
+        document.getElementById('banReasonInput').value = reason || '';
+        document.getElementById('banShowReasonInput').checked = !!showReason;
+        
+        const unbanLabel = document.getElementById('banTypeUnbanLabel');
+        const unbanInput = document.getElementById('banTypeUnban');
+        
+        if (isBanned) {
+          unbanLabel.style.display = 'block';
+          if (!bannedUntil) {
+            document.getElementById('banTypePerm').checked = true;
+          } else {
+            document.getElementById('banTypeTemp').checked = true;
+          }
+        } else {
+          unbanLabel.style.display = 'none';
+          document.getElementById('banTypeTemp').checked = true;
+        }
+        
+        document.getElementById('banModal').classList.add('active');
+        toggleBanDate(document.getElementById('banTypeTemp').checked);
+      }
+      
+      function openDeleteModal(id, username, isDeleted, reason) {
+        document.getElementById('deleteModalTitle').innerText = `Удаление аккаунта пользователю ${username} (ID: ${id})`;
+        document.getElementById('deleteForm').action = `/users/${id}/delete`;
+        
+        const warningEl = document.getElementById('deleteWarning');
+        const actionTypeInput = document.getElementById('deleteActionType');
+        const reasonGroup = document.getElementById('deleteReasonGroup');
+        const submitBtn = document.getElementById('deleteSubmitBtn');
+        
+        if (isDeleted) {
+          warningEl.style.color = '#4caf50';
+          warningEl.innerText = 'Вы собираетесь восстановить аккаунт пользователя.';
+          actionTypeInput.value = 'restore';
+          reasonGroup.style.display = 'none';
+          submitBtn.innerText = 'Восстановить';
+        } else {
+          warningEl.style.color = '#ff4d4d';
+          warningEl.innerText = 'Обратите внимание, что данное действие будет необратимое, ибо оно полностью удаляет аккаунт из базы данных. (Дается 90 дней до полного стирания)';
+          actionTypeInput.value = 'delete';
+          reasonGroup.style.display = 'block';
+          submitBtn.innerText = 'Удалить';
+        }
+        
+        document.getElementById('deleteReasonInput').value = reason || '';
+        document.getElementById('deleteModal').classList.add('active');
+      }
+      
+      function closeModals() {
+        document.getElementById('banModal').classList.remove('active');
+        document.getElementById('deleteModal').classList.remove('active');
+      }
+      
+      function toggleBanDate(isTemporary) {
+        document.getElementById('banDateGroup').style.display = isTemporary ? 'flex' : 'none';
+        
+        // Show IP ban option only if permanent ban is selected
+        const isPermanent = document.querySelector('input[name="ban_type"]:checked').value === 'permanent';
+        document.getElementById('ipBanGroup').style.display = isPermanent ? 'block' : 'none';
+        if (!isPermanent) {
+          document.getElementById('banIpInput').checked = false;
+          toggleIpBanType(false);
+        }
+      }
+
+      function toggleIpBanType(isChecked) {
+        document.getElementById('ipBanTypeGroup').style.display = isChecked ? 'block' : 'none';
+      }
+    </script>
+  </div>
+</body>
+</html>

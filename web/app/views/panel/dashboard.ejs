@@ -1,0 +1,472 @@
+<%- include('../panel_layout', { activeMenu: 'dashboard', activeSubmenu: '', breadcrumbs: 'Панель управления', body: `
+${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
+<div style="background-color: #ffcccc; color: #cc0000; padding: 20px; text-align: center; border: 1px solid #cc0000; margin-bottom: 20px;">
+  <h2>Данный телеканал заблокирован администрацией.</h2>
+  <p>Весь функционал канала недоступен. Вещание остановлено.</p>
+</div>
+` : `
+<div class="dashboard-grid">
+    <!-- Channel Info -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-title">Ваш телеканал</div>
+        <div style="display: flex; gap: 15px;">
+            <div class="channel-logo">
+                <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel && locals.panelChannel.logo_url ? locals.panelChannel.logo_url : '/images/default_channel_logo.png')}" width="100" height="60" style="background:#fff; border: 1px solid #4a5359; object-fit: contain;" alt="Logo">
+            </div>
+            <div class="channel-details" style="font-size: 12px; line-height: 1.8;">
+                <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="font-size: 14px; font-weight: bold;">${locals.panelChannel ? escapeHtml(locals.panelChannel.name) : 'Без названия'}</a><br>
+                <div style="margin-top: 10px;">
+                    <span style="color:#8c989e; display:inline-block; width: 80px;">В эфире:</span> ${locals.panelChannel && locals.panelChannel.is_live ? '<span style="color:#ff6b6b;font-weight:bold;">Да</span>' : 'Нет'}<br>
+                    <span style="color:#8c989e; display:inline-block; width: 80px;">Владелец:</span> <a href="#">${locals.user ? escapeHtml(locals.user.username) : 'Гость'}</a><br>
+                    <span style="color:#8c989e; display:inline-block; width: 80px;">Записей:</span> ${locals.panelStats ? locals.panelStats.totalRecords : 0}<br>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px; padding: 0; background: transparent; border: none;">
+`}
+<div class="playerchat" style="display: flex; width: 100%; height: 331px; background: #000; font-family: Tahoma, sans-serif;">
+  
+  <!-- LEFT: PLAYER -->
+  <div id="container_swf" style="flex: 1; height: 331px; position: relative; background: #000; border-right: 1px solid #333;">
+    
+    <video id="etoyatv-video" width="100%" height="100%" style="background: #000; object-fit: contain; cursor: pointer;" poster="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo.png') : '/images/default_channel_logo.png')}" disablePictureInPicture disableRemotePlayback></video>
+
+    <!-- Transition Canvas -->
+    <canvas id="etoyatv-transition-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.5s ease-out; object-fit: contain;"></canvas>
+
+    <!-- Loading Spinner -->
+    <div id="etoyatv-spinner" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" style="animation: etoyatv-spin 1s steps(8, end) infinite;">
+        <circle cx="12" cy="2" r="2.5" fill="rgba(255,255,255,1)" />
+        <circle cx="19.07" cy="4.93" r="2" fill="rgba(255,255,255,0.8)" />
+        <circle cx="22" cy="12" r="1.5" fill="rgba(255,255,255,0.6)" />
+        <circle cx="19.07" cy="19.07" r="1.5" fill="rgba(255,255,255,0.4)" />
+        <circle cx="12" cy="22" r="1.5" fill="rgba(255,255,255,0.2)" />
+        <circle cx="4.93" cy="19.07" r="1.5" fill="rgba(255,255,255,0.1)" />
+        <circle cx="2" cy="12" r="1.5" fill="rgba(255,255,255,0.1)" />
+        <circle cx="4.93" cy="4.93" r="1.5" fill="rgba(255,255,255,0.1)" />
+      </svg>
+    </div>
+    <style>@keyframes etoyatv-spin { to { transform: rotate(360deg); } }</style>
+
+    <!-- Offline Overlay -->
+    <div id="etoyatv-offline-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
+      Нет трансляции
+    </div>
+
+    ${locals.panelChannel && locals.panelChannel.is_18_plus ? `
+    <!-- 18+ Overlay -->
+    <div id="etoyatv-18plus-overlay" style="display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-family: Tahoma, sans-serif; z-index: 20;">
+      <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">Внимание! Контент 18+</div>
+      <div style="font-size: 16px; margin-bottom: 25px;">Подтвердите, что вам уже исполнилось 18 лет.</div>
+      <button onclick="confirm18Plus()" style="padding: 10px 20px; background: #3b9cd9; color: #fff; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;">Мне есть 18 лет</button>
+    </div>
+    <script>
+      function confirm18Plus() {
+        localStorage.setItem('etoyatv_global_18plus', 'true');
+        document.getElementById('etoyatv-18plus-overlay').style.display = 'none';
+        const video = document.getElementById('etoyatv-video');
+        if (video) video.play().catch(e => console.error('Play error after 18+ confirmation:', e));
+      }
+      if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+        document.getElementById('etoyatv-18plus-overlay').style.display = 'flex';
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+          const video = document.getElementById('etoyatv-video');
+          if (video) video.pause();
+        }
+      });
+    </script>
+    ` : ''}
+
+    <!-- Logo and Title -->
+    <div class="player-ui" style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+      <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="display: block;">
+        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo_50.png') : '/images/default_channel_logo_50.png')}" alt="Logo" style="width: 50px; height: 50px; background: #fff; border: 1px solid #444;">
+      </a>
+      <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
+        <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="background: rgba(0,0,0,0.6); color: #00FFFF; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-block; text-decoration: none; white-space: nowrap;">
+          ${locals.panelChannel ? escapeHtml(locals.panelChannel.name) : ''}
+        </a>
+        <div class="live_label" id="player_live_label" style="display: none; position: relative; width: 32px; height: 17px; background: url(${(locals.CDN_BASE_URL || '')}/images/css_img_2_sprite1.png) no-repeat -124px -254px; top: 0; left: 0;"></div>
+        <div id="player_record_indicator" style="display: none; align-items: center; gap: 5px; background: rgba(220,53,69,0.85); color: #fff; font-size: 11px; font-weight: bold; font-family: Tahoma, sans-serif; padding: 3px 6px; border-radius: 3px; z-index: 12;">
+          <span style="display: inline-block; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: rec-blink 1s infinite alternate;"></span>
+          REC <span id="player_record_timer">00:00</span>
+        </div>
+      </div>
+    </div>
+    <style>
+      @keyframes rec-blink {
+        from { opacity: 1; }
+        to { opacity: 0.2; }
+      }
+    </style>
+
+    <!-- Right Action Bar -->
+    <div class="player-actions player-ui" style="position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+      <button onclick="copyShareLink('${locals.panelChannel ? locals.panelChannel.shortname : ''}')" title="Поделиться" style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;">🔗</button>
+      <button title="Пожаловаться" style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;">⚠️</button>
+      <a href="/ru/channel,records?shortname=${locals.panelChannel ? locals.panelChannel.shortname : ''}" title="Записи" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; text-decoration: none; font-size: 16px;">📺</a>
+      <button id="btn-record-stream" onclick="toggleRecordStream()" title="Записать эфир" style="display: none; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #ff4a4a; cursor: pointer; border-radius: 3px; font-size: 16px; justify-content: center; align-items: center;">⏺️</button>
+    </div>
+
+    <!-- Bottom Left Controls -->
+    <div class="player-ui" style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s;">
+      <button id="btn-play-pause" title="Play/Pause" style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none;">⏻</button>
+    </div>
+
+    <!-- Bottom Right Controls -->
+    <div class="player-ui" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+      <div style="position: relative; display: flex; align-items: center; justify-content: center;" class="volume-container" onmouseenter="this.querySelector('.volume-slider-wrapper').style.display='block'" onmouseleave="this.querySelector('.volume-slider-wrapper').style.display='none'">
+        <button id="btn-volume" style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; padding: 0 5px; position: relative; z-index: 5;">🔊</button>
+        <div class="volume-slider-wrapper" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
+          <div style="position: absolute; bottom: -20px; left: 0; width: 100%; height: 20px; background: transparent;"></div>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; color: #fff; font-size: 11px;">
+        👥 <span id="viewers-count-player" style="margin-left: 3px;">1</span>
+      </div>
+      <button id="btn-fullscreen" style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none;">⛶</button>
+      <a href="/" style="font-weight: bold; color: #fff; font-size: 12px; text-decoration: none;">ЭтоЯTV</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: CHAT (400px) -->
+  <div id="chat_body" style="width: 400px; height: 331px; background: #000; display: flex; flex-direction: column; position: relative;">
+    
+    <!-- Top section: Messages (left) and Users (right) -->
+    <div style="display: flex; height: 290px;">
+      
+      <!-- Messages List (270px) -->
+      <div style="width: 270px; height: 100%; position: relative; display: flex; flex-direction: column;">
+        <style>
+          .chat-message-row {
+            position: relative;
+          }
+          .chat-message-row .btn-pin-message {
+            visibility: hidden;
+            cursor: pointer;
+            margin-left: 5px;
+            opacity: 0.7;
+          }
+          .chat-message-row:hover .btn-pin-message {
+            visibility: visible;
+          }
+          .chat-message-row .btn-pin-message:hover {
+            opacity: 1;
+          }
+        </style>
+
+        <!-- Pinned Message -->
+        <div id="chat_pinned_box" style="display: ${locals.panelChannel && locals.panelChannel.pinned_message ? 'flex' : 'none'}; align-items: flex-start; justify-content: space-between; background: rgba(50, 108, 186, 0.2); border-bottom: 1px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; padding: 4px 6px; font: 10px Verdana, Geneva, sans-serif; color: #fff; box-sizing: border-box; width: 100%; max-height: 75px; overflow-y: auto; gap: 4px; flex-shrink: 0;">
+          <span style="font-size: 12px; flex-shrink: 0; line-height: 1.2;" title="Закрепленное сообщение">📌</span>
+          <div style="flex-grow: 1; word-wrap: break-word; overflow-wrap: break-word; word-break: break-all; white-space: normal; font-size: 10px; line-height: 1.3;" id="chat_pinned_content">
+            ${locals.panelChannel && locals.panelChannel.pinned_message ? `
+              <span style="color: ${locals.panelChannel.pinned_color || '#3b9cd9'}; font-weight: bold;">${escapeHtml(locals.panelChannel.pinned_username || locals.panelChannel.pinned_guest_name)}</span>: ${escapeHtml(locals.panelChannel.pinned_message)}
+            ` : ''}
+          </div>
+          <button id="btn-chat-unpin" style="background: transparent; border: none; cursor: pointer; color: #aaa; font-size: 11px; padding: 0 2px; line-height: 1; flex-shrink: 0;" title="Открепить">✖</button>
+        </div>
+
+        <div id="chat_text_field" style="width: 100%; flex: 1; overflow-y: auto; padding: 5px; box-sizing: border-box; display: ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'flex' : 'none'}; flex-direction: column; gap: 2px;">
+          ${(locals.chatMessages && locals.chatMessages.length > 0) ? locals.chatMessages.map(msg => {
+            const displayNick = msg.username || msg.guest_name;
+            const timeZone = locals.userTimezone || "Europe/Moscow";
+            const timeStr = formatDate(msg.created_at, timeZone, "HH:mm");
+            const userColor = msg.color || "#3b9cd9";
+            const role = msg.role || "guest";
+            return "<div class=\"chat-message-row\" style=\"font: 11px Verdana, Geneva, sans-serif; color: #fff; margin: 1px; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;\">" +
+                   "<span style=\"color: #666;\">" + timeStr + "</span> " +
+                   "<span style=\"color: " + userColor + "; font-weight: bold;\">" +
+                     "<span class=\"chat-username\" data-username=\"" + escapeHtml(displayNick) + "\" data-role=\"" + escapeHtml(role) + "\" style=\"cursor: pointer;\">" + escapeHtml(displayNick) + "</span>:" +
+                   "</span> " +
+                   escapeHtml(msg.message) +
+                   " <span class=\"btn-pin-message\" data-msg-id=\"" + msg.id + "\" title=\"Закрепить\">📌</span>" +
+                   "</div>";
+          }).join("") : ""}
+        </div>
+        <div id="chat_disabled_msg" style="display: ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'none' : 'flex'}; position: absolute; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; text-align: center; padding: 0 10px;">
+          ${locals.panelChannel && locals.panelChannel.chat_disabled ? 'Чат выключен администрацией платформы' : 'Чат выключен'}
+        </div>
+      </div>
+
+      <!-- Users List (130px) -->
+      <div id="chat_users" style="width: 130px; height: 100%; overflow-y: auto; padding: 5px; box-sizing: border-box; border-left: 1px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; font: 11px Verdana, Geneva, sans-serif; color: #F2FFF9;">
+        <div style="padding-bottom: 5px; color: #aaa;">В чате: <span id="chat-viewers-count">0</span></div>
+        <div id="chat-users-list">
+          <!-- Users will be injected here via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Input Area -->
+    ${(locals.panelChannel && locals.panelChannel.status !== 'banned') ? `
+    <div style="height: 41px; background: #000; padding: 3px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+      <!-- Chat Input -->
+      <div class="inputs" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'flex' : 'none'}; align-items: center; width: 380px; height: 30px; background-color: ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border: 4px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border-radius: 5px; box-sizing: border-box;">
+        <input type="text" id="chat-input" maxlength="400" placeholder="${locals.panelChannel && locals.panelChannel.chat_enabled ? 'Написать...' : 'Чат выключен'}" ${locals.panelChannel && locals.panelChannel.chat_enabled ? '' : 'disabled'} style="width: 260px; height: 100%; background: rgba(0,0,0,0.6); color: #F2FFF9; font: 12px Verdana, Geneva, sans-serif; border: 1px solid #000; padding: 0 5px; outline: none; border-radius: 2px; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);">
+        
+        <div style="display: flex; align-items: center; justify-content: flex-end; flex: 1; padding-right: 4px; gap: 8px;">
+          <!-- Submit Button -->
+          <button id="btn-chat-submit" style="background: transparent; border: none; cursor: pointer; color: #fff; font-size: 20px; font-weight: bold; outline: none; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; padding: 0; line-height: 1; margin-top: -2px;" title="Отправить">↵</button>
+
+          <!-- Color Picker -->
+          <div style="position: relative; display: flex; align-items: center;">
+            <button id="chat-color-btn" style="width: 16px; height: 16px; padding: 0; border: 2px solid #fff; cursor: pointer; background-color: ${locals.user ? (locals.user.chat_color || '#3b9cd9') : '#3b9cd9'}; box-shadow: 0 0 0 1px #000;" title="Цвет ника"></button>
+            <input type="hidden" id="chat-color-picker" value="${locals.user ? (locals.user.chat_color || '#3b9cd9') : '#3b9cd9'}">
+            
+            <div id="chat-color-palette" style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 5px; width: 100px; flex-wrap: wrap; gap: 3px; z-index: 50;">
+              ${['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#3b9cd9', '#ffa500', '#800080', '#008000', '#ffc0cb'].map(c => `
+                <div class="color-swatch" data-color="${c}" style="width: 20px; height: 20px; background-color: ${c}; cursor: pointer; border: 1px solid #000;"></div>
+              `).join('')}
+            </div>
+          </div>
+
+          <button id="btn-chat-menu" style="background: transparent; border: none; cursor: pointer; outline: none; color: #fff; font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; padding: 0; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;">Меню</button>
+        </div>
+      </div>
+
+      <!-- Guest Not Authorized Box -->
+      <div class="login" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'none' : 'flex'}; align-items: center; width: 380px; height: 25px; background-color: rgba(0,0,0,0.4); border: 5px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; border-radius: 5px; box-sizing: border-box; font: 13px Verdana, Geneva, sans-serif; color: #F2FFF9; padding: 0 5px;">
+        Вы не <a href="/login" target="_blank" style="color: #F2FFF9; margin-left: 4px; text-decoration: underline;">авторизованы</a>
+      </div>
+    </div>
+
+    <!-- Chat Overlay Menu -->
+    <div id="chat-menu" style="display: none; position: absolute; bottom: 45px; right: 10px; background: #222; border: 1px solid #444; padding: 5px; z-index: 20; font-size: 11px; font-family: Verdana, sans-serif;">
+        <div class="menu-item" id="btn-clear-chat" style="padding: 5px 10px; color: #fff; cursor: pointer;">Очистить чат</div>
+        <div class="menu-item" id="btn-ban-guests" style="padding: 5px 10px; color: #fff; cursor: pointer;">${locals.panelChannel && locals.panelChannel.guests_allowed ? 'Запретить гостей' : 'Разрешить гостей'}</div>
+        ${locals.panelChannel && locals.panelChannel.chat_disabled ? '' : '<div class="menu-item" id="btn-toggle-chat" style="padding: 5px 10px; color: #3b9cd9; cursor: pointer;">' + (locals.panelChannel && locals.panelChannel.chat_enabled ? 'Выключить чат' : 'Включить чат') + '</div>'}
+    </div>
+    ` : `
+    <div style="height: 41px; background: #000; padding: 3px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; color: #ff6b6b; font-size: 12px; font-weight: bold;">
+        Чат недоступен: канал заблокирован.
+    </div>
+    `}
+    
+  </div>
+</div>
+</div> <!-- /card playerchat -->
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-title" style="border:none; padding-bottom: 0;">Количество одновременных зрителей за 24 часа <a href="/ru/panel,stat,viewers" style="font-size: 12px; font-weight: normal; color: #00a0e3; text-decoration: none;">(Вся статистика)</a></div>
+    <div style="height: 150px; background: #2b3135; border: 1px solid #1a1e20; margin-top: 15px; position: relative; padding: 5px;">
+        <canvas id="dashboardViewersChart"></canvas>
+    </div>
+</div>
+
+<!-- Context Menu for Chat Usernames -->
+<div id="user-context-menu" style="display: none; position: absolute; background: #222; border: 1px solid #444; padding: 5px; z-index: 999999; font-size: 11px; font-family: Verdana, sans-serif;">
+  <!-- Content dynamically populated by JS -->
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  window.CHANNEL_ID = ${locals.panelChannel ? locals.panelChannel.id : 0};
+  window.CURRENT_USER = ${locals.user ? JSON.stringify(Object.assign({}, locals.user, { role: (locals.panelRole || 'guest') })) : 'null'};
+  window.CHANNEL_OWNER_ID = ${locals.panelChannel ? locals.panelChannel.user_id : 0};
+  window.CHAT_ENABLED = ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'true' : 'false'};
+  window.IS_MODERATOR = true; // Dashboard user is at least editor/moderator
+  window.USER_TIMEZONE = '${locals.userTimezone || 'Europe/Moscow'}';
+</script>
+<script src="/js/player.js?v=${Date.now()}"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    fetch('/api/panel/stat/viewers?period=24h')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const ctx = document.getElementById('dashboardViewersChart').getContext('2d');
+                
+                const labels = data.data.map(d => {
+                    const date = new Date(d.created_at);
+                    return date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+                });
+                const values = data.data.map(d => d.viewer_count);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Зрители',
+                            data: values,
+                            borderColor: '#00a0e3',
+                            backgroundColor: 'rgba(0, 160, 227, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#3a4247' },
+                                ticks: { color: '#8c989e', maxTicksLimit: 5 }
+                            },
+                            x: {
+                                grid: { color: '#3a4247' },
+                                ticks: { color: '#8c989e', maxTicksLimit: 8 }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+        });
+});
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const recordBtn = document.getElementById('btn-record-stream');
+    const recordIndicator = document.getElementById('player_record_indicator');
+    const recordTimer = document.getElementById('player_record_timer');
+    let timerInterval = null;
+    let secondsElapsed = 0;
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = 'custom-toast';
+        toast.style.position = 'fixed';
+        toast.style.bottom = '20px';
+        toast.style.right = '20px';
+        toast.style.backgroundColor = type === 'success' ? '#2ecc71' : '#e74c3c';
+        toast.style.color = '#fff';
+        toast.style.padding = '12px 20px';
+        toast.style.borderRadius = '4px';
+        toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        toast.style.zIndex = '99999';
+        toast.style.fontFamily = 'Tahoma, sans-serif';
+        toast.style.fontSize = '13px';
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        toast.style.transform = 'translateY(20px)';
+        toast.innerText = message;
+        
+        document.body.appendChild(toast);
+        
+        // Trigger reflow
+        void toast.offsetWidth;
+        
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+    
+    // Status check
+    function checkRecordStatus() {
+        fetch('/api/panel/records/record/status')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.recording) {
+                    startLocalTimer(data.elapsed);
+                } else {
+                    // Only stop if we were recording (to avoid toggling state back to offline if the start request is in progress)
+                    if (timerInterval && !data.recording) {
+                        stopLocalTimer();
+                    }
+                }
+            })
+            .catch(err => console.error('Error checking recording status:', err));
+    }
+
+    function startLocalTimer(initialSeconds = 0) {
+        secondsElapsed = initialSeconds;
+        updateTimerDisplay();
+        
+        if (recordIndicator) recordIndicator.style.display = 'flex';
+        if (recordBtn) {
+            recordBtn.innerHTML = '⏹️';
+            recordBtn.style.color = '#fff';
+            recordBtn.style.backgroundColor = 'rgba(220,53,69,0.85)';
+            recordBtn.title = 'Остановить запись';
+            recordBtn.style.display = 'flex';
+        }
+        
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            secondsElapsed++;
+            updateTimerDisplay();
+            if (secondsElapsed >= 300) { // 5 min max
+                stopLocalTimer();
+                showToast('Запись завершена автоматически (лимит 5 минут)', 'success');
+            }
+        }, 1000);
+    }
+
+    function stopLocalTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        if (recordIndicator) recordIndicator.style.display = 'none';
+        if (recordBtn) {
+            recordBtn.innerHTML = '⏺️';
+            recordBtn.style.color = '#ff4a4a';
+            recordBtn.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            recordBtn.title = 'Записать эфир';
+        }
+    }
+
+    function updateTimerDisplay() {
+        if (!recordTimer) return;
+        const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+        const secs = (secondsElapsed % 60).toString().padStart(2, '0');
+        recordTimer.innerText = mins + ':' + secs;
+    }
+
+    window.toggleRecordStream = function() {
+        const isCurrentlyRecording = !!timerInterval;
+        const url = isCurrentlyRecording ? '/api/panel/records/record/stop' : '/api/panel/records/record/start';
+        
+        if (recordBtn) recordBtn.disabled = true;
+        fetch(url, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (recordBtn) recordBtn.disabled = false;
+                if (data.success) {
+                    if (isCurrentlyRecording) {
+                        stopLocalTimer();
+                        showToast('Запись эфира успешно остановлена и добавлена в Медиа-архив на обработку!', 'success');
+                    } else {
+                        startLocalTimer(0);
+                        showToast('Запись эфира запущена (максимум 5 минут)', 'success');
+                    }
+                } else {
+                    showToast(data.error || 'Ошибка при изменении статуса записи', 'error');
+                }
+            })
+            .catch(err => {
+                if (recordBtn) recordBtn.disabled = false;
+                console.error(err);
+                showToast('Ошибка сети при отправке запроса', 'error');
+            });
+    };
+
+    // Initial check
+    checkRecordStatus();
+    // Periodically poll status in case it was stopped by the server (e.g. 5 minutes timeout)
+    setInterval(checkRecordStatus, 15000);
+});
+</script>
+
+` }) %>

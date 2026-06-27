@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .reports-page-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .report-wire-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      color: #fff;
+      font-family: 'Inter', 'Roboto', sans-serif;
+      max-width: 900px;
+      min-height: 120px;
+      transition: background 0.2s;
+    }
+    .report-wire-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .report-wire-left {
+      width: 120px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
+      flex-shrink: 0;
+    }
+    .report-wire-left img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .report-wire-middle {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+    .report-wire-middle .line {
+      font-size: 14px;
+      color: #ccc;
+    }
+    .report-wire-middle .line strong {
+      color: #fff;
+    }
+    .report-wire-right {
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      padding: 20px;
+      flex-shrink: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .wire-btn {
+      background: transparent;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px 15px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .wire-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    @media (max-width: 768px) {
+      .report-wire-card {
+        flex-direction: column;
+      }
+      .report-wire-left {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 15px;
+      }
+      .report-wire-middle {
+        padding: 15px;
+      }
+      .report-wire-right {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 15px;
+      }
+      .wire-modal {
+        width: 90%;
+        padding: 15px;
+      }
+    }
+
+    /* Modal Styles */
+    .wire-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .wire-modal-overlay.active {
+      display: flex;
+    }
+    .wire-modal {
+      background: #1e1e1e;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      width: 600px;
+      padding: 25px;
+      color: #fff;
+      font-family: 'Inter', 'Roboto', sans-serif;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .wire-modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .wire-modal-options {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    .wire-checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .wire-checkbox {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 4px;
+      background: transparent;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      cursor: pointer;
+      position: relative;
+    }
+    .wire-checkbox:checked {
+      background: #00c6ff;
+      border-color: #00c6ff;
+    }
+    .wire-checkbox:checked::after {
+      content: '✔';
+      position: absolute;
+      top: -2px;
+      left: 3px;
+      font-size: 14px;
+      color: #000;
+      font-weight: bold;
+    }
+    .wire-modal-buttons {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+    }
+    .wire-modal-btn {
+      background: transparent;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px 0;
+      flex: 1;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .wire-modal-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Report ban fields */
+    .report-ban-fields {
+      display: none;
+      margin-left: 30px;
+      margin-top: 10px;
+      font-weight: normal;
+    }
+    .report-ban-fields input[type="text"], .report-ban-fields input[type="date"] {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      border-radius: 6px;
+    }
+    .report-ban-fields input[type="text"]:focus, .report-ban-fields input[type="date"]:focus {
+      outline: none;
+      border-color: #00c6ff;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <main class="main-content">
+      <div class="reports-page-title">Сейчас <%= total_pending %> жалоб, которые требуют рассмотрения</div>
+
+      <% if (complaints.length === 0) { %>
+        <p style="color: #a1b0b8; text-align: center;">Жалоб пока нет.</p>
+      <% } else { %>
+        <% complaints.forEach(c => { 
+            let typeLabel = c.target_type;
+            let titleText = `Жалоба на ${c.target_type}`;
+            let escapedOffenderName = escapeHtml(c.offender_name || '');
+            let linkHtml = c.target_link !== '#' ? `<a href="${c.target_link}" target="_blank" style="color: #00c6ff; text-decoration: none;">${escapedOffenderName || 'Ссылка'}</a>` : (escapedOffenderName || '');
+            
+            if (c.target_type === 'user') { titleText = `Жалоба на пользователя ${linkHtml}`; }
+            if (c.target_type === 'channel') { titleText = `Жалоба на канал ${linkHtml}`; }
+            if (c.target_type === 'record') { titleText = `Жалоба на запись ${linkHtml}`; }
+            if (c.target_type === 'pm') { titleText = `Жалоба на личное сообщение от ${linkHtml}`; }
+            if (c.target_type === 'channel_comment') { titleText = `Жалоба на комментарий канала от ${linkHtml}`; }
+            if (c.target_type === 'record_comment') { titleText = `Жалоба на комментарий записи от ${linkHtml}`; }
+        %>
+          <div class="report-wire-card" id="complaint-<%= c.id %>">
+            <div class="report-wire-left">
+              <img src="<%= CDN_BASE_URL %><%= c.target_avatar || '/images/default_user_avatar.png' %>" alt="avatar">
+            </div>
+            <div class="report-wire-middle">
+              <div class="line"><%- titleText %></div>
+              <% if (c.reporter_name) { %>
+                <div class="line">От: <a href="<%= APP_URL %>/ru/account,userinfo/?username=<%= encodeURIComponent(c.reporter_name) %>" target="_blank" style="color: #00c6ff; text-decoration: none;"><%= c.reporter_name %></a></div>
+              <% } else { %>
+                <div class="line">От: Удаленный пользователь</div>
+              <% } %>
+              <div class="line">Причина жалобы: <%= c.reason.substring(0, 200) %><%= c.reason.length > 200 ? '...' : '' %></div>
+              <% if (c.target_content) { %>
+                <div class="line" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-top: 5px;">
+                  <strong>Контент:</strong> <%= c.target_content.substring(0, 300) %><%= c.target_content.length > 300 ? '...' : '' %>
+                </div>
+              <% } %>
+            </div>
+            <div class="report-wire-right">
+              <button class="wire-btn" 
+                      data-id="<%= c.id %>"
+                      data-type="<%= c.target_type %>"
+                      data-target-id="<%= c.target_id %>"
+                      data-reporter-name="<%= c.reporter_name || '' %>"
+                      data-offender-id="<%= c.offender_id || '' %>"
+                      data-offender-name="<%= c.offender_name || '' %>"
+                      onclick="openDecisionModal(this)">Вынести решение</button>
+              <button class="wire-btn" onclick="openRejectModal(<%= c.id %>)">Отклонить жалобу</button>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+
+      <% if (typeof page !== 'undefined' && typeof totalPages !== 'undefined') { %>
+      <div class="pagination-section" style="margin-top: 30px; max-width: 900px;">
+        <form action="<%= currentPath %>" method="GET" class="limit-selector">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="<%= currentPath %>?page=<%= page - 1 %>&limit=<%= limit %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="<%= currentPath %>?page=<%= page + 1 %>&limit=<%= limit %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+
+    </main>
+  </div>
+
+  <!-- Decision Modal -->
+  <div class="wire-modal-overlay" id="decisionModal">
+    <div class="wire-modal">
+      <div class="wire-modal-title" id="decisionModalTitle">Вынести решение по жалобе ID жалобы (дальше на что жалоба)</div>
+      
+      <div class="wire-modal-options">
+        <div class="wire-checkbox-row" id="rowDeleteAvatar" style="display: none;">
+          <input type="checkbox" id="chkDeleteAvatar" class="wire-checkbox" value="delete_avatar">
+          <label for="chkDeleteAvatar">Удалить аватарку</label>
+        </div>
+        <div class="wire-checkbox-row" id="rowSoftDelete" style="display: none;">
+          <input type="checkbox" id="chkSoftDelete" class="wire-checkbox" value="soft_delete">
+          <label for="chkSoftDelete" id="lblSoftDelete">Мягкое удаление</label>
+        </div>
+        <div class="wire-checkbox-row" id="rowBanContent" style="display: none;">
+          <input type="checkbox" id="chkBanContent" class="wire-checkbox" value="ban_content">
+          <label for="chkBanContent" id="lblBanContent">Заблокировать</label>
+        </div>
+        <div class="wire-checkbox-row">
+          <input type="checkbox" id="chkBanOffender" class="wire-checkbox">
+          <label for="chkBanOffender">Выдать блокировку нарушителю</label>
+        </div>
+        <div class="wire-checkbox-row">
+          <input type="checkbox" id="chkBanReporter" class="wire-checkbox" onchange="toggleReportBanFields(this.checked)">
+          <label for="chkBanReporter">Выдать блокировку на жалобы автору жалобу</label>
+        </div>
+        
+        <div class="report-ban-fields" id="reportBanFields">
+          <div style="margin-bottom: 10px;">
+            <label><input type="radio" name="rban_type" value="temporary" checked onchange="document.getElementById('rbanDate').style.display='block'"> Временная</label>
+            <label style="margin-left: 10px;"><input type="radio" name="rban_type" value="permanent" onchange="document.getElementById('rbanDate').style.display='none'"> Навсегда</label>
+          </div>
+          <input type="date" id="rbanDate" style="margin-bottom: 10px; padding: 5px;">
+          <input type="text" id="rbanReason" placeholder="Причина блокировки жалоб" style="width: 100%; padding: 5px; box-sizing: border-box;">
+        </div>
+      </div>
+
+      <div class="wire-modal-buttons">
+        <button class="wire-modal-btn" onclick="submitDecision()">Вынести</button>
+        <button class="wire-modal-btn" onclick="closeDecisionModal()">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reject Modal -->
+  <div class="wire-modal-overlay" id="rejectModal">
+    <div class="wire-modal">
+      <div class="wire-modal-title" id="rejectModalTitle">Отклонение жалобы</div>
+      <p style="color: #ff5555; text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 13px;">Укажите причину отклонения. Эта причина будет показана в архиве.</p>
+      
+      <div class="wire-modal-options">
+        <input type="text" id="rejectReasonInput" placeholder="Причина отклонения (необязательно)" style="width: 100%; padding: 10px; box-sizing: border-box; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 6px;">
+      </div>
+
+      <div class="wire-modal-buttons">
+        <button class="wire-modal-btn" onclick="submitReject()">Отклонить</button>
+        <button class="wire-modal-btn" onclick="closeRejectModal()">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <%- include('partials/ban_modal') %>
+
+  <script>
+    let currentComplaintId = null;
+    let currentTargetType = null;
+    let currentTargetId = null;
+    let currentOffenderId = null;
+    let currentOffenderName = null;
+
+    function openDecisionModal(element) {
+      const id = parseInt(element.getAttribute('data-id'), 10);
+      const type = element.getAttribute('data-type');
+      const targetId = parseInt(element.getAttribute('data-target-id'), 10);
+      const offenderId = parseInt(element.getAttribute('data-offender-id'), 10) || null;
+      const offenderName = element.getAttribute('data-offender-name') || '';
+
+      currentComplaintId = id;
+      currentTargetType = type;
+      currentTargetId = targetId;
+      currentOffenderId = offenderId;
+      currentOffenderName = offenderName;
+      
+      let typeText = type;
+      if (type === 'user') typeText = 'пользователя';
+      if (type === 'channel') typeText = 'канал';
+      if (type === 'record') typeText = 'запись';
+      if (type === 'pm') typeText = 'личное сообщение';
+      if (type === 'channel_comment') typeText = 'комментарий канала';
+      if (type === 'record_comment') typeText = 'комментарий записи';
+
+      document.getElementById('decisionModalTitle').innerText = `Вынести решение по жалобе ID ${id} (${typeText})`;
+      
+      document.getElementById('rowDeleteAvatar').style.display = 'none';
+      document.getElementById('rowSoftDelete').style.display = 'none';
+      document.getElementById('rowBanContent').style.display = 'none';
+
+      if (type === 'user') {
+        document.getElementById('rowDeleteAvatar').style.display = 'flex';
+      } else if (type === 'channel') {
+        document.getElementById('rowBanContent').style.display = 'flex';
+        document.getElementById('lblBanContent').innerText = 'Заблокировать телеканал';
+      } else if (type === 'record') {
+        document.getElementById('rowSoftDelete').style.display = 'flex';
+        document.getElementById('lblSoftDelete').innerText = 'Мягкое удаление записи';
+      } else {
+        document.getElementById('rowSoftDelete').style.display = 'flex';
+        document.getElementById('lblSoftDelete').innerText = 'Удалить контент (сообщение/комментарий)';
+      }
+      
+      document.getElementById('chkDeleteAvatar').checked = false;
+      document.getElementById('chkSoftDelete').checked = false;
+      document.getElementById('chkBanContent').checked = false;
+      document.getElementById('chkBanOffender').checked = false;
+      document.getElementById('chkBanReporter').checked = false;
+      toggleReportBanFields(false);
+
+      document.getElementById('decisionModal').classList.add('active');
+    }
+
+    function closeDecisionModal() {
+      document.getElementById('decisionModal').classList.remove('active');
+    }
+
+    function toggleReportBanFields(show) {
+      document.getElementById('reportBanFields').style.display = show ? 'block' : 'none';
+    }
+
+    function openRejectModal(id) {
+      currentComplaintId = id;
+      document.getElementById('rejectModalTitle').innerText = `Отклонение жалобы (ID: ${id})`;
+      document.getElementById('rejectReasonInput').value = '';
+      document.getElementById('rejectModal').classList.add('active');
+    }
+
+    function closeRejectModal() {
+      document.getElementById('rejectModal').classList.remove('active');
+    }
+
+    async function submitReject() {
+      const reason = document.getElementById('rejectReasonInput').value.trim();
+      const verdictText = reason ? 'Отклонена: ' + reason : 'Отклонена';
+      
+      try {
+        const res = await fetch('/reports/' + currentComplaintId + '/resolve', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ actions: [], verdict: verdictText })
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('complaint-' + currentComplaintId).remove();
+          closeRejectModal();
+        } else {
+          alert(data.error || 'Ошибка');
+        }
+      } catch(e) {
+        alert('Ошибка сети');
+      }
+    }
+
+    async function submitDecision() {
+      const deleteAvatar = document.getElementById('chkDeleteAvatar').checked;
+      const softDelete = document.getElementById('chkSoftDelete').checked;
+      const banContent = document.getElementById('chkBanContent').checked;
+      const banOffender = document.getElementById('chkBanOffender').checked;
+      const banReporter = document.getElementById('chkBanReporter').checked;
+
+      if (!deleteAvatar && !softDelete && !banContent && !banOffender && !banReporter) {
+        alert('Выберите хотя бы одно действие!');
+        return;
+      }
+
+      let actions = [];
+      if (deleteAvatar) actions.push('delete_avatar');
+      if (softDelete) actions.push('delete_content');
+      if (banContent) actions.push('ban_content');
+      if (banOffender) actions.push('ban_offender');
+      if (banReporter) actions.push('ban_reporter');
+
+      let payload = {
+        actions: actions,
+        verdict: 'Приняты меры'
+      };
+
+      if (banReporter) {
+        payload.ban_duration = document.querySelector('input[name="rban_type"]:checked').value;
+        payload.banned_until = document.getElementById('rbanDate').value;
+        payload.ban_reason = document.getElementById('rbanReason').value;
+      }
+
+      try {
+        const res = await fetch('/reports/' + currentComplaintId + '/resolve', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('complaint-' + currentComplaintId).remove();
+          closeDecisionModal();
+          
+          if (banOffender) {
+            if (currentOffenderId) {
+               openBanModal(currentOffenderId, currentOffenderName, false, '', '', false);
+            } else {
+               alert('Невозможно заблокировать: нарушитель не найден');
+            }
+          }
+        } else {
+          alert(data.error || 'Ошибка');
+        }
+      } catch(e) {
+        alert('Ошибка сети');
+      }
+    }
+  </script>
+</body>
+</html>

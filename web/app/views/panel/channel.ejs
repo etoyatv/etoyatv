@@ -1,0 +1,140 @@
+<%- include('../panel_layout', { activeMenu: 'settings' , activeSubmenu: 'channel' ,
+    breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Настройки &gt; Телеканал' , body: ` <div
+    style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #888;">Настройки</span>
+        <span style="color: #333;">Телеканал</span>
+    </div>
+    </div>
+
+    <div style="display: flex; gap: 20px;">
+        <div style="flex-grow: 1;">
+            <div
+                style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+                Основные настройки
+            </div>
+
+
+
+            <form action="/ru/panel,settings,channel" method="POST">
+                ${ locals.panelRole !== 'reporter' ? `
+                <div class="form-group" style="display: flex; align-items: center;">
+                    <label style="width: 150px; color: #8c989e;">Название:*</label>
+                    <div style="flex-grow: 1;">
+                        <input type="text" name="name" class="form-control" style="width: 100%;"
+                            value="${ locals.panelChannel ? escapeHtml(locals.panelChannel.name) : '' }" required maxlength="77">
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center;">
+                    <label style="width: 150px; color: #8c989e;">Короткое имя (URL):</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center;">
+                        <span style="color: #8c989e; margin-right: 5px;">https://etoyatv.top/</span>
+                        <input type="text" name="shortname" class="form-control"
+                            style="width: 150px; background-color: #222; border: 1px solid #444; color: #ccc;"
+                            value="${ locals.panelChannel ? locals.panelChannel.shortname : '' }" readonly>
+                    </div>
+                </div>
+                ` : '' }
+
+                <div class="form-group" style="display: flex; align-items: center;">
+                    <label style="width: 150px; color: #8c989e;">RTMP сервер:</label>
+                    <div style="flex-grow: 1;">
+                        <input type="text" class="form-control"
+                            style="width: 100%; background-color: #222; border: 1px solid #444; color: #ccc;"
+                            value="${ locals.RTMP_INGEST_URL || 'rtmp://localhost/live' }/${ locals.panelChannel ? locals.panelChannel.shortname : '' }"
+                            readonly>
+                    </div>
+                </div>
+
+                ${ locals.panelRole !== 'reporter' ? `
+                <div class="form-group" style="display: flex;">
+                    <label style="width: 150px; color: #8c989e;">Описание:</label>
+                    <div style="flex-grow: 1;">
+                        <textarea name="description" id="channel-desc" class="form-control" rows="5" maxlength="200"
+                            style="resize: vertical;">${ locals.panelChannel ? locals.panelChannel.description : '' }</textarea>
+                        <div id="desc-word-count"
+                            style="font-size: 11px; color: #8c989e; margin-top: 5px; text-align: right;">Осталось символов: 200</div>
+                    </div>
+                </div>
+                ` : '' }
+
+                ${ locals.panelRole !== 'reporter' ? `
+                <div class="form-group" style="display: flex; margin-top: 20px;">
+                    <div style="width: 150px;"></div>
+                    <button type="submit" class="btn btn-blue">Сохранить</button>
+                </div>
+                ` : '' }
+            </form>
+
+            ${ locals.panelRole === 'owner' ? `
+            <div
+                style="font-size: 18px; color: #ff4d4d; margin-top: 40px; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+                Опасная зона
+            </div>
+
+            <form action="/ru/panel,settings,channel,delete" method="POST"
+                onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите удалить телеканал? Это действие необратимо.', () => { form.submit(); });">
+                <div style="background-color: #3a4247; border: 1px solid #ff4d4d; padding: 15px; border-radius: 4px;">
+                    <p style="color: #8c989e; margin-bottom: 15px; font-size: 13px;">Удаление телеканала сделает его
+                        недоступным на 30 дней (будет отображаться статус «удален»), после чего канал будет удален
+                        окончательно вместе со всеми видео, анонсами и новостями.</p>
+                    <button type="submit" class="btn"
+                        style="background: #ff4d4d; color: white; border-color: #cc0000;">Удалить телеканал
+                        навсегда</button>
+                </div>
+            </form>
+            ` : '' }
+
+        </div>
+
+        <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+            <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+                <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">
+                    Настройки телеканала</div>
+                <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                    Здесь вы можете изменить базовую информацию о вашем телеканале. Короткое имя используется для
+                    формирования ссылки на ваш канал.
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const desc = document.getElementById('channel-desc');
+            const wordCount = document.getElementById('desc-word-count');
+            const form = desc.closest('form');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const MAX_CHARS = 200;
+
+            function updateCharCount() {
+                const count = desc.value.length;
+                if (count > MAX_CHARS) {
+                    wordCount.textContent = 'Превышен лимит символов на: ' + (count - MAX_CHARS);
+                    wordCount.style.color = '#ff4d4d';
+                    submitBtn.disabled = true;
+                    submitBtn.style.opacity = '0.5';
+                } else {
+                    wordCount.textContent = 'Осталось символов: ' + (MAX_CHARS - count);
+                    wordCount.style.color = '#8c989e';
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                }
+            }
+
+            desc.addEventListener('input', updateCharCount);
+            updateCharCount();
+
+            form.addEventListener('submit', (e) => {
+                if (desc.value.length > MAX_CHARS) {
+                    e.preventDefault();
+                    alert('Описание превышает лимит в 200 символов!');
+                }
+            });
+        });
+    </script>
+
+    ` }) %>

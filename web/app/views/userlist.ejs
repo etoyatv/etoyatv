@@ -1,0 +1,133 @@
+<%- include('partials/header') %>
+
+<div id="content" style="flex: 1 0 auto;"> 
+<!-- LEFT COLUMN>> -->
+<div class="left_blocks">
+
+<div class="block_item">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div style="height:400px; width:1px; margin-left:-1px; float:left;"></div>
+<div style="width:100%; float:left;">
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Пользователи</div>
+</div> 
+</div>
+<div class="block-head-submenu-bg"></div>
+<div class="block-head-submenu">
+<div class="block-head-submenu-description">
+  <% if (searchQuery) { %>
+    Результаты поиска пользователей по запросу "<%= searchQuery %>"
+  <% } else { %>
+    Показаны активные пользователи
+  <% } %>
+</div> 
+</div>
+<div class="block-content">
+
+<% if (users.length === 0) { %>
+  <div style="color: #c0c0b2; padding: 10px 10px 10px 0;">Пользователи не найдены.</div>
+<% } else { %>
+  <div id="users_list">
+    <div class="users">
+      <% users.forEach(function(profileUser, index) { %>
+        <div class="item <%= (index % 2 === 1 || index === users.length - 1) ? 'item_end' : '' %>"> 
+          <a class="logo" href="/ru/account,userinfo/?username=<%= encodeURIComponent(profileUser.username) %>" style="background: url('<%= CDN_BASE_URL %><%= profileUser.avatar || '/images/default_user_avatar.png' %>') no-repeat center center; background-size: cover;"><span class="border_logo"></span></a>
+          <div class="info"> 
+            <div class="username">
+              <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(profileUser.username) %>" class="<%= profileUser.is_online ? 'green' : '' %>">
+                <%= profileUser.username %>
+              </a>
+            </div> 
+            <div class="online">
+              <% if (profileUser.is_online) { %>
+                <span class="white">Сейчас на сайте</span>
+              <% } else { %>
+                Не в сети
+              <% } %>
+            </div>
+            <div class="channel">
+              <% if (profileUser.telegram || profileUser.discord) { %>
+                <% if (profileUser.telegram) { %>TG: <%= profileUser.telegram %><br><% } %>
+                <% if (profileUser.discord) { %>DC: <%= profileUser.discord %><% } %>
+              <% } else { %>
+                Зритель
+              <% } %>
+            </div>
+          </div>
+        </div>
+        <% if (index % 2 === 1 || index === users.length - 1) { %>
+          <div class="clear_both" style="height:20px;"></div> 
+        <% } %>
+      <% }) %>
+    </div>
+  </div>
+
+  <% if (totalPages > 1) { %>
+    <div class="dottedline clear_both"></div>
+    <div class="pager">
+      <% for (let p = 1; p <= totalPages; p++) { %>
+        <% if (p === page) { %>
+          <div class="item active"><%= p %></div>
+        <% } else { %>
+          <div class="item">
+            <a href="/ru/account,userlist?q=<%= encodeURIComponent(searchQuery) %>&page=<%= p %>"><%= p %></a>
+          </div>
+        <% } %>
+      <% } %>
+      
+      <div style="float:right;">
+        <% if (page > 1) { %>
+          <div class="item prev">
+            <a href="/ru/account,userlist?q=<%= encodeURIComponent(searchQuery) %>&page=<%= page - 1 %>">Предыдущая</a>
+          </div>
+        <% } else { %>
+          <div class="item prev">Предыдущая</div>
+        <% } %>
+        
+        <% if (page < totalPages) { %>
+          <div class="item next">
+            <a href="/ru/account,userlist?q=<%= encodeURIComponent(searchQuery) %>&page=<%= page + 1 %>">Следующая</a>
+          </div>
+        <% } else { %>
+          <div class="item next">Следующая</div>
+        <% } %>
+      </div>
+      <div class="clear_both"></div>
+    </div>
+  <% } %>
+<% } %>
+
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+
+</div>
+</div>
+<!-- << LEFT COLUMN -->
+
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks">
+<%- include('partials/sidebar_ad_320x240') %>
+</div>
+<!-- << RIGHT COLUMN -->
+<div class="clear_both"></div>
+</div>
+</div>
+<%- include('partials/footer') %>

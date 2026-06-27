@@ -1,0 +1,74 @@
+<%- include('../panel_layout', { activeMenu: 'records', activeSubmenu: 'all', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; <a href="/ru/panel,records">Медиа-архив</a> &gt; ' + escapeHtml(record.title) + ' &gt; Редактирование', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888;">Панель управления</a>
+        <a href="/ru/panel,records" style="margin-right: 15px; color: #888;">Медиа-архив</a>
+        <a href="#" style="margin-right: 15px; color: #888;">${escapeHtml(record.title)}</a>
+        <span style="color: #333;">Редактирование</span>
+    </div>
+    <div>
+        <input type="text" placeholder="Поиск по записям..." style="padding: 5px; border: 1px solid #ccc; width: 200px;">
+        <button class="btn" style="padding: 5px; height: 26px;">&#128269;</button>
+    </div>
+</div>
+<div style="text-align: right; margin-bottom: 15px;">
+    <button class="btn" style="font-size: 11px;" onclick="window.location.href='/ru/panel,records,upload'">Добавить видео</button> 
+    <span style="font-size: 11px; color:#8c989e; margin-left: 10px;">Загружайте любые видео файлы. Максимальный размер 200 Мб.</span>
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        <div style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            ${escapeHtml(record.title)}
+        </div>
+        
+        <form action="/ru/panel,records,edit" method="POST">
+            <input type="hidden" name="id" value="${record.id}">
+            
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Название:*</label>
+                <input type="text" name="title" class="form-control" value="${escapeHtml(record.title)}" required style="flex-grow: 1;">
+            </div>
+            
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Описание:</label>
+                <div style="flex-grow: 1;">
+                    <textarea name="description" class="form-control" rows="8" style="resize: vertical;" maxlength="200">${escapeHtml(record.description || '')}</textarea>
+                    <div style="font-size: 10px; color: #8c989e; margin-top: 5px; text-align: right;">Максимальная длина описания 200 символов.</div>
+                </div>
+            </div>
+            
+
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Ограничение:</label>
+                <div style="flex-grow: 1; color: #c0c0b2; font-size: 12px; display: flex; align-items: center;">
+                    <input type="checkbox" name="is_18_plus" style="margin-right: 5px;" ${record.is_18_plus ? 'checked' : ''}> Только для взрослых
+                </div>
+            </div>
+            
+            <div class="form-group" style="display: flex; margin-top: 20px;">
+                <div style="width: 150px;"></div>
+                <button type="submit" class="btn">Сохранить</button>
+            </div>
+        </form>
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Редактирование записи</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Измените название, описание и теги записи. Укажите уровень доступа к записи. Выберите превью записи. Превью отображается в списках записей на сайте ЭтоЯTV и в плеере записи до начала воспроизведения.
+            </div>
+        </div>
+        
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">А знаете ли вы?</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Вы можете добавлять записи Вашего телеканала в Альбомы, что упрощает навигацию по ним.
+            </div>
+        </div>
+    </div>
+</div>
+
+` }) %>

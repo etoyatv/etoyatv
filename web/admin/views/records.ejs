@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= pageTitle %></title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .record-card {
+      background: #252a2e;
+      border: 1px solid #3a4247;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .record-card.banned {
+      border-color: #ff4d4d;
+      background: rgba(255, 77, 77, 0.05);
+    }
+    .record-preview {
+      width: 200px;
+      height: 112px;
+      background-size: cover;
+      background-position: center;
+      background-color: #1a1e20;
+      border-radius: 4px;
+      flex-shrink: 0;
+      border: 1px solid #4a5359;
+    }
+    .record-info {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .record-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .record-title span {
+      color: #8c989e;
+      font-size: 13px;
+      font-weight: normal;
+    }
+    .record-channel {
+      color: #00c6ff;
+      font-size: 13px;
+    }
+    .record-desc {
+      color: #c0c0b2;
+      font-size: 12px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .record-date {
+      color: #8c989e;
+      font-size: 12px;
+      margin-top: auto;
+    }
+    .record-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 180px;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+      .record-card {
+        flex-direction: column;
+        align-items: center;
+      }
+      .record-preview {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+      }
+      .record-actions {
+        width: 100%;
+        flex-direction: column;
+      }
+      .record-actions button, .record-actions a {
+        width: 100%;
+        text-align: center;
+      }
+    }
+
+    .record-actions form {
+      margin: 0;
+    }
+    .record-actions button, .record-actions a {
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar', { q: typeof q !== 'undefined' ? q : '' }) %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="users-header-stats">
+        <p>Найдено записей: <strong><%= totalCount %></strong></p>
+      </div>
+
+      <div class="records-list">
+        <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+        <% if (records && records.length > 0) { %>
+          <% records.forEach(r => { %>
+            <div class="record-card <%= (r.status === 'banned' || r.status === 'deleted') ? 'banned' : '' %>">
+              <div class="record-preview" style="background-image: url('<%= CDN_BASE_URL %><%= r.thumbnail_url ? r.thumbnail_url + '?t=' + r.size_bytes : '/images/default_record_thumbnail.png' %>'); <%= r.is_18_plus && user && user.blur_18_plus ? 'filter: blur(8px);' : '' %>"></div>
+              
+              <div class="record-info">
+                <div class="record-title">
+                  <a href="<%= APP_URL %>/ru/tv,viewrecord,<%= r.id %>" target="_blank" style="color: #fff; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= r.title %></a> <span>(id: <%= r.id %>)</span>
+                  <% if (r.status === 'deleted') { %>
+                    <span style="background: #ff9800; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">Удалено</span>
+                  <% } else if (r.status === 'banned') { %>
+                    <span style="background: #ff4d4d; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">Бан</span>
+                  <% } %>
+                  <% if (r.is_18_plus) { %>
+                    <span style="background: #ff4d4d; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">18+</span>
+                  <% } %>
+                </div>
+                <div class="record-channel">
+                  Канал: 
+                  <% if (r.channel_id) { %>
+                    <a href="/channels/<%= r.channel_id %>/edit" style="color: #00c6ff; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= r.channel_name || 'Неизвестно' %></a>
+                  <% } else { %>
+                    <%= r.channel_name || 'Неизвестно' %>
+                  <% } %>
+                </div>
+                <div class="record-desc">
+                  Краткое описание: <%= r.description || 'Нет описания' %>
+                </div>
+                <div class="record-date">
+                  Дата публикации: <%= formatDate(r.created_at, userTimezone, 'DD.MM.YYYY HH:mm') %>
+                </div>
+              </div>
+              
+              <div class="record-actions">
+                <a href="/records/<%= r.id %>/edit" class="btn-action" style="text-decoration:none;"><%= isModOnly ? 'Просмотр инфо' : 'Редактировать' %></a>
+                
+                <form action="/records/<%= r.id %>/toggle_status" method="POST">
+                  <% if (r.status === 'banned' || r.status === 'deleted') { %>
+                    <input type="hidden" name="new_status" value="active">
+                    <button type="submit" class="btn-action" style="background: #4CAF50; color: #fff; border: none;">Восстановить</button>
+                  <% } else { %>
+                    <input type="hidden" name="new_status" value="banned">
+                    <button type="submit" class="btn-action" style="background: #ff4d4d; color: #fff; border: none;" onclick="event.preventDefault(); const form = this.closest('form'); yatvConfirm('Вы уверены, что хотите заблокировать (скрыть) эту запись?', () => { form.submit(); });">Скрыть (бан)</button>
+                  <% } %>
+                </form>
+
+                <% if (!isModOnly) { %>
+                <form action="/records/<%= r.id %>/delete" method="POST" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы действительно хотите ПОЛНОСТЬЮ удалить эту запись со всеми файлами? Это действие необратимо!', () => { form.submit(); });">
+                  <button type="submit" class="btn-action btn-danger">Удалить полностью</button>
+                </form>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div style="text-align: center; color: #8c989e; padding: 40px; background: #252a2e; border-radius: 8px;">
+            Записи не найдены.
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Pagination & Limits -->
+      <% if (totalCount > 0) { %>
+      <div class="pagination-section">
+        <form action="/records" method="GET" class="limit-selector">
+          <% if (q) { %><input type="hidden" name="q" value="<%= q %>"><% } %>
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/records?page=<%= page - 1 %>&limit=<%= limit %><%= q ? '&q=' + encodeURIComponent(q) : '' %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/records?page=<%= page + 1 %>&limit=<%= limit %><%= q ? '&q=' + encodeURIComponent(q) : '' %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+
+    </main>
+  </div>
+</body>
+</html>

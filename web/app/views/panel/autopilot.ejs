@@ -1,0 +1,57 @@
+<%- include('../panel_layout', { activeMenu: 'autopilot', activeSubmenu: '', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Автопилот', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #333;">Автопилот</span>
+    </div>
+</div>
+
+<div style="padding: 20px;">
+    <h2 style="color: #fff; margin-bottom: 20px; font-size: 20px;">Настройки автопилота</h2>
+    <p style="color: #8c989e; margin-bottom: 20px; font-size: 13px; line-height: 1.5; max-width: 600px;">
+        Автопилот позволяет транслировать видео из вашего альбома в циклическом режиме 24/7, когда нет прямой трансляции (RTMP). Если вы запустите прямой стрим, автопилот будет автоматически приостановлен до конца стрима.
+    </p>
+
+    ${ channel.autopilot_disabled ? `
+        <div style="background-color: #5a1a1a; border: 1px solid #c0392b; color: #ffdddd; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-weight: bold; text-align: center;">
+            ⚠️ Автопилот запрещен администрацией платформы
+        </div>
+    ` : `
+        <form action="/ru/panel,autopilot" method="POST" style="max-width: 500px; background-color: #343b40; padding: 20px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" name="autopilot_enabled" id="autopilot_enabled" style="width: 18px; height: 18px; cursor: pointer;" ` + (channel.autopilot_enabled ? 'checked' : '') + `>
+                <label for="autopilot_enabled" style="color: #6fdeee; font-weight: bold; cursor: pointer; font-size: 15px;">Включить Автопилот</label>
+            </div>
+
+            <div style="margin-bottom: 20px;" id="album_select_container">
+                <label style="display: block; margin-bottom: 5px; color: #8c989e;">Выберите альбом для трансляции</label>
+                <select name="autopilot_album_id" id="autopilot_album_id" style="width: 100%; padding: 8px; border: 1px solid #333; background: #1a1e20; color: #fff; border-radius: 3px;">
+                    ` + (albums.length === 0 ? '<option value="">Нет альбомов</option>' : 
+                        '<option value="">-- Выберите альбом --</option>' +
+                        albums.map(a => '<option value="' + a.id + '" ' + (channel.autopilot_album_id === a.id ? 'selected' : '') + '>' + escapeHtml(a.title) + '</option>').join('')
+                    ) + `
+                </select>
+            </div>
+
+            <button type="submit" class="btn" style="padding: 10px 20px;">Сохранить настройки</button>
+        </form>
+    `}
+</div>
+
+<script>
+    const checkbox = document.getElementById('autopilot_enabled');
+    const container = document.getElementById('album_select_container');
+    const select = document.getElementById('autopilot_album_id');
+    
+    function toggleAlbumSelect() {
+        container.style.opacity = checkbox.checked ? '1' : '0.5';
+        container.style.pointerEvents = checkbox.checked ? 'auto' : 'none';
+        select.required = checkbox.checked;
+    }
+    
+    checkbox.addEventListener('change', toggleAlbumSelect);
+    toggleAlbumSelect();
+</script>
+
+` }) %>

@@ -1,0 +1,114 @@
+<%- include('partials/header') %>
+<style type="text/css">
+.theme_default { color: #C0C0B2; }
+.theme_default a { color: #6FDEEE; }
+.theme_default h1, .theme_default h2, .theme_default h3, .theme_default h4, .theme_default h5 { color: #FFFFFF; }
+</style>
+
+<div id="content">
+
+<div class="left_blocks">
+<div class="block_item">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Записи телеканала (<a href="/ru/channel,records?shortname=<%= channel.shortname %>" title="Все записи телеканала" class="darkblue"><%= records.length %></a>)</div>
+<div class="block-buttons">
+<a href="/ru/channel,records?shortname=<%= channel.shortname %>" title="Все записи телеканала" class="block-buttons-bg-last"><span class="block-head-icon-archive"></span></a>
+</div>
+</div> 
+</div>
+<div class="block-content" style="padding: 10px;">
+<div id="records_list"> 
+<div class="records_list">
+
+<% if (records && records.length > 0) { %>
+    <% records.forEach(function(rec, index) { %>
+        <div class="item <%= index === 0 ? 'first' : '' %> <%= index === records.length - 1 ? 'last item_end' : '' %>"> 
+            <div class="record_item" style="position: relative;"> 
+                <a href="/ru/tv,viewrecord,<%= rec.id %>" class="thumb" style="background: #000 url('<%= CDN_BASE_URL %><%= rec.thumbnail_url || '/images/default_record_thumb.png' %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden;">
+                    <% if (rec.is_18_plus) { %>
+                    <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(5px); background: rgba(0,0,0,0.1); z-index: 1;"></div>
+                    <% } %>
+                    <span class="border_thumb" style="position: relative; z-index: 2;">
+                        <div class="record_time"><%= ('0' + Math.floor(rec.duration / 3600)).slice(-2) %>:<%= ('0' + Math.floor((rec.duration % 3600) / 60)).slice(-2) %>:<%= ('0' + (rec.duration % 60)).slice(-2) %></div> 
+                    </span>
+                </a> 
+                <div class="info">
+                    <div class="title"><a href="/ru/tv,viewrecord,<%= rec.id %>"><%= rec.title %></a><% if(rec.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div> 
+                    <div class="channel"><span class="label">Телеканал:</span> <a href="/<%= channel.shortname %>"><%= channel.name %></a></div> 
+                    <div class="date"><span class="label">Дата:</span> <span class="white"><%= formatDate(rec.created_at, userTimezone) %></span></div> 
+                    <div class="views"><span class="label">Просмотров:</span> <span class="white"><%= rec.views %></span></div> 
+                </div>
+                                <div style="position: absolute; right: 0; top: 0;">
+                                  <% if (locals.user) { %>
+                                  <div style="background: #111; padding: 0 6px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                    <span id="record_fans_count_<%= rec.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;"><%= rec.fans_count || 0 %></span>
+                                    <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;" style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>" id="record_fan_icon_<%= rec.id %>" style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                  </div>
+                                  <% } %>
+                                </div>
+
+            </div> 
+            <div class="clear_both"></div> 
+        </div> 
+    <% }); %>
+<% } else { %>
+    <p style="color: #c0c0b2;">Нет записей</p>
+<% } %>
+
+</div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+</div>
+
+<div class="right_blocks">
+<%- include('partials/channel_sidebar', { activePage: 'records' }) %>
+</div>
+<div class="clear_both"></div>
+</div>
+
+
+
+
+<script>
+window.toggleFavoriteRecord = async function(recordId) {
+  try {
+    const res = await fetch(`/api/records/${recordId}/favorite`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const countEl = document.getElementById('record_fans_count_' + recordId);
+      const iconEl = document.getElementById('record_fan_icon_' + recordId);
+      if (countEl) countEl.innerText = data.count;
+      if (iconEl) {
+        if (data.isFan) {
+          iconEl.classList.add('active');
+        } else {
+          iconEl.classList.remove('active');
+        }
+      }
+    } else {
+      alert(data.error || 'Ошибка');
+    }
+  } catch (e) {
+    alert('Ошибка соединения');
+  }
+};
+</script>
+
+<%- include('partials/footer') %>

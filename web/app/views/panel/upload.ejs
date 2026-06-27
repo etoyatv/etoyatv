@@ -1,0 +1,201 @@
+<%- include('../panel_layout', { activeMenu: 'records', activeSubmenu: 'upload', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; <a href="/ru/panel,records">Медиа-архив</a> &gt; Загрузить видео', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888;">Панель управления</a>
+        <a href="/ru/panel,records" style="margin-right: 15px; color: #888;">Медиа-архив</a>
+        <span style="color: #333;">Загрузить видео</span>
+    </div>
+    <div>
+        <input type="text" placeholder="Поиск по записям..." style="padding: 5px; border: 1px solid #ccc; width: 200px;">
+        <button class="btn" style="padding: 5px; height: 26px;">&#128269;</button>
+    </div>
+</div>
+
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+
+        <form action="/ru/panel,records,upload" method="post" enctype="multipart/form-data" style="background-color: #3a4247; padding: 20px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; color: #8c989e; font-size: 12px; margin-bottom: 5px;">Название записи:</label>
+                <input type="text" name="title" required style="width: 100%; padding: 5px; border: 1px solid #1a1e20; background-color: #2b3136; color: #fff; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; color: #8c989e; font-size: 12px; margin-bottom: 5px;">Описание:</label>
+                <textarea name="description" style="width: 100%; height: 80px; padding: 5px; border: 1px solid #1a1e20; background-color: #2b3136; color: #fff; box-sizing: border-box; font-family: inherit;" maxlength="200"></textarea>
+                <div style="font-size: 10px; color: #8c989e; margin-top: 5px; text-align: right;">Максимальная длина описания 200 символов.</div>
+            </div>
+            <div style="font-size: 12px; color: #8c989e; display: flex; align-items: center; margin-bottom: 15px;">
+                <span style="width: 150px;">Видеофайл (MP4):</span>
+                <input type="file" name="record_file" accept="video/mp4" required style="margin-right: 10px;">
+                <span style="font-size: 11px;">Загружайте любые видео файлы. Максимальный размер файла: 200 Мб</span>
+            </div>
+            <div>
+                <button type="submit" class="btn" style="padding: 5px 15px;">Загрузить видео</button>
+            </div>
+        </form>
+
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var form = document.querySelector("form[action^='/ru/panel,records,upload']");
+            if (!form) return;
+
+            var submitBtn = form.querySelector("button[type='submit']");
+            var fileInput = form.querySelector("input[name='record_file']");
+            var titleInput = form.querySelector("input[name='title']");
+            var descInput = form.querySelector("textarea[name='description']");
+            
+            var progressHTML = 
+                "<div id='uploadProgressContainer' style='display: none; margin-bottom: 15px; background: #2b3136; border-radius: 4px; padding: 12px; border: 1px solid #1a1e20;'>" +
+                "    <div style='display: flex; justify-content: space-between; font-size: 12px; color: #8c989e; margin-bottom: 6px;'>" +
+                "        <span id='uploadStatusText'>Подготовка к загрузке...</span>" +
+                "        <span id='uploadPercentText'>0%</span>" +
+                "    </div>" +
+                "    <div style='background: #1a1e20; border-radius: 4px; height: 8px; overflow: hidden;'>" +
+                "        <div id='uploadProgressBar' style='width: 0%; background: #00a0e3; height: 100%; transition: width 0.1s ease;'></div>" +
+                "    </div>" +
+                "</div>";
+            
+            submitBtn.parentElement.insertAdjacentHTML("beforebegin", progressHTML);
+            
+            var progressContainer = document.getElementById("uploadProgressContainer");
+            var progressBar = document.getElementById("uploadProgressBar");
+            var statusText = document.getElementById("uploadStatusText");
+            var percentText = document.getElementById("uploadPercentText");
+
+            form.addEventListener("submit", function(e) {
+                e.preventDefault();
+
+                if (fileInput.files.length > 0) {
+                    var file = fileInput.files[0];
+                    var maxSize = 200 * 1024 * 1024; // 200 MB
+                    if (file.size > maxSize) {
+                        if (window.showToast) {
+                            window.showToast("Размер видео слишком велик. Максимум 200 МБ.", "error");
+                        } else {
+                            alert("Размер видео слишком велик. Максимум 200 МБ.");
+                        }
+                        return;
+                    }
+                } else {
+                    if (window.showToast) {
+                        window.showToast("Выберите файл для загрузки.", "error");
+                    } else {
+                        alert("Выберите файл для загрузки.");
+                    }
+                    return;
+                }
+
+                var formData = new FormData(form);
+                var xhr = new XMLHttpRequest();
+
+                // Disable inputs
+                submitBtn.disabled = true;
+                submitBtn.textContent = "Загрузка...";
+                fileInput.disabled = true;
+                titleInput.disabled = true;
+                descInput.disabled = true;
+
+                // Show progress container
+                progressContainer.style.display = "block";
+                progressBar.style.width = "0%";
+                progressBar.style.background = "#00a0e3";
+                percentText.textContent = "0%";
+                statusText.textContent = "Загрузка файла...";
+
+                xhr.upload.addEventListener("progress", function(event) {
+                    if (event.lengthComputable) {
+                        var percent = Math.round((event.loaded / event.total) * 100);
+                        progressBar.style.width = percent + "%";
+                        percentText.textContent = percent + "%";
+                        if (percent === 100) {
+                            statusText.textContent = "Обработка файла сервером...";
+                        } else {
+                            statusText.textContent = "Загрузка файла (" + (event.loaded / 1024 / 1024).toFixed(1) + " МБ из " + (event.total / 1024 / 1024).toFixed(1) + " МБ)...";
+                        }
+                    }
+                });
+
+                xhr.addEventListener("load", function() {
+                    var response;
+                    try {
+                        response = JSON.parse(xhr.responseText);
+                    } catch (err) {
+                        response = { error: xhr.responseText || "Неизвестная ошибка сервера" };
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        statusText.textContent = "Успешно загружено!";
+                        progressBar.style.background = "#39b54a";
+                        if (window.showToast) {
+                            window.showToast("Видео успешно загружено и отправлено на обработку!", "success");
+                        }
+                        setTimeout(function() {
+                            window.location.href = response.redirect || "/ru/panel,records";
+                        }, 1000);
+                    } else {
+                        var errMsg = response.error || "Произошла ошибка при загрузке";
+                        if (window.showToast) {
+                            window.showToast(errMsg, "error");
+                        } else {
+                            alert(errMsg);
+                        }
+                        resetForm();
+                    }
+                });
+
+                xhr.addEventListener("error", function() {
+                    if (window.showToast) {
+                        window.showToast("Ошибка сети при загрузке.", "error");
+                    } else {
+                        alert("Ошибка сети при загрузке.");
+                    }
+                    resetForm();
+                });
+
+                xhr.addEventListener("abort", function() {
+                    if (window.showToast) {
+                        window.showToast("Загрузка отменена.", "info");
+                    } else {
+                        alert("Загрузка отменена.");
+                    }
+                    resetForm();
+                });
+
+                function resetForm() {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = "Загрузить видео";
+                    fileInput.disabled = false;
+                    titleInput.disabled = false;
+                    descInput.disabled = false;
+                    progressContainer.style.display = "none";
+                }
+
+                xhr.open("POST", form.action);
+                xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+                xhr.setRequestHeader("Accept", "application/json");
+                xhr.send(formData);
+            });
+        });
+        </script>
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Загрузить видео</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Загружайте видеофайлы любого формата размером до 200 Мб. В течение загрузки видеофайла вы можете изменить название, описание и доступ к записи. Не покидайте страницу до завершения загрузки. Вы можете загружать несколько файлов одновременно. После завершения загрузки видеофайл попадает в список записей «В обработке». По завершении обработки запись попадает в список «Загруженные записи».
+            </div>
+        </div>
+        
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">А знаете ли вы?</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Функция «Связь аккаунтов» позволяет вам автоматически размещать анонсы о трансляциях и записях Вашего телеканала на Facebook и Twitter.
+            </div>
+        </div>
+    </div>
+</div>
+
+` }) %>

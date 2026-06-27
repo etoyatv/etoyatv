@@ -1,0 +1,83 @@
+<!-- CHANNEL INFO>> --> 
+<div class="blocks"> 
+<div class="blackbox" style="  width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Информация о телеканале</div>
+<% if (typeof showButtons !== 'undefined' && showButtons) { %>
+<div class="block-buttons">
+<% if (typeof user !== 'undefined' && user) { %>
+  <a href="#" onclick="toggleFavorite('<%= channel.id %>'); return false;" title="В фанаты" class="block-buttons-bg" id="fan_button_<%= channel.id %>"><span class="block-head-icon-heart heart-btn <%= typeof isFan !== 'undefined' && isFan ? 'active' : '' %>"></span></a>
+  <% if (user.id !== channel.user_id) { %>
+    <a href="#" onclick="openReportModal('channel', '<%= channel.id %>'); return false;" title="Пожаловаться" class="block-buttons-bg-last"><span class="block-head-icon-alarm"></span></a>
+  <% } %>
+<% } else { %>
+  <a href="/login" title="В фанаты" class="block-buttons-bg"><span class="block-head-icon-heart heart-btn"></span></a>
+  <a href="/login" title="Пожаловаться" class="block-buttons-bg-last"><span class="block-head-icon-alarm"></span></a>
+<% } %>
+</div>
+<% } %>
+</div> 
+</div>
+<div class="block-content">
+<div class="channelinfoblock"> 
+<div style="display: flex; gap: 10px;">
+<div class="left" style="width: 100px; flex-shrink: 0;">
+<div class="border_logo" style="width: 100px; height: 100px;">
+<a href="/<%= channel.shortname %>">
+<img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png'  %>" alt="<%= channel.name %>" width="100" height="100" style="background: #000; border: none; object-fit: cover; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+</a>
+</div>
+</div>
+<div class="right" style="flex-grow: 1;"> 
+<h1 class="title darkblue" style="font-size: 16px; margin: 0 0 10px 0;"><%= channel.name %><% if (channel.is_verified) { %><span class="verified_icon" title="Подтвержденный канал"></span><% } %><% if(channel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></h1> 
+<div class="info">
+<div class="params">
+<div class="label" style="float: left; color: #777; width: 80px;">Владелец:</div>
+<div class="value white" style="float: left; color: #fff;"><a href="/ru/account,userinfo?username=<%= typeof owner !== 'undefined' ? owner.username : (channel.username || channel.user_id) %>"><%= typeof owner !== 'undefined' ? owner.username : (channel.username || channel.user_id) %></a></div>
+<div class="clear_both"></div>
+</div>
+<div class="params">
+<div class="label" style="float: left; color: #777; width: 80px;">Создан:</div>
+<div class="value white" style="float: left; color: #fff;"><%= formatDate(channel.created_at, userTimezone, 'DD.MM.YYYY') %></div>
+<div class="clear_both"></div>
+</div> 
+</div> 
+</div> 
+</div>
+<% if (typeof showDescription !== 'undefined' && showDescription) { %>
+<div class="description clear_both" style="margin-top: 15px; color: #c0c0b2; padding: 0;">
+<div class="readmore">
+<div class="teaser" style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.3; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;"><%= channel.description || 'Описание отсутствует.' %></div>
+</div>
+</div>
+<% } %>
+
+<ul class="usermenu" style="margin-top: 15px; padding-left: 0; list-style: none;">
+<li style="margin-bottom: 5px;"><div class="icon s_icon_channel"></div><a href="/<%= channel.shortname %>" class="<%= (typeof activePage !== 'undefined' && activePage === 'home') ? 'grey' : '' %>">Главная страница телеканала</a></li>
+<li style="margin-bottom: 5px;"><div class="icon s_icon_records"></div><a href="/ru/channel,records?shortname=<%= channel.shortname %>" class="<%= (typeof activePage !== 'undefined' && activePage === 'records') ? 'grey' : '' %>">Записи телеканала</a></li>
+<li style="margin-bottom: 5px;"><div class="icon s_icon_programs"></div><a href="/ru/channel,programs?shortname=<%= channel.shortname %>" class="<%= (typeof activePage !== 'undefined' && activePage === 'programs') ? 'grey' : '' %>">Расписание телеканала</a></li>
+<li style="margin-bottom: 5px;"><div class="icon s_icon_news"></div><a href="/ru/news?cat=channel&item=<%= channel.id %>" class="<%= (typeof activePage !== 'undefined' && activePage === 'news') ? 'grey' : '' %>">Новости телеканала</a></li>
+<li class="last"><div class="icon s_icon_users"></div><a href="/ru/channel,friends?shortname=<%= channel.shortname %>" class="<%= (typeof activePage !== 'undefined' && activePage === 'friends') ? 'grey' : '' %>">Фанаты телеканала</a></li>
+</ul> 
+<div class="clear_both"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<!-- << CHANNEL INFO -->
+
+<%- include('sidebar_ad_320x240') %>

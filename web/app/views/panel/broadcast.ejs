@@ -1,0 +1,93 @@
+<%- include('../panel_layout', { activeMenu: 'settings' , activeSubmenu: 'broadcast' ,
+    breadcrumbs: locals.breadcrumbs , body: ` <div
+    style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #888;">Настройки</span>
+        <span style="color: #333;">Трансляция</span>
+    </div>
+    </div>
+
+    <div style="display: flex; gap: 20px;">
+        <div style="flex-grow: 1;">
+            <div
+                style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+                Настройки трансляции (RTMP)
+            </div>
+
+            ${ (locals.query && locals.query.reset) ? `
+                <div style="background-color: #dff0d8; color: #3c763d; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px;">
+                    Ключ потока успешно сброшен. Пожалуйста, обновите его в вашем OBS.
+                </div>
+            ` : '' }
+
+            ${ locals.panelChannel.rtmp_disabled ? `
+                <div style="background-color: #5a1a1a; border: 1px solid #c0392b; color: #ffdddd; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-weight: bold; text-align: center;">
+                    ⚠️ Вещание по RTMP запрещено администрацией платформы
+                </div>
+            ` : `
+                <div style="background: #252b30; padding: 20px; border-radius: 6px; border: 1px solid #373f45;">
+                    <p style="color: #aaa; margin-bottom: 15px; font-size: 14px;">
+                        Используйте эти данные в программе для стриминга (например, OBS, vMix), чтобы начать прямой эфир на вашем канале.
+                        <br><br>
+                        <strong>Внимание:</strong> Максимально допустимое разрешение — 1080p, битрейт — до 3000 kbps. При превышении лимитов сервер может прервать вещание.
+                    </p>
+
+                    <div class="form-group" style="margin-bottom: 20px; max-width: 800px;">
+                        <label style="color: #8fa0ad; display: block; margin-bottom: 5px;">URL-адрес сервера:</label>
+                        <div style="display: flex; align-items: center;">
+                            <input type="text" class="form-control" style="flex-grow: 1; min-width: 0; background: #1c2125; color: #fff; border: 1px solid #373f45; padding: 8px 12px;" value="${ locals.rtmpServer }" readonly id="serverUrl">
+                            <button class="btn-action" style="margin-left: 10px; padding: 8px 20px; margin-top: 0; width: auto !important; flex-shrink: 0; background: #3b9cd9; color: #fff; border: none; border-radius: 3px; cursor: pointer;" onclick="copyToClipboard('serverUrl')">Копировать</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 30px; max-width: 800px;">
+                        <label style="color: #8fa0ad; display: block; margin-bottom: 5px;">Ключ потока (Stream Key):</label>
+                        <div style="display: flex; align-items: center;">
+                            <input type="password" class="form-control" style="flex-grow: 1; min-width: 0; background: #1c2125; color: #fff; border: 1px solid #373f45; padding: 8px 12px;" value="${ locals.panelChannel.shortname }?key=${ locals.streamKey }" readonly id="streamKey">
+                            <button class="btn-action" style="margin-left: 10px; padding: 8px 20px; margin-top: 0; width: auto !important; flex-shrink: 0; background: #4a5359; color: #fff; border: none; border-radius: 3px; cursor: pointer;" onclick="toggleVisibility('streamKey', this)">Показать</button>
+                            <button class="btn-action" style="margin-left: 10px; padding: 8px 20px; margin-top: 0; width: auto !important; flex-shrink: 0; background: #3b9cd9; color: #fff; border: none; border-radius: 3px; cursor: pointer;" onclick="copyToClipboard('streamKey')">Копировать</button>
+                        </div>
+                        <small style="color: #ff6b6b; display: block; margin-top: 8px;">Никому не передавайте этот ключ! Это ваш личный ключ для этого канала.</small>
+                    </div>
+
+                    <hr style="border-top: 1px solid #373f45; margin-bottom: 20px;">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #aaa; font-size: 13px;">Если ключ был скомпрометирован, сбросьте его:</span>
+                        <form action="/ru/panel,settings,broadcast,reset" method="POST" style="margin: 0;" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены? Текущая трансляция может быть прервана, и вам придется обновить ключ в OBS.', () => { form.submit(); });">
+                            <button type="submit" class="btn-action" style="margin-top: 0;">Сбросить ключ</button>
+                        </form>
+                    </div>
+                </div>
+            `}
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard(elementId) {
+            var copyText = document.getElementById(elementId);
+            if (copyText.type === 'password') {
+                copyText.type = 'text';
+                copyText.select();
+                document.execCommand('copy');
+                copyText.type = 'password';
+            } else {
+                copyText.select();
+                document.execCommand('copy');
+            }
+            alert('Скопировано в буфер обмена');
+        }
+        
+        function toggleVisibility(elementId, btn) {
+            var el = document.getElementById(elementId);
+            if (el.type === 'password') {
+                el.type = 'text';
+                btn.innerText = 'Скрыть';
+            } else {
+                el.type = 'password';
+                btn.innerText = 'Показать';
+            }
+        }
+    </script>
+` }) %>

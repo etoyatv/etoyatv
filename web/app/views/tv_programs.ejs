@@ -1,0 +1,150 @@
+<%- include('partials/header') %>
+
+<div id="content" style="flex: 1 0 auto;">
+<div class="left_blocks"> 
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div style="height:400px; width:1px; margin-left:-1px; float:left;"></div>
+<div style="width:100%; float:left;"><div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Расписание <%= searchQuery ? '- Результаты поиска "' + searchQuery + '"' : '' %></div>
+</div> 
+</div>
+<div class="block-head-submenu-bg"></div>
+<div class="block-head-submenu">
+<div class="block-head-submenu-description" style="color: #aaa;">Показаны анонсы за неделю</div> 
+</div>
+<div class="block-content">
+<div id="channels_list">
+<div class="records_list" style="padding: 10px;">
+<% if (items.length === 0) { %>
+    <div style="padding: 20px; text-align: center; color: #888;">Анонсы или прямые трансляции не найдены.</div>
+<% } else { %>
+    <% items.forEach((item, idx) => { %>
+    <% const isLive = item.item_type === 'channel'; %>
+    <% const targetLink = isLive ? `/${item.shortname}` : `/${item.channel_shortname}`; %>
+    <% const itemTitle = isLive ? (item.live_title || ('Передача от ' + formatDate(item.live_started_at || new Date(), userTimezone, 'DD.MM.YYYY HH:mm'))) : item.title; %>
+    <% const channelName = isLive ? item.name : item.channel_name; %>
+    <% const logoUrl = isLive ? item.logo_url : item.channel_logo; %>
+    <% const is18Plus = isLive ? item.is_18_plus : item.is_18_plus; %>
+    
+    <% if (isLive) { %>
+      <!-- Live Broadcast Layout -->
+      <div class="item first item_end" style="border-bottom: 1px dotted #444; padding-bottom: 15px; margin-bottom: 15px;">
+        <div class="record_item" style="position: relative;">
+          <a href="<%= targetLink %>" class="thumb"
+            style="display: block; float: left; width: 170px; height: 96px; margin-right: 15px; background: <%= isLive ? `url('/tvsnapshots/${item.shortname}.jpg') center center / cover no-repeat, ` : '' %>url('<%= CDN_BASE_URL %><%= item.logo_url || item.channel_logo_url || '/images/default_channel_logo.png' %>') center center / cover no-repeat #000; border: 1px solid #222; position: relative; overflow: hidden;">
+            <% if (is18Plus) { %>
+            <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(15px); background: rgba(0,0,0,0.3); z-index: 1;"></div>
+            <% } %>
+            <span class="border_thumb" style="display: block; width: 100%; height: 100%; position: relative; z-index: 2;">
+              <div class="record_time"
+                style="background: rgba(0,0,0,0.8); padding: 1px 4px; color: #fff; font-size: 11px; position: absolute; bottom: 4px; right: 4px;">
+                <%= item.viewers || 0 %> зрителей
+              </div>
+            </span>
+          </a>
+          <div class="info" style="float: left; width: 310px; padding-top: 5px;">
+            <div class="title"><a href="<%= targetLink %>"
+                style="color: #6FDEEE; font-size: 15px; text-decoration: none;">
+                <%= itemTitle %>
+              </a><% if(is18Plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div>
+            <div class="channel" style="margin-top:4px; font-size: 11px; color: #8c989e;">Телеканал: <a
+                href="<%= targetLink %>" style="color: #6FDEEE; text-decoration: none;">
+                <%= channelName %>
+              </a></div>
+            <div class="date" style="margin-top:4px; font-size: 11px; color: #aaa; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;"><%= item.description || 'Описание передачи не заполнено' %></div>
+          </div>
+        </div>
+        <div class="clear_both"></div>
+      </div>
+    <% } else { %>
+      <!-- Announcement Layout -->
+      <div class="item <%= idx === items.length - 1 ? 'last item_end' : '' %>" style="padding: 10px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
+        <div style="float: left; width: 45px; text-align: center; margin-right: 10px; padding-top: 5px;">
+          <% const d = new Date(item.start_time); %>
+          <div style="font-size: 14px; color: #fff;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
+          <div style="font-size: 11px; color: #8c989e;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
+        </div>
+        <div class="logo" style="float: left; width: 60px; height: 60px; padding: 1px; background: url('<%= CDN_BASE_URL %>/images/css_img_38_border.bg.png') repeat; margin-right: 10px;">
+          <img src="<%= CDN_BASE_URL %><%= logoUrl || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: cover; display: block; <%= is18Plus ? 'filter: blur(4px);' : '' %>">
+        </div>
+        <div class="info" style="overflow: hidden; padding-top: 5px;">
+          <div class="title" style="margin-bottom: 5px;">
+            <a href="<%= targetLink %>" style="color: #6FDEEE; font-size: 13px; text-decoration: none;"><%= itemTitle %></a><% if(is18Plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %>
+          </div>
+          <div class="channel" style="margin-bottom: 5px; font-size: 11px; color: #8c989e;">
+            Телеканал: <a href="<%= targetLink %>" style="color: #6FDEEE; text-decoration: none;"><%= channelName %></a>
+          </div>
+          <div class="description" style="font-size: 11px; color: #555; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">
+            <%= item.description || 'Описание передачи не заполнено' %>
+          </div>
+          <% if (locals.user) { %>
+          <div style="margin-top: 5px;">
+            <a href="#" onclick="event.preventDefault(); toggleBookmark(<%= item.id %>, this);" style="font-size: 11px; color: #00a0e3; text-decoration: none;">
+              <%= (typeof item.is_bookmarked !== 'undefined' && item.is_bookmarked) ? 'Удалить из личного расписания' : 'Добавить в личное расписание' %>
+            </a>
+          </div>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+    <% }) %>
+<% } %>
+</div>
+
+<!-- Pager Navigator --> 
+<div class="pager">
+    <% if (totalPages > 1) { %>
+        <% if (currentPage > 1) { %>
+            <div style="float:left;">
+                <div class="item prev"><a href="/ru/tv,programs?page=<%= currentPage - 1 %><%= searchQuery ? '&q='+searchQuery : '' %>">Предыдущая</a></div>
+            </div>
+        <% } %>
+
+        <% for(let i=1; i<=totalPages; i++) { %>
+            <% if (i === currentPage) { %>
+                <div class="item active"><%= i %></div>
+            <% } else if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) { %>
+                <div class="item"><a href="/ru/tv,programs?page=<%= i %><%= searchQuery ? '&q='+searchQuery : '' %>"><%= i %></a></div>
+            <% } else if (i === currentPage - 3 || i === currentPage + 3) { %>
+                <div class="item">...</div>
+            <% } %>
+        <% } %>
+
+        <% if (currentPage < totalPages) { %>
+            <div style="float:right;">
+                <div class="item next"><a href="/ru/tv,programs?page=<%= currentPage + 1 %><%= searchQuery ? '&q='+searchQuery : '' %>">Следующая</a></div>
+            </div>
+        <% } %>
+    <% } %>
+<div class="clear_both"></div>
+</div> 
+<!-- Pager Navigator --> 
+</div>
+</div>
+<div class="clear_both"></div></div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+
+</div>
+<!-- << LEFT COLUMN --> 
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks"> 
+<%- include('partials/sidebar_ad_320x240') %>
+</div>
+<!-- << RIGHT COLUMN -->
+<div class="clear_both"></div>
+</div>
+<%- include('partials/footer') %>

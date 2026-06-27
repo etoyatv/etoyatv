@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  app:
+    build: ./
+    ports:
+      - "3001:3001"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER:-yatv_user}
+      - DB_PASSWORD=${DB_PASSWORD:-yatv_pass}
+      - DB_NAME=${DB_NAME:-yatv}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SESSION_SECRET=${SESSION_SECRET:-etoyatv_secret_key}
+      - ADMIN_URL=${ADMIN_URL}
+      - APP_URL=${APP_URL}
+      - RTMP_API_USER=${RTMP_API_USER:-admin}
+      - RTMP_API_PASS=${RTMP_API_PASS:-admin}
+      - HCAPTCHA_SITEKEY=${HCAPTCHA_SITEKEY}
+      - HCAPTCHA_SECRET=${HCAPTCHA_SECRET}
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}:/public
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/images/avatars:/app/public/images/avatars
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/uploads/records:/app/public/uploads/records
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/uploads/hls:/app/public/uploads/hls
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/tvsnapshots:/app/public/tvsnapshots
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/images/design:/app/public/images/design
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/uploads/ads:/app/public/uploads/ads
+
+  admin:
+    build: ./admin
+    ports:
+      - "3002:3002"
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER:-yatv_user}
+      - DB_PASSWORD=${DB_PASSWORD:-yatv_pass}
+      - DB_NAME=${DB_NAME:-yatv}
+      - PORT=3002
+      - SESSION_SECRET=${SESSION_SECRET:-etoyatv_secret_key}
+      - CDN_BASE_URL=${CDN_BASE_URL}
+      - APP_URL=${APP_URL}
+    volumes:
+      - ./admin:/app
+      - /app/node_modules
+      - ./.env:/app/.env
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}:/public
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/images/avatars:/app/public/images/avatars
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/uploads/records:/app/public/uploads/records
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/uploads/hls:/app/public/uploads/hls
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/images/design:/app/public/images/design
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}/uploads/ads:/app/public/uploads/ads
+      - ./utils:/app/utils

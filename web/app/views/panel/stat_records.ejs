@@ -1,0 +1,105 @@
+<%- include('../panel_layout', { activeMenu: 'stat', activeSubmenu: 'records_stat', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Статистика &gt; Статистика всех записей', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #888;">Статистика</span>
+        <span style="color: #333;">Статистика всех записей</span>
+    </div>
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div style="font-size: 18px; color: #fff;">Просмотры записей</div>
+            <div style="font-size: 11px; color: #8c989e; display: flex; align-items: center; gap: 5px;">
+                Период: 
+                <select id="periodSelect" class="form-control" style="width: auto; padding: 2px 5px;">
+                    <option value="6m">За 6 месяцев</option>
+                    <option value="year">За год</option>
+                    <option value="all">За все время</option>
+                </select>
+            </div>
+        </div>
+        
+        <div style="border: 1px solid #4a5359; background: #343b40; padding: 15px;">
+            <div style="height: 300px; position: relative;">
+                <canvas id="recordsChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Статистика</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Вы можете просматривать статистику просмотров записей Вашего телеканала по месяцам.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let chartInstance = null;
+
+    function loadData(period) {
+        fetch('/api/panel/stat/records?period=' + period)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const ctx = document.getElementById('recordsChart').getContext('2d');
+                    const labels = data.data.map(d => d.month);
+                    const values = data.data.map(d => d.views);
+
+                    if (chartInstance) {
+                        chartInstance.destroy();
+                    }
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Просмотры',
+                                data: values,
+                                backgroundColor: '#00a0e3',
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#3a4247' },
+                                    ticks: { color: '#8c989e', stepSize: 1 }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#8c989e' }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false }
+                            }
+                        }
+                    });
+                }
+            });
+    }
+
+    const periodSelect = document.getElementById('periodSelect');
+    periodSelect.addEventListener('change', function() {
+        loadData(this.value);
+    });
+
+    // Initial load
+    loadData(periodSelect.value);
+});
+</script>
+
+` }) %>

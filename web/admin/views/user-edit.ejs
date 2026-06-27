@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Редактирование пользователя - <%= u.username %> | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="user-edit-page">
+        <h2 class="user-edit-title">Редактирование пользователя - <%= u.username %> (ID: <%= u.id %>)</h2>
+        <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+        
+        <form action="/users/<%= u.id %>/edit" method="POST" enctype="multipart/form-data">
+          
+          <div class="user-edit-top-section">
+            <div class="user-edit-fields">
+              <div class="form-group">
+                <label>Юзернейм:</label>
+                <input type="text" name="username" value="<%= u.username %>" class="form-control" maxlength="13" pattern="[a-zA-Z0-9_-]+" title="Имя пользователя может содержать только латинские буквы, цифры, дефисы и нижние подчеркивания" required <%= isModOnly ? 'disabled' : '' %>>
+              </div>
+              
+              <div class="form-group">
+                <label>Почта:</label>
+                <input type="email" name="email" value="<%= u.email %>" class="form-control" <%= isModOnly ? 'disabled' : '' %>>
+              </div>
+              
+              <div class="form-group">
+                <label>Пароль:</label>
+                <input type="text" name="password" placeholder="" class="form-control" minlength="6" <%= isModOnly ? 'disabled' : '' %>>
+              </div>
+              <p class="pwd-note">Примечание: поле не является обязательным для заполнения.</p>
+            </div>
+            
+            <div class="user-edit-avatar-section">
+              <label>Аватар:</label>
+              <div class="avatar-preview-box">
+                <img src="<%= CDN_BASE_URL %><%= u.avatar %>" alt="user avatar" id="avatarPreview">
+              </div>
+              <% if (!isModOnly) { %>
+              <div class="avatar-buttons">
+                <label class="btn-black-border">
+                  Загрузить новый
+                  <input type="file" name="avatar" accept="image/*" style="display:none;" id="avatarInput">
+                </label>
+                <button type="button" class="btn-black-border" id="btnDeleteAvatar">Удалить аватар</button>
+                <input type="hidden" name="remove_avatar" id="remove_avatar" value="0">
+              </div>
+              <% } %>
+            </div>
+          </div>
+          
+          <div class="user-edit-info-section">
+            <h3 class="section-title">Информация о пользователе:</h3>
+            
+            <p><strong>Дата регистрации:</strong> <%= formatDate(u.created_at, userTimezone, 'DD.MM.YYYY HH:mm:ss') %></p>
+            <p><strong>Дата последнего захода:</strong> <%= formatDate(u.last_active, userTimezone, 'DD.MM.YYYY HH:mm:ss') %></p>
+            
+            <p><strong>Группа пользователя:</strong> <%= staff ? (staff.is_superadmin ? 'Администратор (Главный)' : (staff.role === 'admin' ? 'Администратор' : 'Модератор')) : 'Пользователь' %></p>
+            
+            <div class="status-row">
+              <div class="status-text">
+                <strong>Статус пользователя:</strong> 
+                <% if (u.deleted_at) { 
+                     const wipeDate = new Date(new Date(u.deleted_at).getTime() + 90 * 24 * 60 * 60 * 1000);
+                     const diffDays = Math.floor((wipeDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                %>
+                  Удален (срок до вайпа акка: <%= formatDate(wipeDate, userTimezone, 'DD.MM.YYYY') %> - осталось <%= diffDays > 0 ? diffDays : 0 %> дн.)
+                <% } else if (u.is_banned) { %>
+                  Заблокирован (срок бана до: <%= u.banned_until ? formatDate(u.banned_until, userTimezone, 'DD.MM.YYYY') : 'навсегда' %>)
+                <% } else { %>
+                  Активный
+                <% } %>
+              </div>
+              
+              <div class="status-action-btns" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <% if (u.is_banned) { %>
+                  <button type="button" class="btn-black-border" onclick="openBanModal()">Изменить бан / Разбан</button>
+                <% } else { %>
+                  <button type="button" class="btn-black-border" onclick="openBanModal()">Бан</button>
+                <% } %>
+                
+                <button type="button" class="btn-black-border <%= u.deleted_at ? 'btn-restore' : 'btn-danger' %>" onclick="openDeleteModal()"><%= u.deleted_at ? 'Отменить удаление' : 'Удалить полностью' %></button>
+              </div>
+            </div>
+            
+            <p><strong>Владеет каналом:</strong> 
+              <% if (channels && channels.length > 0) { %> 
+                Да (<% channels.forEach((c, i) => { %><a href="<%= APP_URL %>/<%= c.shortname || c.name %>" target="_blank" class="channel-link"><%= c.name %></a><% if(i < channels.length - 1) { %>, <% } %><% }) %>)
+              <% } else { %> 
+                Нет 
+              <% } %>
+            </p>
+            
+            <p><strong>Имеет доступ к каналам других пользователей:</strong> 
+              <% if (teamAccess && teamAccess.length > 0) { %> 
+                Да (<% teamAccess.forEach((t, i) => { %><a href="<%= APP_URL %>/<%= t.shortname || t.name %>" target="_blank" class="channel-link"><%= t.name %></a> - <%= t.is_editor ? 'Редактор' : (t.is_moderator ? 'Модератор' : 'Репортер') %><% if(i < teamAccess.length - 1) { %>, <% } %><% }) %>)
+              <% } else { %> Нет <% } %>
+            </p>
+            
+            <p><strong>Был приглашен:</strong> <%= inviter ? `Да (юзер: ${inviter})` : 'Нет' %></p>
+            <p><strong>Последняя смена пароля:</strong> <%= u.last_password_change ? formatDate(u.last_password_change, userTimezone, 'DD.MM.YYYY') : 'Нет данных' %></p>
+            <p style="display: flex; align-items: center; gap: 10px;">
+              <strong>Двухфакторная аутентификация (2FA):</strong> 
+              <% if (u.is_totp_enabled) { %>
+                <span style="color: #39b54a; font-weight: bold;">Включена</span>
+                <% if (!isModOnly) { %>
+                <button type="button" class="btn-black-border" onclick="document.getElementById('reset2faForm').submit();" style="padding: 2px 10px; margin: 0; background: #ff4d4d; border-color: #cc0000;">Сбросить (Утерян доступ)</button>
+                <% } %>
+              <% } else { %>
+                <span style="color: #ff6666;">Отключена</span>
+              <% } %>
+            </p>
+          </div>
+          
+          <div class="user-edit-additional-section">
+            <h3 class="section-title">Дополнительная информация:</h3>
+            
+            <div class="form-group-horiz">
+              <label>Discord:</label>
+              <input type="text" name="discord" value="<%= u.discord %>" class="form-control" <%= isModOnly ? 'disabled' : '' %>>
+            </div>
+            
+            <div class="form-group-horiz">
+              <label>Telegram:</label>
+              <input type="text" name="telegram" value="<%= u.telegram %>" class="form-control" <%= isModOnly ? 'disabled' : '' %>>
+            </div>
+            
+            <div class="form-group-horiz align-top">
+              <label>О себе:</label>
+              <textarea name="about" class="form-control" rows="4" style="resize: vertical;" <%= isModOnly ? 'disabled' : '' %>><%= u.about %></textarea>
+            </div>
+            
+            <div class="form-group-horiz">
+              <label>Дата рождения:</label>
+              <input type="date" name="birthdate" value="<%= u.birthdate ? formatDate(u.birthdate, userTimezone, 'YYYY-MM-DD') : '' %>" class="form-control" <%= isModOnly ? 'disabled' : '' %>>
+            </div>
+            
+            <div class="form-group-horiz">
+              <label>Часовой пояс:</label>
+              <input type="text" name="timezone" value="<%= u.timezone %>" class="form-control" <%= isModOnly ? 'disabled' : '' %>>
+            </div>
+          </div>
+          
+          <div class="user-edit-footer-actions">
+            <% if (!isModOnly) { %>
+            <button type="submit" class="btn-black-border btn-save">Сохранить</button>
+            <% } %>
+            <a href="/users" class="btn-black-border btn-cancel">Назад</a>
+          </div>
+          
+        </form>
+
+        <form id="reset2faForm" action="/users/<%= u.id %>/reset_2fa" method="POST" style="display: none;"></form>
+        
+        <!-- Modals -->
+        <div id="banModal" class="modal-overlay">
+          <div class="modal-content">
+            <h3 class="modal-title">Выдача блокировки пользователю <%= u.username %> (ID: <%= u.id %>)</h3>
+            <form action="/users/<%= u.id %>/ban" method="POST" id="banForm">
+              <div class="modal-body">
+                <div class="radio-group">
+                  <label>
+                    <input type="radio" name="ban_type" value="temporary" checked onchange="toggleBanDate(true)"> Временный
+                  </label>
+                  <label>
+                    <input type="radio" name="ban_type" value="permanent" <%= u.is_banned && !u.banned_until ? 'checked' : '' %> onchange="toggleBanDate(false)"> Бессрочный
+                  </label>
+                  <% if (u.is_banned) { %>
+                    <label style="color: #ff4d4d;">
+                      <input type="radio" name="ban_type" value="unban" onchange="toggleBanDate(false)"> Снять блокировку
+                    </label>
+                  <% } %>
+                </div>
+                
+                <div class="form-group" id="banDateGroup">
+                  <label>Срок бана:</label>
+                  <input type="date" name="banned_until" class="form-control" value="<%= u.banned_until ? formatDate(u.banned_until, userTimezone, 'YYYY-MM-DD') : '' %>">
+                </div>
+
+                <div id="ipBanGroup" style="display: none; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                  <label class="checkbox-group" style="margin-top: 0; color: #ff4d4d; font-weight: bold;">
+                    <input type="checkbox" name="ban_ip" id="banIpInput" value="1" onchange="toggleIpBanType(this.checked)">
+                    Блокировка по IP-адресу
+                  </label>
+                  <div id="ipBanTypeGroup" style="display: none; margin-top: 10px; margin-left: 20px;">
+                    <label>
+                      <input type="radio" name="ip_ban_type" value="account" checked> Только аккаунт (режим зрителя)
+                    </label>
+                    <br>
+                    <label style="margin-top: 5px; display: inline-block;">
+                      <input type="radio" name="ip_ban_type" value="full"> Полный бан (запрет доступа к сайту)
+                    </label>
+                  </div>
+                </div>
+                
+                <div class="form-group" style="width: 100%;">
+                  <label>Причина:</label>
+                  <textarea name="reason" id="banReasonInput" class="form-control" style="min-height: 120px; width: 100%; resize: none; box-sizing: border-box;" placeholder="Причина блокировки" maxlength="200"><%= u.ban_reason %></textarea>
+                </div>
+                
+                <label class="checkbox-group">
+                  <input type="checkbox" name="show_reason" value="1" <%= u.show_ban_reason ? 'checked' : '' %>>
+                  Показать причину блокировки пользователю
+                </label>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn-black-border">Выдать</button>
+                <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="deleteModal" class="modal-overlay">
+          <div class="modal-content">
+            <h3 class="modal-title">Удаление аккаунта пользователю <%= u.username %> (ID: <%= u.id %>)</h3>
+            <form action="/users/<%= u.id %>/delete" method="POST" id="deleteForm">
+              <div class="modal-body">
+                <% if (u.deleted_at) { %>
+                  <div class="modal-warning" style="color: #4caf50;">Вы собираетесь восстановить аккаунт пользователя.</div>
+                  <input type="hidden" name="action_type" value="restore">
+                <% } else { %>
+                  <div class="modal-warning">Обратите внимание, что данное действие будет необратимое, ибо оно полностью удаляет аккаунт из базы данных. (Дается 90 дней до полного стирания)</div>
+                  <input type="hidden" name="action_type" value="delete">
+                  <div class="form-group" style="width: 100%;">
+                    <label>Причина:</label>
+                    <textarea name="reason" class="form-control" style="min-height: 120px; width: 100%; resize: none; box-sizing: border-box;"><%= u.delete_reason || '' %></textarea>
+                  </div>
+                <% } %>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn-black-border"><%= u.deleted_at ? 'Восстановить' : 'Удалить' %></button>
+                <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+      </div>
+    </main>
+  </div>
+
+  <script>
+    function openBanModal() {
+      document.getElementById('banModal').classList.add('active');
+      // trigger date visibility logic
+      const activeRadio = document.querySelector('input[name="ban_type"]:checked');
+      if (activeRadio) {
+        toggleBanDate(activeRadio.value === 'temporary');
+      }
+    }
+    
+    function openDeleteModal() {
+      document.getElementById('deleteModal').classList.add('active');
+    }
+    
+    function closeModals() {
+      document.getElementById('banModal').classList.remove('active');
+      document.getElementById('deleteModal').classList.remove('active');
+    }
+    
+    function toggleBanDate(isTemporary) {
+      document.getElementById('banDateGroup').style.display = isTemporary ? 'flex' : 'none';
+      
+      const isPermanent = document.querySelector('input[name="ban_type"]:checked').value === 'permanent';
+      document.getElementById('ipBanGroup').style.display = isPermanent ? 'block' : 'none';
+      if (!isPermanent) {
+        document.getElementById('banIpInput').checked = false;
+        toggleIpBanType(false);
+      }
+    }
+
+    function toggleIpBanType(isChecked) {
+      document.getElementById('ipBanTypeGroup').style.display = isChecked ? 'block' : 'none';
+    }
+
+    // Avatar preview logic
+    const avatarInput = document.getElementById('avatarInput');
+    const avatarPreview = document.getElementById('avatarPreview');
+    const removeAvatarInput = document.getElementById('remove_avatar');
+    const btnDeleteAvatar = document.getElementById('btnDeleteAvatar');
+    
+    if (avatarInput) {
+      avatarInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+          const file = this.files[0];
+          
+          const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+          const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+          const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+          if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+            alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp).");
+            this.value = '';
+            return;
+          }
+
+          if (file.size > 4 * 1024 * 1024) {
+            alert("Размер файла превышает лимит 4 МБ.");
+            this.value = '';
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            avatarPreview.src = e.target.result;
+            removeAvatarInput.value = '0';
+          }
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+    
+    if (btnDeleteAvatar) {
+      btnDeleteAvatar.addEventListener('click', function() {
+        avatarPreview.src = '<%= CDN_BASE_URL %>/images/default_user_avatar.png';
+        removeAvatarInput.value = '1';
+        avatarInput.value = '';
+      });
+    }
+  </script>
+</body>
+</html>

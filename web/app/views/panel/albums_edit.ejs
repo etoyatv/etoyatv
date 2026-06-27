@@ -1,0 +1,113 @@
+<%- include('../panel_layout', { activeMenu: 'records', activeSubmenu: 'albums', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; <a href="/ru/panel,albums">Альбомы</a> &gt; Редактирование: ' + escapeHtml(album.title), body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #333;">Медиа-архив</span>
+        <a href="/ru/panel,albums" style="color: #888; text-decoration: none;">Альбомы</a>
+    </div>
+</div>
+
+<style>
+    .btn-move {
+        background: #5a6268 !important;
+        border-color: #545b62 !important;
+        padding: 5px 10px !important;
+        color: #fff !important;
+    }
+    .btn-move:hover {
+        background: #484e53 !important;
+        border-color: #484e53 !important;
+    }
+    .btn-remove {
+        background: #d9534f !important;
+        border-color: #d43f3a !important;
+        padding: 5px 10px !important;
+        color: #fff !important;
+    }
+    .btn-remove:hover {
+        background: #c9302c !important;
+        border-color: #c9302c !important;
+    }
+</style>
+
+<div style="padding: 20px; display: flex; gap: 30px;">
+    <!-- Левая колонка: Настройки альбома -->
+    <div style="flex: 1; max-width: 500px;">
+        <h2 style="color: #fff; margin-bottom: 20px; font-size: 20px;">Настройки альбома</h2>
+        
+        <form action="/ru/panel,albums,edit" method="POST">
+            <input type="hidden" name="id" value="${album.id}">
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; color: #8c989e;">Название альбома *</label>
+                <input type="text" name="title" value="${escapeHtml(album.title)}" required style="width: 100%; padding: 8px; border: 1px solid #333; background: #1a1e20; color: #fff; border-radius: 3px;">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; color: #8c989e;">Описание</label>
+                <textarea name="description" rows="4" style="width: 100%; padding: 8px; border: 1px solid #333; background: #1a1e20; color: #fff; border-radius: 3px;">${escapeHtml(album.description || '')}</textarea>
+            </div>
+
+            <button type="submit" class="btn" style="padding: 10px 20px;">Сохранить изменения</button>
+        </form>
+    </div>
+
+    <!-- Правая колонка: Видео в альбоме -->
+    <div style="flex: 2;">
+        <h2 style="color: #fff; margin-bottom: 20px; font-size: 20px;">Видеоролики (${albumRecords.length})</h2>
+        
+        <!-- Добавление видео -->
+        ${allRecords.length > 0 ? 
+        '<form action="/ru/panel,albums,add_record" method="POST" style="margin-bottom: 20px; display: flex; gap: 10px;">' +
+            '<input type="hidden" name="album_id" value="' + album.id + '">' +
+            '<select name="record_id" required style="flex-grow: 1; padding: 8px; border: 1px solid #333; background: #1a1e20; color: #fff; border-radius: 3px;">' +
+                '<option value="">-- Выберите видео для добавления --</option>' +
+                allRecords.map(r => '<option value="' + r.id + '">' + escapeHtml(r.title) + '</option>').join('') +
+            '</select>' +
+            '<button type="submit" class="btn">Добавить в альбом</button>' +
+        '</form>'
+        : 
+        '<div style="margin-bottom: 20px; color: #8c989e; font-size: 13px;">Нет доступных видео для добавления (или все уже в альбоме).</div>'
+        }
+
+        <!-- Список видео в альбоме -->
+        <div style="background-color: #343b40; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            ${albumRecords.length > 0 ? albumRecords.map((rec, idx) => 
+                '<div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; ' + (idx !== albumRecords.length - 1 ? 'border-bottom: 1px solid #4a545a;' : '') + '">' +
+                    '<div style="display: flex; align-items: center; gap: 15px;">' +
+                        '<img src="' + (rec.thumbnail_url || '/images/default_record_thumb.jpg') + '" alt="Thumb" style="width: 80px; height: 45px; object-fit: cover; border-radius: 2px;">' +
+                        '<div>' +
+                            '<div style="font-size: 14px; color: #6fdeee;">' + escapeHtml(rec.title) + '</div>' +
+                            '<div style="color: #8c989e; font-size: 11px;">Добавлено: ' + formatDate(rec.created_at, userTimezone, 'DD.MM.YYYY') + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="display: flex; gap: 5px;">' +
+                        (idx > 0 ? '<form action="/ru/panel,albums,move_record" method="POST" style="margin: 0;">' +
+                        '<input type="hidden" name="album_id" value="' + album.id + '">' +
+                        '<input type="hidden" name="album_record_id" value="' + rec.album_record_id + '">' +
+                        '<input type="hidden" name="direction" value="up">' +
+                        '<button type="submit" class="btn btn-move" title="Переместить вверх">↑</button>' +
+                        '</form>' : '') +
+                        (idx < albumRecords.length - 1 ? '<form action="/ru/panel,albums,move_record" method="POST" style="margin: 0;">' +
+                        '<input type="hidden" name="album_id" value="' + album.id + '">' +
+                        '<input type="hidden" name="album_record_id" value="' + rec.album_record_id + '">' +
+                        '<input type="hidden" name="direction" value="down">' +
+                        '<button type="submit" class="btn btn-move" title="Переместить вниз">↓</button>' +
+                        '</form>' : '') +
+                        '<form action="/ru/panel,albums,remove_record" method="POST" style="margin: 0;">' +
+                            '<input type="hidden" name="album_id" value="' + album.id + '">' +
+                            '<input type="hidden" name="album_record_id" value="' + rec.album_record_id + '">' +
+                            '<button type="submit" class="btn btn-remove">Убрать</button>' +
+                        '</form>' +
+                    '</div>' +
+                '</div>'
+            ).join('') : 
+                '<p style="color: #8c989e; text-align: center; margin: 20px 0;">В этом альбоме пока нет ни одного видео.</p>'
+            }
+        </div>
+
+    </div>
+</div>
+
+` }) %>

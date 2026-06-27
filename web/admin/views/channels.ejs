@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= pageTitle %></title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="users-header-stats">
+        <p>Всего: <strong><%= totalCount %></strong> каналов</p>
+      </div>
+
+      <div class="users-list">
+        <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+        <% channels.forEach(c => { %>
+          <div class="user-list-card <%= c.status === 'deleted' ? 'deleted' : '' %> <%= c.status === 'banned' ? 'banned' : '' %>" style="width: 100%; gap: 20px;">
+            <div class="u-card-avatar" style="width: 80px; height: 80px; border-radius: 4px; background-image: url('<%= c.logo_url && c.logo_url.startsWith('/') ? CDN_BASE_URL + c.logo_url : CDN_BASE_URL + '/images/logo_cort.png' %>'); flex-shrink: 0;"></div>
+            
+            <div class="u-card-info" style="flex-grow: 1; min-width: 0;">
+              <div class="u-card-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                <strong><a href="<%= APP_URL %>/<%= c.shortname %>" target="_blank" style="color: #3b9cd9; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= c.name %></a></strong> <span class="u-card-id">(id: <%= c.id %>)</span>
+              </div>
+              <div class="u-card-email" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                Владелец канала: <a href="<%= APP_URL %>/ru/account,userinfo/?username=<%= c.owner_username %>" target="_blank" style="color: #3b9cd9; text-decoration: none;"><%= c.owner_username %></a>
+              </div>
+              <div class="u-card-status">
+                Статус канала: 
+                <% if (c.status === 'deleted') { %>
+                  <span class="status-deleted">Удаленный</span>
+                <% } else if (c.status === 'banned') { %>
+                  <span class="status-banned">Заблокированный</span>
+                <% } else { %>
+                  <span class="status-active">Активный</span>
+                <% } %>
+              </div>
+            </div>
+            
+            <div class="u-card-actions" style="margin-left: auto; align-items: flex-end; flex-shrink: 0;">
+              <a href="/channels/<%= c.id %>/edit" class="btn-action" style="text-decoration:none; display:inline-block; text-align:center; white-space: nowrap; width: 170px;"><%= isModOnly ? 'Просмотр инфо' : 'Редактировать' %></a>
+              
+              <% if (c.status === 'banned') { %>
+                <form action="/channels/<%= c.id %>/toggle_status?redirect=<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>" method="POST" style="display: contents;">
+                  <input type="hidden" name="action_type" value="unban">
+                  <button type="submit" class="btn-action" style="white-space: nowrap; width: 170px;">Разбанить</button>
+                </form>
+              <% } else { %>
+                <button type="button" class="btn-action" onclick="openBanModal(<%= c.id %>)" style="white-space: nowrap; width: 170px;">Заблокировать</button>
+              <% } %>
+
+              <% if (!isModOnly) { %>
+              <form action="/channels/<%= c.id %>/delete?redirect=<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>" method="POST" style="display: contents;">
+                <input type="hidden" name="action" value="<%= c.status === 'deleted' ? 'restore' : 'delete' %>">
+                <button type="submit" class="btn-action <%= c.status === 'deleted' ? 'btn-restore' : 'btn-danger' %>" onclick="event.preventDefault(); const form = this.closest('form'); yatvConfirm('Вы уверены?', () => { form.submit(); });" style="white-space: nowrap; width: 170px;">
+                  <%= c.status === 'deleted' ? 'Восстановить' : 'Удалить полностью' %>
+                </button>
+              </form>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <!-- Pagination & Limits -->
+      <div class="pagination-section">
+        <form action="<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>" method="GET" class="limit-selector">
+          <input type="hidden" name="q" value="<%= q %>">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>?page=<%= page - 1 %>&limit=<%= limit %>&q=<%= q %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>?page=<%= page + 1 %>&limit=<%= limit %>&q=<%= q %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <div id="banModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3 style="margin-top:0; margin-bottom: 20px;">Блокировка канала</h3>
+      <form id="banForm" action="" method="POST">
+        <input type="hidden" name="action_type" value="ban">
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display:block; margin-bottom:5px; font-weight:bold;">Причина блокировки:</label>
+          <textarea name="ban_reason" class="form-control" rows="3" style="width:100%; max-width:100%; resize:none;" required placeholder="Опишите причину блокировки. Владелец не увидит причину, она для внутреннего пользования."></textarea>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="display:block; margin-bottom:5px; font-weight:bold;">Тип блокировки:</label>
+          <div style="display:flex; gap: 15px;">
+            <label style="display:flex; align-items:center; gap:5px; font-size:14px;">
+              <input type="radio" name="ban_type" value="permanent" checked onchange="document.getElementById('banDateInputContainer').style.display = 'none'; document.getElementById('banDateInput').removeAttribute('required');"> Навсегда
+            </label>
+            <label style="display:flex; align-items:center; gap:5px; font-size:14px;">
+              <input type="radio" name="ban_type" value="temporary" onchange="document.getElementById('banDateInputContainer').style.display = 'block'; document.getElementById('banDateInput').setAttribute('required', 'required');"> До времени
+            </label>
+          </div>
+        </div>
+        
+        <div id="banDateInputContainer" style="margin-bottom: 20px; display: none;">
+          <label style="display:block; margin-bottom:5px; font-weight:bold;">Снять блокировку:</label>
+          <input type="datetime-local" name="banned_until" id="banDateInput" class="form-control" style="width: 100%;">
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn-black-border" onclick="closeBanModal()">Отмена</button>
+          <button type="submit" class="btn-black-border" style="background:#ff4d4d; color:white; border-color:#ff4d4d;">Заблокировать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openBanModal(channelId) {
+      document.getElementById('banForm').action = '/channels/' + channelId + '/toggle_status?redirect=<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>';
+      document.getElementById('banModal').classList.add('active');
+    }
+    function closeBanModal() {
+      document.getElementById('banModal').classList.remove('active');
+    }
+  </script>
+</body>
+</html>

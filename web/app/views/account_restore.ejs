@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks" style="width: 500px; margin: 50px auto; float: none;">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Восстановление аккаунта</div>
+</div>
+</div>
+<div class="block-content" style="padding: 30px; text-align: center;">
+      <h2 style="color: #ff6666; margin-bottom: 20px;">Ваш аккаунт был удален</h2>
+      <p style="margin-bottom: 15px;">Аккаунт <strong><%= userToRestore %></strong> в данный момент находится в процессе удаления.</p>
+      <p style="margin-bottom: 30px;">До полного и безвозвратного удаления осталось дней: <strong><%= daysLeft %></strong>. Вы можете восстановить свой профиль и канал прямо сейчас, нажав на кнопку ниже.</p>
+      
+      <form action="/restore-account" method="POST">
+        <input type="hidden" name="username" value="<%= userToRestore %>">
+        <button type="submit" style="background: #333; border: 1px solid #555; padding: 10px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px; font-size: 14px;">Восстановить аккаунт</button>
+      </form>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

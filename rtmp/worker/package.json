@@ -1,0 +1,13 @@
+{
+  "name": "yatv-ffmpeg-worker",
+  "version": "1.0.0",
+  "description": "Background FFMPEG Worker",
+  "main": "worker.js",
+  "scripts": {
+    "start": "node worker.js"
+  },
+  "dependencies": {
+    "mysql2": "^3.9.1",
+    "fluent-ffmpeg": "^2.1.3"
+  }
+}

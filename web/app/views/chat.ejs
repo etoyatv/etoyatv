@@ -1,0 +1,99 @@
+<%- include('partials/header') %>
+<div id="content">
+  <div class="left_blocks" style="width: 100%; margin-top: 20px;">
+    <div class="block_item">
+      <div class="blackbox" style="width: auto;">
+        <div class="blackbox_tl"></div><div class="blackbox_tc"></div><div class="blackbox_tr"></div>
+        <div class="blackbox_cw">
+          <div class="blackbox_c">
+            <div class="blackbox_ci">
+              <div class="block-head-bg"></div>
+              <div class="block-head">
+                <div class="block-head-right">
+                  <div class="block-title">
+                    Переписка с <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(targetUser.username) %>" class="darkblue"><%= targetUser.username %></a>
+                  </div>
+                  <div style="float: right; font-size: 11px; font-weight: normal; margin-top: 6px; padding-right: 10px;">
+                    <% if (targetUser.username !== 'Администрация ЭтоЯTV') { %>
+                    <form action="/users/block/<%= encodeURIComponent(targetUser.username) %>" method="POST" style="display:inline; margin-right: 15px;">
+                      <button type="submit" style="background:none; border:none; color:#c0c0b2; cursor:pointer; font:inherit; padding:0; text-decoration:underline;" onmouseover="this.style.color='#fff';" onmouseout="this.style.color='#c0c0b2';"><%= areTheyBlocked ? 'Разблокировать' : 'Заблокировать' %></button>
+                    </form>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+              <div class="block-content" style="background: #2b2b2b;">
+                <div style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;" id="chatContainer">
+                  <% if (messages.length === 0) { %>
+                    <div style="color: #c0c0b2; text-align: center; margin-top: 20px; font-size: 12px;">Нет сообщений. Напишите первым!</div>
+                  <% } else { %>
+                    <% messages.forEach(function(msg, index) { 
+                      const bgColor = index % 2 === 0 ? '#2b2b2b' : '#222222';
+                    %>
+                      <div style="background: <%= bgColor %>; border-bottom: 1px solid #111; padding: 10px; display: flex; align-items: flex-start;">
+                        <div style="margin-right: 15px; flex-shrink: 0;">
+                          <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(msg.sender_name) %>"><img src="<%= CDN_BASE_URL %><%= msg.sender_avatar  %>" style="width: 50px; height: 50px; border: 1px solid #000;" alt="Avatar"></a>
+                        </div>
+                        <div style="flex-grow: 1; min-width: 0; padding-right: 15px;">
+                          <div style="margin-bottom: 5px;">
+                            <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(msg.sender_name) %>" class="darkblue" style="font-weight: bold;"><%= msg.sender_name %></a>
+                            <span style="color: #777; font-size: 11px; margin-left: 10px;"><%= formatDate(msg.created_at, userTimezone, 'DD.MM.YYYY HH:mm') %></span>
+                          </div>
+                          <div style="color: #c0c0b2; font-size: 12px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;"><%= msg.content %></div>
+                        </div>
+                        <div style="flex-shrink: 0; display: flex; align-items: center; gap: 5px;">
+                          <% if (msg.sender_name !== locals.user.username && msg.sender_name !== 'Администрация ЭтоЯTV') { %>
+                              <button type="button" onclick="openReportModal('pm', <%= msg.id %>)" style="background:none; border:none; color:#ffb86c; cursor:pointer; font-weight:bold; font-size: 11px;" title="Пожаловаться на сообщение">[!]</button>
+                          <% } %>
+                          <form action="/ru/messages/delete/<%= msg.id %>" method="POST" style="margin:0;" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Удалить это сообщение?', () => { form.submit(); });">
+                            <button type="submit" style="background:none; border:none; color:#ff6666; cursor:pointer; font-weight:bold; font-size: 11px;" title="Удалить">[x]</button>
+                          </form>
+                        </div>
+                      </div>
+                    <% }); %>
+                  <% } %>
+                </div>
+                <div style="padding: 15px; border-top: 1px solid #111; background: #232323;">
+                  <% if (amIBlocked) { %>
+                    <div style="color: #ff6666; text-align: center; padding: 10px; font-size: 12px;">Этот пользователь ограничил круг лиц, которые могут присылать ему сообщения.</div>
+                  <% } else if (areTheyBlocked) { %>
+                    <div style="color: #c0c0b2; text-align: center; padding: 10px; font-size: 12px;">Вы заблокировали этого пользователя. Чтобы отправить сообщение, сначала разблокируйте его.</div>
+                    <form action="/users/block/<%= encodeURIComponent(targetUser.username) %>" method="POST" style="text-align: center;">
+                      <button type="submit" style="background: #555; color: #fff; border: 1px solid #333; padding: 5px 15px; cursor: pointer; font-family: Tahoma, Arial, sans-serif; font-size: 12px;">Разблокировать</button>
+                    </form>
+                  <% } else if (targetUser.username === 'Администрация ЭтоЯTV') { %>
+                    <div style="color: #c0c0b2; text-align: center; padding: 10px; font-size: 12px; font-style: italic;">Это системный аккаунт. Ответы не принимаются.</div>
+                  <% } else { %>
+                    <form action="/ru/messages/<%= encodeURIComponent(targetUser.username) %>" method="POST" style="margin: 0;">
+                      <div style="margin-bottom: 10px;">
+                        <textarea name="content" style="width: 100%; height: 80px; background: #1a1a1a; border: 1px solid #111; color: #fff; padding: 5px; font-family: Tahoma, Arial, sans-serif; font-size: 12px; resize: vertical;" required maxlength="400"></textarea>
+                      </div>
+                      <div style="text-align: right;">
+                        <button type="submit" style="background: #333; color: #fff; border: 1px solid #111; padding: 5px 15px; cursor: pointer; font-family: Tahoma, Arial, sans-serif; font-size: 12px;">Отправить сообщение</button>
+                      </div>
+                    </form>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="blackbox_bl"></div><div class="blackbox_bc"></div><div class="blackbox_br"></div>
+      </div>
+    </div>
+  </div>
+  <div class="clear_both"></div>
+</div>
+<script>
+  const chatContainer = document.getElementById('chatContainer');
+  if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+  
+  // Enter to submit
+  document.querySelector('textarea[name="content"]').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      this.closest('form').submit();
+    }
+  });
+</script>
+<%- include('partials/footer') %>

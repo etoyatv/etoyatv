@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks" style="width: 500px; margin: 50px auto; float: none;">
+<div class="blackbox" id="unverified_block" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Подтверждение учетной записи</div>
+</div>
+</div>
+<div class="block-content" style="padding: 20px;">
+  <p style="color:#c0c0b2; margin-bottom: 20px;">
+    Письмо с кодом подтверждения было отправлено на указанный вами e-mail: <strong><%= email %></strong>.
+  </p>
+  <p style="color:#c0c0b2; margin-bottom: 20px;">
+    Пожалуйста, перейдите по ссылке в письме, чтобы активировать вашу учетную запись.
+  </p>
+  <p style="color:#888;">
+    <em>Если письмо не пришло в течение нескольких минут, проверьте папку "Спам" или вернитесь на <a href="/login" style="color:#6fdeee;">страницу входа</a> и запросите отправку письма повторно.</em>
+  </p>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

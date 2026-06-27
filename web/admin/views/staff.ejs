@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление доступом | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .search-container {
+      position: relative;
+      width: 100%;
+    }
+    .search-input {
+      width: 100%;
+      padding: 10px 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: white;
+      font-size: 14px;
+    }
+    .search-input:focus {
+      outline: none;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    .autocomplete-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #222;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      margin-top: 5px;
+      z-index: 100;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
+    }
+    .autocomplete-item {
+      padding: 10px 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .autocomplete-item:last-child {
+      border-bottom: none;
+    }
+    .autocomplete-item:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    .autocomplete-avatar {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background-size: cover;
+      background-position: center;
+    }
+    .grant-form {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 30px;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .grant-form-row {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    .btn-primary {
+      background: #4ade80;
+      color: #111;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="page-header">
+        <h1 class="page-title"><%= tab === 'admins' ? 'Администраторы' : 'Модераторы' %></h1>
+      </div>
+
+      <!-- Grant Form -->
+      <div class="grant-form">
+        <h3>Выдать права (<%= tab === 'admins' ? 'Администратора' : 'Модератора' %>)</h3>
+        <p style="color: #999; font-size: 13px; margin: 10px 0 20px 0;">
+          Начните вводить никнейм пользователя, выберите его из списка и нажмите "Выдать".
+        </p>
+        
+        <form action="/staff/grant" method="POST" id="grantForm" class="grant-form-row">
+          <input type="hidden" name="user_id" id="selectedUserId" required>
+          <input type="hidden" name="target_role" value="<%= tab === 'admins' ? 'admin' : 'moderator' %>">
+          
+          <div class="search-container" style="flex-grow: 1;">
+            <input type="text" id="searchInput" class="search-input" placeholder="Поиск по никнейму..." autocomplete="off">
+            <div id="autocompleteDropdown" class="autocomplete-dropdown"></div>
+          </div>
+          
+          <button type="submit" class="btn-primary" id="btnSubmit" disabled>Выдать</button>
+        </form>
+      </div>
+
+      <!-- Staff List -->
+      <div class="users-list">
+        <% if (staff.length === 0) { %>
+          <div style="color: #888; text-align: center; padding: 20px;">Нет назначенных пользователей.</div>
+        <% } %>
+        
+        <% staff.forEach(s => { %>
+          <div class="user-list-card <%= s.is_superadmin ? 'superadmin' : '' %>">
+            <div class="u-card-avatar" style="background-image: url('<%= CDN_BASE_URL %><%= s.avatar %>');"></div>
+            
+            <div class="u-card-info">
+              <div class="u-card-title">
+                <strong><%= s.username %></strong>
+                <% if (s.is_superadmin) { %>
+                  <span style="background: gold; color: #000; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 10px; font-weight: bold;">Главный администратор</span>
+                <% } %>
+              </div>
+              <div class="u-card-status">
+                Роль: <span style="color: #60a5fa;"><%= s.role === 'admin' ? 'Администратор' : 'Модератор' %></span>
+              </div>
+            </div>
+            
+            <div class="u-card-actions">
+              <% if (s.is_superadmin) { %>
+                <button class="btn-action" disabled style="opacity: 0.5; cursor: not-allowed;">Нельзя снять</button>
+              <% } else { %>
+                <form action="/staff/revoke/<%= s.staff_id %>" method="POST" style="display: inline;" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Снять полномочия?', () => { form.submit(); });">
+                  <button type="submit" class="btn-action btn-danger">Снять полномочия</button>
+                </form>
+              <% } %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <!-- Pagination & Limits -->
+      <div class="pagination-section" style="margin-top: 20px;">
+        <form action="/staff/<%= tab %>" method="GET" class="limit-selector">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/staff/<%= tab %>?page=<%= page - 1 %>&limit=<%= limit %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/staff/<%= tab %>?page=<%= page + 1 %>&limit=<%= limit %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const searchInput = document.getElementById('searchInput');
+    const dropdown = document.getElementById('autocompleteDropdown');
+    const selectedUserId = document.getElementById('selectedUserId');
+    const btnSubmit = document.getElementById('btnSubmit');
+    const CDN_BASE_URL = '<%= CDN_BASE_URL %>';
+    let debounceTimer;
+
+    searchInput.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const query = searchInput.value.trim();
+      
+      // Reset selection if user types something else
+      selectedUserId.value = '';
+      btnSubmit.disabled = true;
+
+      if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      debounceTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+          const users = await res.json();
+          
+          dropdown.innerHTML = '';
+          if (users.length === 0) {
+            dropdown.innerHTML = '<div style="padding: 10px; color: #888;">Ничего не найдено</div>';
+          } else {
+            users.forEach(u => {
+              const item = document.createElement('div');
+              item.className = 'autocomplete-item';
+              item.innerHTML = `
+                <div class="autocomplete-avatar" style="background-image: url('${CDN_BASE_URL}${u.avatar}')"></div>
+                <div>${u.username} <span style="color:#666; font-size:12px;">(id:${u.id})</span></div>
+              `;
+              item.addEventListener('click', () => {
+                searchInput.value = u.username;
+                selectedUserId.value = u.id;
+                dropdown.style.display = 'none';
+                btnSubmit.disabled = false;
+              });
+              dropdown.appendChild(item);
+            });
+          }
+          dropdown.style.display = 'block';
+        } catch (err) {
+          console.error(err);
+        }
+      }, 300);
+    });
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>

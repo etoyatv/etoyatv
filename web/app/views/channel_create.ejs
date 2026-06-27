@@ -1,0 +1,76 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks" style="width:650px; float:left; margin: 0 auto; display: block; float: none;">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Создание телеканала</div>
+</div> 
+</div>
+<div class="block-content" style="padding: 20px;">
+<% if (typeof error !== 'undefined' && error) { %>
+  <div style="color: #ff6b6b; margin-bottom: 15px;"><%= error %></div>
+<% } %>
+<% if (typeof hasAdminDeletedChannel !== 'undefined' && hasAdminDeletedChannel) { %>
+  <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; justify-content: center; align-items: center;">
+    <div style="background: #2a2a2a; border: 1px solid #ff4d4d; border-radius: 8px; padding: 30px; max-width: 500px; text-align: center; box-shadow: 0 4px 20px rgba(255, 77, 77, 0.2);">
+      <h2 style="color: #ff4d4d; margin-top: 0; margin-bottom: 20px; font-size: 24px;">Блокировка канала</h2>
+      <p style="color: #ddd; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
+        Ваш телеканал был поставлен на удаление администрацией платформы.<br><br>
+        Канал будет полностью удален в течении <b><%= adminDeletedDaysLeft %></b> дней без права восстановления. В течение этого времени создание нового канала невозможно.
+      </p>
+      <a href="/ru/panel,dashboard" style="display: inline-block; background: #ff4d4d; color: #fff; text-decoration: none; padding: 10px 25px; border-radius: 4px; font-weight: bold;">Понятно</a>
+    </div>
+  </div>
+<% } else if (typeof hasRecentlyDeletedChannel !== 'undefined' && hasRecentlyDeletedChannel !== false) { %>
+  <div style="background-color: #3a4247; border: 1px solid #ffcc00; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+    <p style="color: #ffcc00; margin: 0 0 15px 0; font-size: 13px;"><b>Внимание:</b> Вы недавно удалили свой телеканал. Вы действительно хотите восстановить канал? Осталось дней для восстановления: <b><%= hasRecentlyDeletedChannel %></b>.</p>
+    <form action="/channels/restore" method="post" style="display: inline-block;">
+      <button type="submit" style="background: #39b54a; border: 1px solid #2d923a; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Восстановить телеканал</button>
+    </form>
+  </div>
+<% } else { %>
+  <form action="/channels/create" method="post">
+    <div style="margin-bottom: 15px;">
+      <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Имя канала:</label>
+      <input type="text" name="name" required maxlength="77" style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
+    </div>
+    <div style="margin-bottom: 15px;">
+      <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Описание канала:</label>
+      <textarea name="description" rows="5" maxlength="200" style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;"></textarea>
+    </div>
+    <div style="margin-bottom: 25px;">
+      <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Короткое имя (ссылка):</label>
+      <div style="display: flex; align-items: center;">
+        <span style="color: #777; margin-right: 5px;">etoyatv.top/</span>
+        <input type="text" name="shortname" required pattern="[a-zA-Z0-9_-]+" title="Только латинские буквы, цифры, дефис и подчеркивание" style="flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
+      </div>
+    </div>
+    <div>
+      <button type="submit" style="background: #333; border: 1px solid #555; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Создать телеканал</button>
+    </div>
+  </form>
+<% } %>
+
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

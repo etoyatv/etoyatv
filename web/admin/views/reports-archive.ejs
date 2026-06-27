@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Архив жалоб | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .reports-page-title {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .report-wire-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      color: #fff;
+      font-family: 'Inter', 'Roboto', sans-serif;
+      max-width: 900px;
+      min-height: 120px;
+      transition: background 0.2s;
+    }
+    .report-wire-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .report-wire-left {
+      width: 120px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 10px;
+      flex-shrink: 0;
+    }
+    .report-wire-left img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .report-wire-middle {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+    }
+    .report-wire-middle .line {
+      font-size: 14px;
+      color: #ccc;
+    }
+    .report-wire-middle .line strong {
+      color: #fff;
+    }
+    .report-wire-right {
+      width: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      padding: 20px;
+      flex-shrink: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .status-badge {
+      padding: 8px 15px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      text-align: center;
+      width: 100%;
+    }
+    .status-badge.resolved {
+      background-color: rgba(74, 222, 128, 0.2);
+      color: #4ade80;
+      border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+    .status-badge.rejected {
+      background-color: rgba(248, 113, 113, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(248, 113, 113, 0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <main class="main-content">
+      <div class="reports-page-title">Архив обработанных жалоб (<%= typeof total_archived !== 'undefined' ? total_archived : complaints.length %>)</div>
+
+      <% if (complaints.length === 0) { %>
+        <p style="color: #a1b0b8; text-align: center;">В архиве пока пусто.</p>
+      <% } else { %>
+        <% complaints.forEach(c => { 
+            let titleText = `Жалоба на ${c.target_type}`;
+            let escapedOffenderName = escapeHtml(c.offender_name || '');
+            let linkHtml = c.target_link !== '#' ? `<a href="${c.target_link}" target="_blank" style="color: #00c6ff; text-decoration: none;">${escapedOffenderName || 'Ссылка'}</a>` : (escapedOffenderName || '');
+            
+            if (c.target_type === 'user') { titleText = `Жалоба на пользователя ${linkHtml}`; }
+            if (c.target_type === 'channel') { titleText = `Жалоба на канал ${linkHtml}`; }
+            if (c.target_type === 'record') { titleText = `Жалоба на запись ${linkHtml}`; }
+            if (c.target_type === 'pm') { titleText = `Жалоба на личное сообщение от ${linkHtml}`; }
+            if (c.target_type === 'channel_comment') { titleText = `Жалоба на комментарий канала от ${linkHtml}`; }
+            if (c.target_type === 'record_comment') { titleText = `Жалоба на комментарий записи от ${linkHtml}`; }
+        %>
+          <div class="report-wire-card">
+            <div class="report-wire-left">
+              <img src="<%= CDN_BASE_URL %><%= c.target_avatar || '/images/default_user_avatar.png' %>" alt="avatar">
+            </div>
+            <div class="report-wire-middle">
+              <div class="line"><%- titleText %></div>
+              <% if (c.reporter_name) { %>
+                <div class="line">От: <a href="<%= APP_URL %>/ru/account,userinfo/?username=<%= encodeURIComponent(c.reporter_name) %>" target="_blank" style="color: #00c6ff; text-decoration: none;"><%= c.reporter_name %></a></div>
+              <% } else { %>
+                <div class="line">От: Удаленный пользователь</div>
+              <% } %>
+              <div class="line">Причина: <%= c.reason.substring(0, 200) %><%= c.reason.length > 200 ? '...' : '' %></div>
+              <% if (c.target_content) { %>
+                <div class="line" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-top: 5px;">
+                  <strong>Контент:</strong> <%= c.target_content.substring(0, 300) %><%= c.target_content.length > 300 ? '...' : '' %>
+                </div>
+              <% } %>
+              <div class="line" style="color: #888;">Вердикт: <strong><%= c.verdict %></strong></div>
+            </div>
+            <div class="report-wire-right">
+              <div class="status-badge <%= c.status === 'resolved' ? 'resolved' : 'rejected' %>">
+                <%= c.status === 'resolved' ? 'Приняты меры' : 'Отклонена' %>
+              </div>
+              <div style="font-size: 11px; color: #888; text-align: center;">
+                <% 
+                  const d = new Date(c.created_at);
+                  const fDate = d.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'numeric'});
+                  const fTime = d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+                %>
+                <%= fDate %> <%= fTime %>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+      <% if (typeof page !== 'undefined' && typeof totalPages !== 'undefined') { %>
+      <div class="pagination-section" style="margin-top: 30px; max-width: 900px;">
+        <form action="<%= currentPath %>" method="GET" class="limit-selector">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="<%= currentPath %>?page=<%= page - 1 %>&limit=<%= limit %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="<%= currentPath %>?page=<%= page + 1 %>&limit=<%= limit %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Главная | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .dashboard-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 50px;
+    }
+    
+    .dashboard-top {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 40px;
+    }
+    
+    .dashboard-users-huge {
+      text-align: center;
+    }
+    
+    .dashboard-users-huge .number {
+      font-size: 48px;
+      font-weight: 900;
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .dashboard-users-huge .label {
+      font-size: 20px;
+      font-weight: 700;
+      color: #ccc;
+    }
+    
+    .dashboard-totals {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .dashboard-totals .title {
+      font-size: 20px;
+      font-weight: 800;
+      margin-bottom: 15px;
+    }
+    
+    .dashboard-totals .item {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .dashboard-middle {
+      text-align: center;
+    }
+    
+    .dashboard-middle .title {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 30px;
+    }
+    
+    .today-stats-grid {
+      display: flex;
+      justify-content: center;
+      gap: 80px;
+    }
+    
+    .today-stat-item {
+      font-size: 18px;
+      font-weight: 700;
+    }
+    
+    .today-stat-item span.max {
+      color: #888;
+      font-weight: 500;
+    }
+    
+    .dashboard-graphs {
+      display: flex;
+      gap: 30px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    
+    .graph-box {
+      background: rgba(255, 255, 255, 0.02);
+      border: 2px solid #000;
+      border-radius: 8px;
+      padding: 20px;
+      width: 400px;
+      height: 250px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .graph-box canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+    
+    .dashboard-footer {
+      text-align: right;
+      font-size: 24px;
+      font-weight: 900;
+      margin-top: 40px;
+    }
+    
+    @media (max-width: 992px) {
+      .today-stats-grid {
+        flex-direction: column;
+        gap: 20px;
+      }
+      .dashboard-graphs {
+        flex-direction: column;
+        align-items: center;
+      }
+      .graph-box {
+        width: 100%;
+        max-width: 500px;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard-top {
+        flex-direction: column;
+        gap: 30px;
+        padding: 20px;
+      }
+      .dashboard-users-huge .number {
+        font-size: 36px;
+      }
+      .dashboard-container {
+        margin: 20px auto;
+        gap: 30px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="dashboard-container">
+    <!-- Top Section -->
+    <div class="dashboard-top">
+      <div class="dashboard-users-huge">
+        <span class="number"><%= total_users %></span>
+        <span class="label">пользователей</span>
+      </div>
+      
+      <div class="dashboard-totals">
+        <div class="title">Всего на сайте:</div>
+        <div class="item"><%= total_channels %> каналов</div>
+        <div class="item"><%= total_news %> новостей</div>
+        <div class="item"><%= total_records %> записей</div>
+      </div>
+    </div>
+    
+    <!-- Middle Section -->
+    <div class="dashboard-middle">
+      <div class="title">Статистика сайта за сегодня:</div>
+      <div class="today-stats-grid">
+        <div class="today-stat-item">
+          <%= today_stats.avg_users || 0 %> пользователей в среднем <span class="max">(<%= today_stats.max_users || 0 %> max)</span>
+        </div>
+        <div class="today-stat-item">
+          <%= today_stats.avg_viewers || 0 %> зрителей в среднем <span class="max">(<%= today_stats.max_viewers || 0 %> max)</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Graphs Section -->
+    <div class="dashboard-graphs">
+      <div class="graph-box">
+        <canvas id="graph1"></canvas>
+      </div>
+      <div class="graph-box">
+        <canvas id="graph2"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rawData = <%- graph_data || '[]' %>;
+    
+    // Prepare data for Chart.js
+    const labels = rawData.map(d => {
+      const date = new Date(d.timestamp);
+      return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    });
+    
+    const usersData = rawData.map(d => d.users_online);
+    const viewersData = rawData.map(d => d.viewers_online);
+
+    // Common Chart Options
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          labels: { color: '#fff' }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+        y: { ticks: { color: '#888' }, grid: { color: 'rgba(255,255,255,0.1)' }, beginAtZero: true }
+      }
+    };
+
+    // Graph 1: Users
+    const ctx1 = document.getElementById('graph1').getContext('2d');
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: labels.length > 0 ? labels : ['00:00', '06:00', '12:00', '18:00', '24:00'],
+        datasets: [{
+          label: 'пользователи (за 24 часа)',
+          data: usersData.length > 0 ? usersData : [0,0,0,0,0],
+          borderColor: '#00c6ff',
+          backgroundColor: 'rgba(0, 198, 255, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: chartOptions
+    });
+
+    // Graph 2: Viewers
+    const ctx2 = document.getElementById('graph2').getContext('2d');
+    new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels: labels.length > 0 ? labels : ['00:00', '06:00', '12:00', '18:00', '24:00'],
+        datasets: [{
+          label: 'зрители (за 24 часа)',
+          data: viewersData.length > 0 ? viewersData : [0,0,0,0,0],
+          borderColor: '#ff4b2b',
+          backgroundColor: 'rgba(255, 75, 43, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: chartOptions
+    });
+  </script>
+</body>
+</html>

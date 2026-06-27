@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title><%= title || 'Ошибка' %> | ЭтоЯTV</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #1a1a1a;
+      background-image: radial-gradient(circle at top right, rgba(0, 198, 255, 0.1), transparent 40%),
+                        radial-gradient(circle at bottom left, rgba(0, 114, 255, 0.1), transparent 40%);
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .error-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 550px;
+    }
+    .error-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 50px 40px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      animation: float 6s ease-in-out infinite;
+    }
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    .logo-img {
+      max-width: 180px;
+      height: auto;
+      margin-bottom: 35px;
+      display: inline-block;
+      filter: drop-shadow(0 0 10px rgba(0, 198, 255, 0.3));
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, #ffffff, #aaaaaa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #cccccc;
+      margin-bottom: 30px;
+      font-weight: 400;
+      word-wrap: break-word;
+    }
+    .error-code {
+      display: inline-flex;
+      align-items: center;
+      background-color: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #888888;
+      letter-spacing: 1px;
+    }
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background-color: #f87171;
+      border-radius: 50%;
+      margin-right: 8px;
+      box-shadow: 0 0 10px #f87171;
+    }
+    .glow-effect {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 150%;
+      height: 150%;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle, rgba(0, 198, 255, 0.05) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    @media (max-width: 600px) {
+      .error-card {
+        padding: 40px 20px;
+      }
+      h1 { font-size: 26px; }
+      p { font-size: 14px; }
+      .logo-img { max-width: 140px; margin-bottom: 25px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="error-wrapper">
+    <div class="glow-effect"></div>
+    <div class="error-card">
+      <img src="<%= typeof CDN_BASE_URL !== 'undefined' ? CDN_BASE_URL : '' %>/images/logo.svg" alt="ЭтоЯTV" class="logo-img" onerror="this.style.display='none'">
+      <h1><%= title || 'Ошибка' %></h1>
+      <p><%= message || 'Произошла непредвиденная ошибка.' %></p>
+      <% if (typeof status !== 'undefined') { %>
+        <div class="error-code">
+          <span class="status-dot"></span>Код: <%= status %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>

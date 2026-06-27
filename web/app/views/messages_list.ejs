@@ -1,0 +1,109 @@
+<%- include('partials/header') %>
+<div id="content">
+  <div class="left_blocks" style="width: 100%; margin-top: 20px;">
+    <div class="block_item">
+      <div class="blackbox" style="width: auto;">
+        <div class="blackbox_tl"></div><div class="blackbox_tc"></div><div class="blackbox_tr"></div>
+        <div class="blackbox_cw">
+          <div class="blackbox_c">
+            <div class="blackbox_ci">
+              <div class="block-head-bg"></div>
+              <div class="block-head">
+                <div class="block-head-right">
+                  <div class="block-title">Мои сообщения</div>
+                </div>
+              </div>
+              <div class="block-content" style="background: #2b2b2b; padding: 0;">
+                <div style="background: #232323; padding: 15px; border-bottom: 1px solid #111;">
+                  <div style="font-weight: bold; margin-bottom: 10px; color: #fff;">Написать сообщение пользователю:</div>
+                  <form id="searchForm" style="margin: 0; position: relative; width: 400px;" onsubmit="event.preventDefault(); const v = document.getElementById('userSearchInput').value.trim(); if(v) window.location.href='/ru/messages/' + encodeURIComponent(v);">
+                    <input type="text" id="userSearchInput" style="width: 100%; background: #1a1a1a; border: 1px solid #111; color: #fff; padding: 6px; box-sizing: border-box;" placeholder="Введите ник и нажмите Enter..." autocomplete="off" required>
+                    <div id="userSearchResults" style="position: absolute; top: 100%; left: 0; width: 100%; background: #2b2b2b; border: 1px solid #555; z-index: 100; display: none; max-height: 200px; overflow-y: auto;"></div>
+                  </form>
+                </div>
+                <% if (conversations.length === 0) { %>
+                  <div style="padding: 20px; color: #c0c0b2; text-align: center; font-size: 12px;">У вас пока нет диалогов. Начните переписку, зайдя в профиль любого пользователя.</div>
+                <% } else { %>
+                  <ul style="list-style: none; padding: 0; margin: 0;">
+                    <% conversations.forEach(function(conv, index) { 
+                      const bgColor = index % 2 === 0 ? '#2b2b2b' : '#222222';
+                      const isNew = conv.receiver_id === currentUserId && conv.is_read === 0;
+                    %>
+                      <li style="background: <%= isNew ? '#3a3a3a' : bgColor %>; border-bottom: 1px solid #111; padding: 10px; overflow: hidden;">
+                        <div style="float: left; width: 50px; margin-right: 15px;">
+                          <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(conv.other_username) %>"><img src="<%= CDN_BASE_URL %><%= conv.other_avatar  %>" style="width: 50px; height: 50px; border: 1px solid #000;" alt="Avatar"></a>
+                        </div>
+                        <div style="float: left; width: 750px;">
+                          <div style="margin-bottom: 5px;">
+                            <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(conv.other_username) %>" class="darkblue" style="font-weight: bold;"><%= conv.other_username %></a>
+                            <span style="color: #777; font-size: 11px; margin-left: 10px;"><%= formatDate(conv.created_at, userTimezone, 'DD.MM.YYYY HH:mm') %></span>
+                            <% if (isNew) { %>
+                              <span style="color: #8fdb5a; font-weight: bold; font-size: 11px; margin-left: 10px;">[Новое сообщение]</span>
+                            <% } %>
+                          </div>
+                          <div style="color: #c0c0b2; font-size: 12px;">
+                            <% if (conv.sender_id === currentUserId) { %>
+                              <span style="color: #777;">Вы: </span>
+                            <% } %>
+                            <a href="/ru/messages/<%= encodeURIComponent(conv.other_username) %>" style="color: #c0c0b2; text-decoration: none;">
+                              <%= conv.content.substring(0, 100) %><%= conv.content.length > 100 ? '...' : '' %>
+                            </a>
+                          </div>
+                        </div>
+                        <div style="float: right; margin-top: 15px;">
+                          <a href="/ru/messages/<%= encodeURIComponent(conv.other_username) %>" class="darkblue" style="text-decoration: underline; font-size: 11px;">Читать переписку</a>
+                        </div>
+                        <div class="clear_both"></div>
+                      </li>
+                    <% }); %>
+                  </ul>
+                <% } %>
+                <div class="clear_both"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="blackbox_bl"></div><div class="blackbox_bc"></div><div class="blackbox_br"></div>
+      </div>
+    </div>
+  </div>
+  <div class="clear_both"></div>
+</div>
+<script>
+  const searchInput = document.getElementById('userSearchInput');
+  const searchResults = document.getElementById('userSearchResults');
+
+  searchInput.addEventListener('input', async function() {
+    const q = this.value.trim();
+    if (q.length < 1) {
+      searchResults.style.display = 'none';
+      return;
+    }
+    const res = await fetch('/api/users/search?q=' + encodeURIComponent(q));
+    const users = await res.json();
+    
+    if (users.length === 0) {
+      searchResults.innerHTML = '<div style="padding: 10px; color: #777; font-size: 12px;">Пользователь не найден</div>';
+    } else {
+      const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
+      searchResults.innerHTML = users.map(u => {
+        const avatar = u.avatar ? escapeHTML(u.avatar) : '/images/default_user_avatar.png';
+        const safeUsername = escapeHTML(u.username);
+        return `
+          <a href="/ru/messages/${encodeURIComponent(u.username)}" style="display: flex; align-items: center; padding: 5px 10px; text-decoration: none; color: #6fdeee; border-bottom: 1px solid #111;">
+            <img src="${avatar}" style="width: 20px; height: 20px; margin-right: 10px; border: 1px solid #000;">
+            <span style="font-weight: bold; font-size: 12px;">${safeUsername}</span>
+          </a>
+        `;
+      }).join('');
+    }
+    searchResults.style.display = 'block';
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+      searchResults.style.display = 'none';
+    }
+  });
+</script>
+<%- include('partials/footer') %>

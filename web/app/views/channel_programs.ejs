@@ -1,0 +1,163 @@
+<%- include('partials/header') %>
+<style type="text/css">
+.theme_default { color: #C0C0B2; }
+.theme_default a { color: #6FDEEE; }
+.theme_default h1, .theme_default h2, .theme_default h3, .theme_default h4, .theme_default h5 { color: #FFFFFF; }
+</style>
+
+<div id="content">
+
+<div class="left_blocks">
+<div class="block_item">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Расписание телеканала (<a href="/ru/channel,programs?shortname=<%= channel.shortname %>" title="Все расписание телеканала" class="darkblue"><%= (programs ? programs.length : 0) + (channel.is_live ? 1 : 0) %></a>)</div>
+<div class="block-buttons">
+<a href="/ru/channel,programs?shortname=<%= channel.shortname %>" title="Все расписание телеканала" class="block-buttons-bg-last"><span class="block-head-icon-archive"></span></a>
+</div>
+</div> 
+</div>
+<div class="block-content" style="padding: 10px;">
+<div id="records_list"> 
+<div class="records_list">
+
+<% if (channel.is_live && page === 1) { %>
+    <div class="item first item_end" id="schedule_live_item">
+      <div class="record_item" style="position: relative;">
+        <a href="/<%= channel.shortname %>" class="thumb"
+          style="background: url('/tvsnapshots/<%= channel.shortname %>.jpg') center center / cover no-repeat, url('<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png' %>') center center / cover no-repeat #000; position: relative; overflow: hidden;">
+          <% if (channel.is_18_plus) { %>
+          <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(15px); background: rgba(0,0,0,0.3); z-index: 1;"></div>
+          <% } %>
+          <span class="border_thumb" style="position: relative; z-index: 2;">
+            <div class="record_time"
+              style="background: #111; padding: 1px 4px; color: #fff; font-size: 11px;"
+              id="schedule_viewers_count">
+              <%= channel.viewers || 0 %> зрителей
+            </div>
+          </span>
+        </a>
+        <div class="info">
+          <div class="title"><a href="/<%= channel.shortname %>"
+              style="color: #6FDEEE; font-size: 15px; text-decoration: none;" id="schedule_live_title">
+              <%= channel.live_title || ('Передача от ' + formatDate(channel.live_started_at || new Date(), userTimezone, 'DD.MM.YYYY HH:mm')) %>
+            </a></div>
+          <div class="channel" style="margin-top:4px; font-size: 11px; color: #8c989e;">Телеканал: <a
+              href="/<%= channel.shortname %>" style="color: #6FDEEE; text-decoration: none;">
+              <%= channel.name %>
+            </a></div>
+          <div class="date" style="margin-top:4px; font-size: 11px; color: #aaa; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">Описание передачи не заполнено
+          </div>
+        </div>
+      </div>
+      <div class="clear_both"></div>
+    </div>
+<% } %>
+
+<% if (locals.programs && programs.length > 0) { %>
+    <% programs.forEach(function(p, index) { %>
+        <div class="item <%= (!channel.is_live && index === 0) ? 'first' : '' %> <%= index === programs.length - 1 ? 'last item_end' : '' %>" style="padding: 10px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
+            <div style="float: left; width: 60px; text-align: center; margin-right: 15px; padding-top: 5px;">
+              <% const d = new Date(p.start_time); %>
+              <div style="font-size: 14px; color: #fff;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
+              <div style="font-size: 11px; color: #8c989e;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
+            </div>
+            <div class="logo" style="float: left; width: 60px; height: 60px; padding: 1px; background: url('<%= CDN_BASE_URL %>/images/css_img_38_border.bg.png') repeat; margin-right: 15px;">
+              <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: cover; display: block; background: #fff; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+            </div>
+            <div class="info" style="overflow: hidden; padding-top: 5px;">
+                <div class="title" style="margin-bottom: 5px;"><span style="color: #6FDEEE; font-size: 13px;"><%= p.title %></span></div> 
+                <div class="channel" style="margin-bottom: 5px; font-size: 11px; color: #8c989e;">
+                  Телеканал: <a href="/<%= channel.shortname %>" style="color: #6FDEEE; text-decoration: none;"><%= channel.name %></a>
+                </div>
+                <div class="description" style="font-size: 11px; color: #555; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">
+                  <%= p.description || 'Описание передачи не заполнено' %>
+                </div>
+                <div style="margin-top: 10px;">
+                  <a href="#" onclick="event.preventDefault(); toggleBookmark(<%= p.id %>, this);" style="font-size: 11px; color: #00a0e3; text-decoration: none;">
+                    <%= (typeof p.is_bookmarked !== 'undefined' ? p.is_bookmarked : false) ? 'Удалить из личного расписания' : 'Добавить в личное расписание' %>
+                  </a>
+                </div>
+            </div> 
+        </div>
+    <% }); %>
+<% } else if (!channel.is_live) { %>
+    <p style="color: #c0c0b2;">Нет запланированных передач</p>
+<% } %>
+
+</div>
+<!-- Pager Navigator --> 
+<div class="pager">
+    <% if (totalPages > 1) { %>
+        <% if (page > 1) { %>
+            <div style="float:left;">
+                <div class="item prev"><a href="/ru/channel,programs?shortname=<%= channel.shortname %>&page=<%= page - 1 %>">« Пред.</a></div>
+            </div>
+        <% } %>
+
+        <% for(let i=1; i<=totalPages; i++) { %>
+            <% if (i === page) { %>
+                <div class="item active"><%= i %></div>
+            <% } else if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) { %>
+                <div class="item"><a href="/ru/channel,programs?shortname=<%= channel.shortname %>&page=<%= i %>"><%= i %></a></div>
+            <% } else if (i === page - 3 || i === page + 3) { %>
+                <div class="item">...</div>
+            <% } %>
+        <% } %>
+
+        <% if (page < totalPages) { %>
+            <div style="float:right;">
+                <div class="item next"><a href="/ru/channel,programs?shortname=<%= channel.shortname %>&page=<%= page + 1 %>">След. »</a></div>
+            </div>
+        <% } %>
+    <% } %>
+<div class="clear_both"></div>
+</div> 
+<!-- Pager Navigator --> 
+</div>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+</div>
+
+<div class="right_blocks">
+<%- include('partials/channel_sidebar', { activePage: 'programs' }) %>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<script>
+window.toggleBookmark = async function(programId, el) {
+  try {
+    const res = await fetch(`/api/programs/${programId}/bookmark`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      if (data.action === 'removed') {
+        el.innerText = 'Добавить в личное расписание';
+      } else {
+        el.innerText = 'Удалить из личного расписания';
+      }
+    } else {
+      alert(data.error || 'Ошибка');
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
+};
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,77 @@
+<%- include('../panel_layout', { activeMenu: typeof activeMenu !== 'undefined' ? activeMenu : 'records', activeSubmenu: typeof activeSubmenu !== 'undefined' ? activeSubmenu : 'all', breadcrumbs: typeof breadcrumbs !== 'undefined' ? breadcrumbs : '<a href="/ru/panel,dashboard">Панель управления</a> &gt; <a href="/ru/panel,records">Медиа-архив</a>', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #333;">Медиа-архив</span>
+        <a href="/ru/panel,records,upload" style="color: #888; text-decoration: none;">Загрузить видео</a>
+    </div>
+    <div>
+        <form action="" method="GET" style="margin: 0; display: inline;">
+            <input type="text" name="q" placeholder="Поиск по записям..." style="padding: 5px; border: 1px solid #ccc; width: 200px;" value="${typeof searchQuery !== 'undefined' ? escapeHtml(searchQuery) : ''}">
+            <button type="submit" class="btn" style="padding: 5px; height: 26px;">&#128269;</button>
+        </form>
+    </div>
+</div>
+<div style="text-align: right; margin-bottom: 15px; color: #8c989e; font-size: 13px;">
+    Всего загруженных записей: <strong>${typeof locals !== 'undefined' && locals.panelStats ? locals.panelStats.totalRecords : records.length}</strong>
+</div>
+
+<form id="bulk-delete-form" action="/ru/panel,records,bulk_delete" method="POST" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Удалить выбранные записи?', () => { form.submit(); });"></form>
+<div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; background-color: #343b40; padding: 10px; border-radius: 4px; border: 1px solid #1a1e20;">
+    <label style="color: #fff; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px;">
+        <input type="checkbox" id="select-all" onclick="const c = document.querySelectorAll('.record-checkbox'); c.forEach(cb => cb.checked = this.checked);">
+        Выбрать все
+    </label>
+    <button type="submit" form="bulk-delete-form" class="btn" style="padding: 5px 15px; background: #ff4d4d; border-color: #cc0000; color: white;" id="bulk-delete-btn">Удалить выбранные</button>
+</div>
+
+${(records && records.length > 0) ? records.map(rec => `
+    <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+        <div style="width: 20px; padding-top: 10px;"><input type="checkbox" name="record_ids" value="${rec.id}" class="record-checkbox" form="bulk-delete-form"></div>
+        <div style="flex-grow: 1;">
+            <div style="display: flex; gap: 15px; background-color: #343b40; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+                <div style="width: 200px; height: 110px; background-color: #000; position: relative; overflow: hidden; border-radius: 2px;">
+                    <a href="/ru/tv,viewrecord,${rec.id}">
+                        <img src="${locals.CDN_BASE_URL || ''}${rec.thumbnail_url || '/images/default_record_thumb.jpg'}" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.8; transition: opacity 0.2s;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.8">
+                    </a>
+                    <span style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.7); color: #fff; font-size: 11px; padding: 2px 4px; pointer-events: none;">${('0' + Math.floor(rec.duration / 3600)).slice(-2)}:${('0' + Math.floor((rec.duration % 3600) / 60)).slice(-2)}:${('0' + (rec.duration % 60)).slice(-2)}</span>
+                    ${!rec.hls_url ? '<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; pointer-events: none;"><span style="background: #f39c12; color: #fff; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">В ОБРАБОТКЕ</span></div>' : ''}
+                </div>
+                
+                <div style="flex-grow: 1; font-size: 12px; line-height: 1.8;">
+                    <div style="font-size: 18px; color: #6fdeee; margin-bottom: 10px;">
+                        <a href="/ru/tv,viewrecord,${rec.id}" style="color: #6fdeee; text-decoration: none;">${escapeHtml(rec.title)}</a>
+                        ${(rec.status === 'banned' || rec.status === 'deleted') ? '<span style="background: #e74c3c; color: white; padding: 2px 6px; font-size: 11px; border-radius: 3px; vertical-align: middle; margin-left: 10px;">Заблокирована администрацией</span>' : ''}
+                    </div>
+                    <span style="color:#8c989e; display:inline-block; width: 120px;">Добавлено:</span> ${formatDate(rec.created_at, userTimezone)}<br>
+                    <span style="color:#8c989e; display:inline-block; width: 120px;">Просмотры:</span> ${rec.views}<br>
+                    <span style="color:#8c989e; display:inline-block; width: 120px;">Описание:</span> ${escapeHtml(rec.description || 'Описание не заполнено')}<br>
+                    
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <a href="/ru/panel,records,edit?id=${rec.id}" class="btn" style="display:inline-block; padding: 5px 15px; text-decoration: none;">Редактировать</a>
+                        <form action="/ru/panel,records,delete" method="POST" style="margin: 0; display: inline;" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Удалить запись?', () => { form.submit(); });">
+                            <input type="hidden" name="id" value="${rec.id}">
+                            <button type="submit" class="btn">Удалить</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+`).join('') : `
+    <p style="color: #8c989e; text-align: center; margin-top: 50px;">
+        Вы еще не загрузили ни одного видео. Нажмите кнопку «Загрузить видео» слева.<br><br>
+        <a href="/ru/panel,records,upload" class="btn" style="text-decoration: none; padding: 10px 20px; font-size: 14px;">Загрузить видео</a>
+    </p>
+`}
+
+${(typeof totalPages !== 'undefined' && totalPages > 1) ? 
+    '<div style="margin-top: 20px; text-align: center;">' +
+        (currentPage > 1 ? '<a href="?page=' + (currentPage - 1) + (typeof searchQuery !== 'undefined' && searchQuery ? '&q='+encodeURIComponent(searchQuery) : '') + '" class="btn" style="padding: 5px 15px; margin-right: 5px; text-decoration: none;">&laquo; Назад</a>' : '') +
+        '<span style="color: #8c989e; margin: 0 10px;">Страница ' + currentPage + ' из ' + totalPages + '</span>' +
+        (currentPage < totalPages ? '<a href="?page=' + (currentPage + 1) + (typeof searchQuery !== 'undefined' && searchQuery ? '&q='+encodeURIComponent(searchQuery) : '') + '" class="btn" style="padding: 5px 15px; margin-left: 5px; text-decoration: none;">Вперед &raquo;</a>' : '') +
+    '</div>'
+: ''}
+
+` }) %>

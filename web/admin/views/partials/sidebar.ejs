@@ -1,0 +1,102 @@
+<aside class="sidebar">
+  <% if (typeof currentPath !== 'undefined' && currentPath.startsWith('/logs')) { %>
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Логи системы:</div>
+      <a href="/logs?category=user" class="sidebar-link <%= (typeof category !== 'undefined' && category === 'user') ? 'active' : '' %>">Логи пользователей</a>
+      <a href="/logs?category=team" class="sidebar-link <%= (typeof category !== 'undefined' && category === 'team') ? 'active' : '' %>">Логи команды</a>
+      <a href="/logs?category=rtmp" class="sidebar-link <%= (typeof category !== 'undefined' && category === 'rtmp') ? 'active' : '' %>">Логи вещания (RTMP)</a>
+      <a href="/logs?category=admin" class="sidebar-link <%= (typeof category !== 'undefined' && category === 'admin') ? 'active' : '' %>">Логи администраторов</a>
+      <a href="/logs?category=system" class="sidebar-link <%= (typeof category !== 'undefined' && category === 'system') ? 'active' : '' %>">Логи системы</a>
+      <a href="/logs" class="sidebar-link <%= (typeof category === 'undefined' || !category) ? 'active' : '' %>">Все логи</a>
+    </div>
+  <% } else if (typeof currentPath !== 'undefined' && currentPath.startsWith('/reports')) { %>
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Жалобы:</div>
+      <a href="/reports/users" class="sidebar-link <%= currentPath === '/reports/users' ? 'active' : '' %>">Пользователи</a>
+      <a href="/reports/channels" class="sidebar-link <%= currentPath === '/reports/channels' ? 'active' : '' %>">Каналы</a>
+      <a href="/reports/records" class="sidebar-link <%= currentPath === '/reports/records' ? 'active' : '' %>">Записи</a>
+      <a href="/reports/pms" class="sidebar-link <%= currentPath === '/reports/pms' ? 'active' : '' %>">Личные сообщения</a>
+      <a href="/reports/archive" class="sidebar-link <%= currentPath === '/reports/archive' ? 'active' : '' %>">Архив жалоб</a>
+    </div>
+  <% } else if (typeof currentPath !== 'undefined' && currentPath.startsWith('/records')) { %>
+    <div class="sidebar-group">
+      <a href="/records" class="sidebar-link <%= (typeof q === 'undefined' || !q) ? 'active' : '' %>">Все записи</a>
+      <a href="#" class="sidebar-link <%= (typeof q !== 'undefined' && q) ? 'active' : '' %>" onclick="document.getElementById('searchForm').style.display='block'; return false;">Поиск записей</a>
+      
+      <form id="searchForm" class="news-search-form" action="/records" method="GET" style="display: <%= (typeof q !== 'undefined' && q) ? 'block' : 'none' %>; margin-top: 10px;">
+        <input type="text" name="q" class="news-search-input" placeholder="Поиск..." value="<%= typeof q !== 'undefined' ? q : '' %>" style="width: 100%; background: #111; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif;">
+        <button type="submit" class="news-search-btn" style="width: 100%; background: #00c6ff; color: #000; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">Найти</button>
+        <% if (typeof q !== 'undefined' && q) { %>
+          <a href="/records" style="display: block; text-align: center; color: #888; font-size: 12px; margin-top: 5px; text-decoration: none;">Сбросить</a>
+        <% } %>
+      </form>
+    </div>
+  <% } else if (typeof currentPath !== 'undefined' && currentPath.startsWith('/news')) { %>
+    <div class="sidebar-group">
+      <a href="/news" class="sidebar-link <%= (typeof search === 'undefined' || !search) ? 'active' : '' %>">Все новости</a>
+      <a href="#" class="sidebar-link <%= (typeof search !== 'undefined' && search) ? 'active' : '' %>" onclick="document.getElementById('searchForm').style.display='block'; return false;">Поиск новостей</a>
+      
+      <form id="searchForm" class="news-search-form" action="/news" method="GET" style="display: <%= (typeof search !== 'undefined' && search) ? 'block' : 'none' %>; margin-top: 10px;">
+        <input type="text" name="search" class="news-search-input" placeholder="Поиск..." value="<%= typeof search !== 'undefined' ? search : '' %>" style="width: 100%; background: #111; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif;">
+        <button type="submit" class="news-search-btn" style="width: 100%; background: #00c6ff; color: #000; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">Найти</button>
+        <% if (typeof search !== 'undefined' && search) { %>
+          <a href="/news" style="display: block; text-align: center; color: #888; font-size: 12px; margin-top: 5px; text-decoration: none;">Сбросить</a>
+        <% } %>
+      </form>
+    </div>
+  <% } else if (typeof currentPath !== 'undefined' && currentPath.startsWith('/channels')) { %>
+    <div class="sidebar-group">
+      <a href="/channels" class="sidebar-link <%= ((typeof q === 'undefined' || !q) && currentPath === '/channels') ? 'active' : '' %>">Все каналы</a>
+      <a href="/channels/banned" class="sidebar-link <%= ((typeof q === 'undefined' || !q) && currentPath === '/channels/banned') ? 'active' : '' %>">Заблокированные каналы</a>
+      <a href="/channels/deleted" class="sidebar-link <%= ((typeof q === 'undefined' || !q) && currentPath === '/channels/deleted') ? 'active' : '' %>">Удаленные каналы</a>
+      <a href="#" class="sidebar-link <%= (typeof q !== 'undefined' && q) ? 'active' : '' %>" onclick="document.getElementById('searchForm').style.display='block'; return false;">Поиск каналов</a>
+      
+      <form id="searchForm" class="news-search-form" action="<%= currentPath === '/channels/banned' ? '/channels/banned' : (currentPath === '/channels/deleted' ? '/channels/deleted' : '/channels') %>" method="GET" style="display: <%= (typeof q !== 'undefined' && q) ? 'block' : 'none' %>; margin-top: 10px;">
+        <input type="text" name="q" class="news-search-input" placeholder="Поиск..." value="<%= typeof q !== 'undefined' ? q : '' %>" style="width: 100%; background: #111; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif;">
+        <button type="submit" class="news-search-btn" style="width: 100%; background: #00c6ff; color: #000; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">Найти</button>
+        <% if (typeof q !== 'undefined' && q) { %>
+          <a href="/channels" style="display: block; text-align: center; color: #888; font-size: 12px; margin-top: 5px; text-decoration: none;">Сбросить</a>
+        <% } %>
+      </form>
+    </div>
+  <% } else { %>
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Управление пользователями:</div>
+      <a href="/users" class="sidebar-link <%= typeof currentPath !== 'undefined' && currentPath === '/users' ? 'active' : '' %>">Пользователи</a>
+      <a href="/users/search" class="sidebar-link <%= typeof currentPath !== 'undefined' && currentPath === '/users/search' ? 'active' : '' %>">Поиск пользователя</a>
+    </div>
+    
+    <div style="height: 1px; background: rgba(255,255,255,0.1);"></div>
+    
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Блокировки:</div>
+      <a href="/bans/users" class="sidebar-link <%= typeof currentPath !== 'undefined' && currentPath === '/bans/users' ? 'active' : '' %>">Блокировки пользователей</a>
+      <% if (user && user.staff_role !== 'moderator') { %>
+        <a href="/bans/ip" class="sidebar-link <%= typeof currentPath !== 'undefined' && currentPath === '/bans/ip' ? 'active' : '' %>">Блокировки по IP</a>
+      <% } %>
+    </div>
+    
+    <% if (user && user.staff_role !== 'moderator') { %>
+    <div style="height: 1px; background: rgba(255,255,255,0.1);"></div>
+    
+    <div class="sidebar-group">
+      <div class="sidebar-group-title">Управление доступом:</div>
+      <% if (user.is_superadmin) { %>
+      <a href="/staff/admins" class="sidebar-link <%= currentPath === '/staff/admins' ? 'active' : '' %>">Администраторы</a>
+      <% } %>
+      <a href="/staff/mods" class="sidebar-link <%= currentPath === '/staff/mods' ? 'active' : '' %>">Модераторы</a>
+    </div>
+
+    <% } %>
+    
+
+
+    <div class="sidebar-group">
+      <div class="sidebar-placeholder">
+        Плейсхолдер для других вещей<br>
+        <span style="font-size: 11px; color: #666;">(вскоре всего тут можно чет сделать иное, пока что не знаем)</span>
+      </div>
+    </div>
+  <% } %>
+</aside>
+<%- include('confirm_modal') %>

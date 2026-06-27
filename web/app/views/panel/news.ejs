@@ -1,0 +1,102 @@
+<%- include('../panel_layout', { activeMenu: 'news', activeSubmenu: '', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Новости', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="color: #333;">Новости</span>
+    </div>
+</div>
+<div style="text-align: right; margin-bottom: 15px;">
+    <button class="btn" style="font-size: 11px;">Добавить новость</button> 
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        <div style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            Список новостей телеканала
+        </div>
+        
+        <table class="panel-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Название новости</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                ${typeof newsList !== 'undefined' && newsList.length > 0 ? 
+                    newsList.map(news => `
+                        <tr>
+                            <td>${formatDate(news.created_at, userTimezone, 'DD.MM.YYYY')}</td>
+                            <td>
+                                ${escapeHtml(news.title)}
+                                ${news.is_hidden ? '<br><span style="color: #ff4444; font-size: 11px; font-weight: bold;">[Скрыто модерацией]</span>' : ''}
+                            </td>
+                            <td style="text-align: right;">
+                                <form action="/ru/panel,news,delete/${news.id}" method="POST" style="display:inline;" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Удалить новость?', () => { form.submit(); });">
+                                    <button type="submit" class="btn" style="padding: 2px 5px; font-size: 11px;">Удалить</button>
+                                </form>
+                            </td>
+                        </tr>
+                    `).join('')
+                : `
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #8c989e; font-style: italic; padding: 20px;">У вас нет ни одной новости</td>
+                    </tr>
+                `}
+            </tbody>
+        </table>
+
+        <div style="margin-top: 30px; border-top: 1px solid #4a5359; padding-top: 20px;">
+            <div style="font-size: 18px; color: #fff; margin-bottom: 20px;">
+                Добавить новость
+            </div>
+            
+            <form action="/ru/panel,news,add" method="POST">
+                <div class="form-group" style="display: flex;">
+                    <label style="width: 150px; color: #8c989e;">Название:*</label>
+                    <input type="text" name="title" class="form-control" style="flex-grow: 1;" required>
+                </div>
+                
+                <div class="form-group" style="display: flex;">
+                    <label style="width: 150px; color: #8c989e;">Анонс (кратко):</label>
+                    <div style="flex-grow: 1;">
+                        <textarea name="announce" class="form-control" rows="3" maxlength="100" style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex;">
+                    <label style="width: 150px; color: #8c989e;">Полный текст:</label>
+                    <div style="flex-grow: 1;">
+                        <textarea name="content" class="form-control" rows="8" maxlength="200" style="resize: vertical;"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="display: flex; margin-top: 20px;">
+                    <div style="width: 150px;"></div>
+                    <button type="submit" class="btn btn-blue">Сохранить</button>
+                </div>
+            </form>
+        </div>
+
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Новости</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Вы можете публиковать новости своего телеканала.
+            </div>
+        </div>
+        
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">А знаете ли вы?</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Регулярное обновление новостей привлекает больше постоянных зрителей.
+            </div>
+        </div>
+    </div>
+</div>
+
+` }) %>

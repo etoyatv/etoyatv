@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель управления телеканалом | ЭтоЯTV</title>
+    <link rel="icon" type="image/svg+xml" href="<%= CDN_BASE_URL %>/images/favicon.svg">
+    <link rel="stylesheet" href="<%= CDN_BASE_URL %>/css/panel.css">
+    <script src="<%= CDN_BASE_URL %>/js/toast.js"></script>
+</head>
+<body>
+
+<div class="panel-container">
+
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-box">
+                <a href="/">
+                    <img src="<%= CDN_BASE_URL %>/images/logo.svg" height="55" alt="ЭтоЯTV" style="vertical-align: middle;">
+                </a>
+            </div>
+            <div class="user-info">
+                Пользователь: <% if (locals.user) { %><a href="/ru/account,userinfo/?username=<%= encodeURIComponent(locals.user.username) %>" class="user-highlight"><%= locals.user.username %></a><% } else { %><span class="user-highlight">Гость</span><% } %><br>
+                Телеканал: 
+                <% if (locals.panelChannel) { %>
+                    <a href="/<%= locals.panelChannel.shortname %>" class="channel-highlight" title="Роль: <%= locals.panelRole %>"><%= locals.panelChannel.name %></a> 
+                    <% if (locals.availableChannels && locals.availableChannels.length > 1) { %>
+                        <a href="/ru/panel,select" style="font-size: 10px; color: #aaa;">[сменить]</a>
+                    <% } %>
+                <% } else { %>
+                    <span class="channel-highlight">Без названия</span>
+                <% } %><br>
+                <a href="#">Помощь</a> | <a href="/logout">Выйти</a>
+            </div>
+        </div>
+
+        <div class="sidebar-actions">
+            <% if (locals.panelChannel && locals.panelChannel.status !== 'banned') { %>
+            <button class="btn-action" onclick="window.location.href='/ru/panel,settings,broadcast'">Начать трансляцию</button>
+            <button class="btn-action" onclick="window.location.href='/ru/panel,records,upload'">Загрузить видео</button>
+            <% } %>
+            
+            <div class="disk-usage">
+                <% 
+                   const totalBytes = locals.panelStats ? locals.panelStats.totalSize : 0;
+                   const quotaMB = (locals.panelChannel && locals.panelChannel.cdn_quota_mb) ? locals.panelChannel.cdn_quota_mb : 2048;
+                   const limitBytes = quotaMB * 1024 * 1024;
+                   const usedMB = (totalBytes / 1024 / 1024).toFixed(2);
+                   const usedPercent = Math.min(100, Math.round((totalBytes / limitBytes) * 100));
+                   const quotaGBStr = (quotaMB / 1024).toFixed(2).replace(/\.00$/, '');
+                %>
+                <div class="progress-bar" style="background: #1a1e20; border-radius: 3px; height: 4px; margin-bottom: 5px; overflow: hidden;">
+                    <div class="progress" style="width: <%= usedPercent %>%; background: #00a0e3; height: 100%;"></div>
+                </div>
+                <div class="disk-text" style="font-size: 11px; color: #8c989e;"><%= usedMB %> MB (<%= usedPercent %>%) из <%= quotaGBStr %> GB.</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <% if (locals.panelChannel && locals.panelChannel.status !== 'banned') { %>
+              <% if (['owner', 'editor', 'reporter'].includes(locals.panelRole)) { %>
+              <li class="<%= activeMenu === 'settings' ? 'active expanded' : '' %>">
+                  <a href="/ru/panel,settings,channel"><span class="icon icon-settings"></span> Настройки</a>
+                  <% if (activeMenu === 'settings') { %>
+                      <ul class="submenu">
+                          <li class="<%= activeSubmenu === 'channel' ? 'active' : '' %>"><a href="/ru/panel,settings,channel">Телеканал</a></li>
+                          <li class="<%= activeSubmenu === 'broadcast' ? 'active' : '' %>"><a href="/ru/panel,settings,broadcast">Трансляция</a></li>
+                          <% if (locals.panelRole === 'owner' || locals.panelRole === 'editor') { %>
+                          <li class="<%= activeSubmenu === 'design' ? 'active' : '' %>"><a href="/ru/panel,settings,design">Дизайн</a></li>
+                          <% } %>
+                          <% if (locals.panelRole === 'owner') { %>
+                          <li class="<%= activeSubmenu === 'access' ? 'active' : '' %>"><a href="/ru/panel,settings,access">Доступ</a></li>
+                          <li class="<%= activeSubmenu === 'team' ? 'active' : '' %>"><a href="/ru/panel,settings,team">Команда</a></li>
+                          <% } %>
+                      </ul>
+                  <% } %>
+              </li>
+              <% } %>
+
+              <li class="<%= activeMenu === 'records' ? 'active expanded' : '' %>">
+                  <a href="/ru/panel,records"><span class="icon icon-media"></span> Медиа-архив</a>
+                  <% if (activeMenu === 'records') { %>
+                      <ul class="submenu">
+                          <li class="<%= activeSubmenu === 'all' ? 'active' : '' %>"><a href="/ru/panel,records">Все записи (<%= locals.panelStats ? locals.panelStats.totalRecords : 0 %>)</a></li>
+                          <li class="<%= activeSubmenu === 'processing' ? 'active' : '' %>"><a href="/ru/panel,records,processing">В обработке (<%= locals.panelStats ? locals.panelStats.processingRecords : 0 %>)</a></li>
+                          <li class="<%= activeSubmenu === 'albums' ? 'active' : '' %>"><a href="/ru/panel,albums">Альбомы (<%= locals.panelStats ? locals.panelStats.totalAlbums : 0 %>)</a></li>
+                      </ul>
+                  <% } %>
+              </li>
+              
+              <% if (locals.panelRole === 'owner' || locals.panelRole === 'editor') { %>
+              <li class="<%= activeMenu === 'autopilot' ? 'active' : '' %>">
+                  <a href="/ru/panel,autopilot"><span class="icon icon-autopilot"></span> Автопилот</a>
+              </li>
+              <li class="<%= activeMenu === 'announces' ? 'active' : '' %>">
+                  <a href="/ru/panel,announces"><span class="icon icon-announces"></span> Анонсы</a>
+              </li>
+              <% } %>
+
+              <li class="<%= activeMenu === 'news' ? 'active' : '' %>">
+                  <a href="/ru/panel,news"><span class="icon icon-news"></span> Новости</a>
+              </li>
+
+              <% if (locals.panelRole === 'owner' || locals.panelRole === 'editor') { %>
+              <li class="<%= activeMenu === 'stat' ? 'active expanded' : '' %>">
+                  <a href="/ru/panel,stat,viewers"><span class="icon icon-stat"></span> Статистика</a>
+                  <% if (activeMenu === 'stat') { %>
+                      <ul class="submenu">
+                          <li class="<%= activeSubmenu === 'viewers' ? 'active' : '' %>"><a href="/ru/panel,stat,viewers">Одновременные зрители</a></li>
+                          <li class="<%= activeSubmenu === 'audience' ? 'active' : '' %>"><a href="/ru/panel,stat,audience">Аудитория</a></li>
+                          <li class="<%= activeSubmenu === 'records_stat' ? 'active' : '' %>"><a href="/ru/panel,stat,records">Все записи</a></li>
+                      </ul>
+                  <% } %>
+              </li>
+              <% } %>
+            <% } %>
+        </ul>
+
+        <div class="sidebar-footer">
+            Цветовая схема: <span class="color-box white"></span><span class="color-box blue active"></span>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <div class="content-wrapper">
+            <% if (locals.query && locals.query.success) { %>
+                <div class="panel-alert" style="background-color: #2a3a2a; border: 1px solid #4a8a4a; color: #aaffaa; padding: 10px; margin-bottom: 20px; border-radius: 4px;">
+                    Изменения успешно сохранены!
+                </div>
+            <% } %>
+            <% if (locals.query && locals.query.error) { %>
+                <div class="panel-alert" style="background-color: #3a2a2a; border: 1px solid #8a4a4a; color: #ffaaaa; padding: 10px; margin-bottom: 20px; border-radius: 4px;">
+                    Ошибка: <%= locals.query.error %>
+                </div>
+            <% } %>
+            <% if (locals.panelChannel && locals.panelChannel.status === 'banned') { %>
+                <div class="panel-alert" style="background-color: #5a1a1a; border: 1px solid #c0392b; color: #ffdddd; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-weight: bold; text-align: center;">
+                    ⚠️ ВНИМАНИЕ: Данный телеканал был заблокирован администрацией платформы. Он недоступен для зрителей, и ваш аккаунт ограничен в создании новых телеканалов.
+                </div>
+            <% } %>
+            <%- body %>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/confirm_modal') %>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var alerts = document.querySelectorAll(".panel-alert");
+    alerts.forEach(function(alertEl) {
+        var wrapper = document.querySelector(".content-wrapper");
+        if (wrapper) {
+            var headerBar = alertEl.nextElementSibling;
+            while (headerBar && headerBar.classList.contains("panel-alert")) {
+                headerBar = headerBar.nextElementSibling;
+            }
+            if (headerBar && headerBar.tagName === 'DIV') {
+                headerBar.parentNode.insertBefore(alertEl, headerBar.nextSibling);
+            }
+        }
+    });
+
+    // Fade out non-critical panel-alerts after 5 seconds
+    setTimeout(() => {
+        alerts.forEach(function(alertEl) {
+            if (alertEl.textContent.indexOf('заблокирован') === -1) {
+                alertEl.style.transition = 'opacity 0.5s ease-out, height 0.5s ease-out, margin 0.5s ease-out, padding 0.5s ease-out';
+                alertEl.style.opacity = '0';
+                setTimeout(() => {
+                    alertEl.style.height = '0';
+                    alertEl.style.margin = '0';
+                    alertEl.style.padding = '0';
+                    alertEl.style.overflow = 'hidden';
+                    setTimeout(() => alertEl.remove(), 500);
+                }, 500);
+            }
+        });
+    }, 5000);
+});
+</script>
+</body>
+</html>

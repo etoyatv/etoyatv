@@ -1,0 +1,83 @@
+<% if (typeof user !== 'undefined' && user) { %>
+<div id="yatv-report-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; align-items: center; justify-content: center; font-family: Tahoma, sans-serif;">
+  <div style="background: #1e1e1e; width: 400px; border-radius: 6px; border: 1px solid #333; box-shadow: 0 4px 12px rgba(0,0,0,0.5); overflow: hidden; color: #fff;">
+    <div style="background: #2a2a2a; border-bottom: 1px solid #333; color: #fff; padding: 12px 15px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+      <span>Пожаловаться</span>
+      <span style="cursor: pointer; font-size: 18px; line-height: 1; color: #aaa;" onclick="closeReportModal()">&times;</span>
+    </div>
+    <div style="padding: 15px;">
+      <p style="margin: 0 0 10px; font-size: 12px; color: #ccc;" id="yatv-report-modal-desc">Опишите причину вашей жалобы (до 200 символов):</p>
+      <input type="hidden" id="yatv-report-target-type" value="">
+      <input type="hidden" id="yatv-report-target-id" value="">
+      <textarea id="yatv-report-reason" style="width: 100%; height: 80px; box-sizing: border-box; resize: none; border: 1px solid #444; background: #111; color: #fff; padding: 5px; font-family: Tahoma, sans-serif; font-size: 12px; border-radius: 4px;" maxlength="200" placeholder="Причина..."></textarea>
+      
+      <div id="yatv-report-error" style="display: none; color: #ff5555; font-size: 11px; margin-top: 5px;"></div>
+      <div id="yatv-report-success" style="display: none; color: #55ff55; font-size: 11px; margin-top: 5px;">Жалоба успешно отправлена.</div>
+      
+      <div style="margin-top: 15px; text-align: right;">
+        <button onclick="closeReportModal()" style="padding: 6px 15px; border: 1px solid #555; background: transparent; color: #fff; cursor: pointer; border-radius: 4px; margin-right: 5px; font-size: 12px; transition: background 0.2s;">Отмена</button>
+        <button id="yatv-report-submit-btn" onclick="submitReport()" style="padding: 6px 15px; border: none; background: #0088cc; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 12px; transition: background 0.2s;">Отправить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openReportModal(targetType, targetId) {
+    document.getElementById('yatv-report-target-type').value = targetType;
+    document.getElementById('yatv-report-target-id').value = targetId;
+    document.getElementById('yatv-report-reason').value = '';
+    document.getElementById('yatv-report-error').style.display = 'none';
+    document.getElementById('yatv-report-success').style.display = 'none';
+    document.getElementById('yatv-report-submit-btn').disabled = false;
+    
+    document.getElementById('yatv-report-modal-overlay').style.display = 'flex';
+  }
+
+  function closeReportModal() {
+    document.getElementById('yatv-report-modal-overlay').style.display = 'none';
+  }
+
+  function submitReport() {
+    const targetType = document.getElementById('yatv-report-target-type').value;
+    const targetId = document.getElementById('yatv-report-target-id').value;
+    const reason = document.getElementById('yatv-report-reason').value.trim();
+    
+    if (!reason) {
+      const err = document.getElementById('yatv-report-error');
+      err.textContent = 'Укажите причину';
+      err.style.display = 'block';
+      return;
+    }
+    
+    document.getElementById('yatv-report-submit-btn').disabled = true;
+    
+    fetch('/api/complaints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_type: targetType, target_id: targetId, reason: reason })
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        document.getElementById('yatv-report-error').style.display = 'none';
+        document.getElementById('yatv-report-success').style.display = 'block';
+        setTimeout(() => {
+          closeReportModal();
+        }, 2000);
+      } else {
+        const err = document.getElementById('yatv-report-error');
+        err.textContent = data.error || 'Ошибка отправки';
+        err.style.display = 'block';
+        document.getElementById('yatv-report-submit-btn').disabled = false;
+      }
+    })
+    .catch(e => {
+      const err = document.getElementById('yatv-report-error');
+      err.textContent = 'Ошибка соединения';
+      err.style.display = 'block';
+      document.getElementById('yatv-report-submit-btn').disabled = false;
+    });
+  }
+</script>
+<% } %>

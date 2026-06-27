@@ -1,0 +1,30 @@
+<%- include('../panel_layout', { activeMenu: 'records', activeSubmenu: 'albums', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; <a href="/ru/panel,records">Медиа-архив</a> &gt; Альбомы', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #333;">Медиа-архив</span>
+        <a href="/ru/panel,albums" style="color: #888; text-decoration: none;">Альбомы</a>
+    </div>
+</div>
+
+<div style="padding: 20px;">
+    <h2 style="color: #fff; margin-bottom: 20px; font-size: 20px;">Создание нового альбома</h2>
+    
+    <form action="/ru/panel,albums,create" method="POST" style="max-width: 600px;">
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; color: #8c989e;">Название альбома *</label>
+            <input type="text" name="title" required style="width: 100%; padding: 8px; border: 1px solid #333; background: #1a1e20; color: #fff; border-radius: 3px;" placeholder="Например, Мои лучшие трансляции">
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; margin-bottom: 5px; color: #8c989e;">Описание</label>
+            <textarea name="description" rows="4" style="width: 100%; padding: 8px; border: 1px solid #333; background: #1a1e20; color: #fff; border-radius: 3px;" placeholder="Краткое описание содержимого альбома"></textarea>
+        </div>
+
+        <button type="submit" class="btn" style="padding: 10px 20px;">Создать альбом</button>
+        <a href="/ru/panel,albums" style="color: #8c989e; text-decoration: none; margin-left: 15px;">Отмена</a>
+    </form>
+</div>
+
+` }) %>

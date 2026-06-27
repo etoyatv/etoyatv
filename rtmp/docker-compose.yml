@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  rtmp:
+    build: ./rtmp
+    ports:
+      - "1935:1935"
+      - "8000:8000"
+    environment:
+      - RTMP_API_USER=${RTMP_API_USER:-admin}
+      - RTMP_API_PASS=${RTMP_API_PASS:-admin}
+    volumes:
+      - ./rtmp:/app
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}:/public
+      - /app/node_modules
+
+  worker:
+    build: ./worker
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER:-yatv_user}
+      - DB_PASSWORD=${DB_PASSWORD:-yatv_pass}
+      - DB_NAME=${DB_NAME:-yatv}
+    volumes:
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}:/app/public

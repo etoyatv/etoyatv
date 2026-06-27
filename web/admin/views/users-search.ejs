@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Поиск пользователя | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar', { currentPath: '/users/search' }) %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="page-header" style="margin-bottom: 20px;">
+        <h1 class="page-title">Поиск пользователя</h1>
+      </div>
+
+      <div class="search-container" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+        <form method="GET" action="/users/search">
+          <div class="form-group" style="align-items: flex-start; margin-bottom: 15px;">
+            <label style="margin-top: 10px;">Искать по:</label>
+            <div class="radio-group" style="display: flex; gap: 20px;">
+              <label><input type="radio" name="type" value="username" <%= type === 'username' ? 'checked' : '' %>> Username</label>
+              <label><input type="radio" name="type" value="id" <%= type === 'id' ? 'checked' : '' %>> ID</label>
+              <label><input type="radio" name="type" value="email" <%= type === 'email' ? 'checked' : '' %>> Email</label>
+            </div>
+          </div>
+          
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label>Запрос:</label>
+            <input type="text" name="q" class="form-control" value="<%= q %>" placeholder="Введите данные для поиска..." required>
+          </div>
+          
+          <div class="form-group">
+            <label></label>
+            <button type="submit" class="btn-black-border" style="width: 200px;">Найти</button>
+          </div>
+        </form>
+      </div>
+
+      <% if (q) { %>
+        <h3 style="margin-bottom: 15px; font-weight: 600;">Результаты поиска (<%= users.length %>):</h3>
+        
+        <% if (users.length === 0) { %>
+          <div style="padding: 20px; text-align: center; color: #9ca3af; background: rgba(255,255,255,0.02); border-radius: 8px;">
+            Пользователи не найдены.
+          </div>
+        <% } else { %>
+          <div class="users-list">
+            <% users.forEach(u => { %>
+              <div class="user-list-card <%= u.deleted_at ? 'deleted' : '' %> <%= u.is_banned ? 'banned' : '' %>">
+                <div class="u-card-avatar" style="background-image: url('<%= CDN_BASE_URL %><%= u.avatar %>');"></div>
+                
+                <div class="u-card-info">
+                  <div class="u-card-title">
+                    <strong><%= u.username %></strong> <span class="u-card-id">(id: <%= u.id %>)</span>
+                  </div>
+                  <div class="u-card-email">
+                    Почта: <%= u.email ? u.email : '(удалено)' %>
+                  </div>
+                  <div class="u-card-status">
+                    Статус: 
+                    <% if (u.deleted_at) { %>
+                      <span class="status-deleted">Удаленный</span>
+                    <% } else if (u.is_banned) { %>
+                      <span class="status-banned">Заблокированный</span>
+                    <% } else { %>
+                      <span class="status-active">Активный</span>
+                    <% } %>
+                  </div>
+                </div>
+                
+                <% 
+                  let canEdit = false;
+                  if (user.is_superadmin) {
+                    canEdit = true;
+                  } else if (user.staff_role === 'admin') {
+                    canEdit = !u.is_superadmin;
+                  } else if (user.staff_role === 'moderator') {
+                    canEdit = !u.staff_role;
+                  }
+                %>
+                
+                <% if (canEdit) { %>
+                  <div class="u-card-actions">
+                    <a href="/users/<%= u.id %>/edit" class="btn-action" style="text-decoration:none; display:inline-block; text-align:center;">Редактировать</a>
+                  </div>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+
+          <!-- Pagination & Limits -->
+          <div class="pagination-section" style="margin-top: 20px;">
+            <form action="/users/search" method="GET" class="limit-selector">
+              <input type="hidden" name="type" value="<%= type %>">
+              <input type="hidden" name="q" value="<%= q %>">
+              <label>На страницу: </label>
+              <select name="limit" class="custom-select" onchange="this.form.submit()">
+                <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+                <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+                <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+                <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+              </select>
+            </form>
+
+            <div class="pagination">
+              <% if (page > 1) { %>
+                <a href="/users/search?type=<%= type %>&q=<%= q %>&page=<%= page - 1 %>&limit=<%= limit %>" class="page-link">Предыдущая</a>
+              <% } %>
+              
+              <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+              
+              <% if (page < totalPages) { %>
+                <a href="/users/search?type=<%= type %>&q=<%= q %>&page=<%= page + 1 %>&limit=<%= limit %>" class="page-link">Следующая</a>
+              <% } %>
+            </div>
+          </div>
+
+        <% } %>
+      <% } %>
+
+    </main>
+  </div>
+</body>
+</html>
