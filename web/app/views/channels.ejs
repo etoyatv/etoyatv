@@ -47,7 +47,7 @@
       <div class="right_panel" style="float: right; width: 52px; text-align: center; margin-left: 10px;">
         <a href="/<%= channel.shortname %>" class="logo" style="display: block; width: 50px; height: 50px;"><img width="50" height="50" src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="<%= channel.name %>" style="object-fit: cover; display: block; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>"></a>
         <% if (locals.user) { %>
-        <div style="background: #111; width: 52px; height: 18px; border-radius: 0 0 3px 3px; display: flex; align-items: center; justify-content: center; gap: 3px;">
+        <div class="likes-badge channel-badge">
           <span id="fans_count_<%= channel.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 16px;"><%= channel.fans_count || 0 %></span>
           <a href="#" onclick="toggleFavorite('<%= channel.id %>'); return false;" style="display: block; width: 16px; height: 16px;"><span class="block-head-icon-heart heart-btn <%= channel.is_fan ? 'active' : '' %>" id="fan_icon_<%= channel.id %>"></span></a>
         </div>
@@ -66,6 +66,7 @@
         <% } %>
     <% }) %>
 <% } %>
+<div class="clear_both" style="clear: both; height: 15px;"></div>
 </div>
 
 <!-- Pager Navigator --> 

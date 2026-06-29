@@ -342,6 +342,21 @@
               </label>
             </div>
           </div>
+
+          <div class="settings-box">
+            <h3 class="settings-section-title">Функции телеканалов</h3>
+            
+            <div class="switch-row">
+              <div class="switch-info">
+                <div class="switch-title">Разрешить Автопилот и Эфирную студию для всех</div>
+                <div class="switch-desc">Если включено, Автопилот и Эфирная студия доступны всем телеканалам. Если выключено, они доступны только Premium-каналам.</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" name="allow_features_for_everyone" value="1" <%= settings.allow_features_for_everyone === '1' ? 'checked' : '' %>>
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
           
           <div class="settings-box">
             <h3 class="settings-section-title">Информационный баннер</h3>

@@ -8,243 +8,94 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/admin.css">
   <style>
-    .news-page-title {
-      font-size: 20px;
-      font-weight: bold;
-      color: #fff;
-      margin-bottom: 20px;
-    }
-    .news-container {
-      display: flex;
-      gap: 30px;
-      margin-top: 20px;
-    }
-    .news-sidebar-link {
-      display: block;
-      color: #fff;
-      text-decoration: none;
-      font-weight: bold;
-      margin-bottom: 15px;
-      font-size: 16px;
-    }
-    .news-sidebar-link.active {
-      color: #00c6ff;
-    }
-    .news-search-form {
-      margin-top: 10px;
-    }
-    .news-search-input {
-      width: 100%;
-      background: #111;
-      border: 1px solid #333;
-      color: #fff;
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 10px;
-    }
-    .news-search-btn {
-      width: 100%;
-      background: #00c6ff;
-      color: #000;
-      border: none;
-      padding: 10px;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .news-search-btn:hover {
-      background: #00b0e6;
-    }
-    .news-main {
-      flex: 1;
-      max-width: 900px;
-    }
-    .news-header-info {
-      font-size: 14px;
-      font-weight: bold;
-      color: #fff;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      padding: 10px 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      display: inline-block;
-    }
     .news-card {
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px;
+      background: #252a2e;
+      border: 1px solid #3a4247;
+      border-radius: 8px;
+      padding: 15px;
       margin-bottom: 20px;
       display: flex;
-      color: #fff;
-      font-family: 'Inter', sans-serif;
-      min-height: 140px;
-      position: relative;
+      gap: 20px;
+      align-items: flex-start;
     }
     .news-card.hidden-news {
-      opacity: 0.5;
-      background-color: rgba(255,255,255,0.02);
-      border-color: rgba(255,255,255,0.05);
+      border-color: #ff4d4d;
+      background: rgba(255, 77, 77, 0.05);
     }
     .news-card-left {
-      width: 140px;
-      border-right: 1px solid rgba(255,255,255,0.1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px 10px;
+      width: 80px;
       flex-shrink: 0;
-    }
-    .news-card-left span {
-      display: none;
+      display: flex;
+      justify-content: center;
     }
     .news-card-left img {
       width: 80px;
       height: 80px;
       border-radius: 50%;
       object-fit: cover;
-      border: 2px solid #333;
+      border: 1px solid #4a5359;
     }
     .news-card-middle {
-      flex: 1;
-      padding: 20px;
+      flex-grow: 1;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
+    }
+    .news-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .news-title span {
+      color: #8c989e;
+      font-size: 13px;
+      font-weight: normal;
     }
     .news-title-link {
       color: #fff;
-      font-weight: bold;
-      font-size: 16px;
       text-decoration: none;
     }
     .news-title-link:hover {
       text-decoration: underline;
     }
-    .news-info-line {
-      font-size: 14px;
-      color: #fff;
-      font-weight: bold;
+    .news-channel {
+      color: #00c6ff;
+      font-size: 13px;
     }
-    .news-info-line span {
-      color: #aaa;
+    .news-desc {
+      color: #c0c0b2;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .news-date {
+      color: #8c989e;
+      font-size: 12px;
+      margin-top: auto;
     }
     .news-card-right {
-      width: 200px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: center;
       gap: 10px;
-      padding: 20px;
+      width: 180px;
       flex-shrink: 0;
-      border-left: 1px solid rgba(255,255,255,0.1);
     }
-    .news-btn {
+    .news-card-right form {
+      margin: 0;
+    }
+    .news-card-right button, .news-card-right a {
       width: 100%;
-      padding: 8px 0;
-      border-radius: 20px;
-      font-weight: 800;
-      font-size: 13px;
+      box-sizing: border-box;
       text-align: center;
-      border: 1px solid rgba(255,255,255,0.3);
-      background: transparent;
-      color: #fff;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .news-btn:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.6);
-    }
-    .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 0.2s ease-out;
-    }
-    .modal-overlay.active {
-      display: flex;
-      opacity: 1;
-    }
-    .modal-content {
-      background: #111;
-      padding: 30px;
-      border-radius: 12px;
-      width: 500px;
-      max-width: 90%;
-      border: 1px solid rgba(255,255,255,0.1);
-      color: #fff;
-      transform: translateY(-20px);
-      transition: transform 0.2s ease-out;
-    }
-    .modal-overlay.active .modal-content {
-      transform: translateY(0);
-    }
-    .modal-content h2 {
-      margin-top: 0;
-      margin-bottom: 20px;
-    }
-    .modal-content input, .modal-content textarea {
-      width: 100%;
-      background: #000;
-      border: 1px solid #333;
-      color: #fff;
-      padding: 12px;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      font-family: 'Inter', sans-serif;
-    }
-    .modal-content textarea {
-      resize: vertical;
-    }
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-    }
-    .btn-save {
-      background: #00c6ff;
-      color: #000;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .btn-cancel {
-      background: #333;
-      color: #fff;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
     }
 
     @media (max-width: 768px) {
       .news-card {
         flex-direction: column;
-      }
-      .news-card-left {
-        width: 100%;
-        border-right: none;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        padding: 15px;
+        align-items: center;
       }
       .news-card-right {
         width: 100%;
-        border-left: none;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        padding: 15px;
-      }
-      .modal-content {
-        padding: 15px;
+        flex-direction: column;
       }
     }
   </style>
@@ -258,113 +109,127 @@
 
     <main class="main-content">
       
-      <div class="news-container">
-        
+      <div class="users-header-stats">
+        <p>На данный момент: <strong><%= totalCount %></strong> новостей (из них: скрытых: <strong><%= hiddenCount %></strong>)</p>
+      </div>
 
-        <div class="news-main">
-          <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
-          
-
-
-          <div class="news-header-info">
-            На данный момент: <%= totalCount %> новостей (из них - <%= hiddenCount %> заблокированных)
+      <div class="news-list">
+        <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+        <% if (newsItems.length === 0) { %>
+          <div style="text-align: center; color: #8c989e; padding: 40px; background: #252a2e; border-radius: 8px;">
+            Новости не найдены.
           </div>
-
-          <% if (newsItems.length === 0) { %>
-            <p style="color: #a1b0b8; text-align: center; margin-top: 40px;">Новостей не найдено.</p>
-          <% } else { %>
-            <% newsItems.forEach(n => { 
-                const isHidden = n.is_hidden === 1;
-            %>
-              <div class="news-card <%= isHidden ? 'hidden-news' : '' %>">
-                <div class="news-card-left">
-                  <a href="<%= APP_URL %>/<%= n.shortname %>" target="_blank" style="display: block;">
-                    <img src="<%= CDN_BASE_URL %><%= n.logo_url || '/images/default_avatar.png' %>" alt="avatar">
-                  </a>
-                </div>
-                <div class="news-card-middle">
-                  <a href="<%= APP_URL %>/channels/<%= n.shortname %>/news/<%= n.id %>" target="_blank" class="news-title-link">
-                    <%= n.title %> (id: <%= n.id %>)
-                  </a>
-                  <div class="news-info-line">От: <a href="<%= APP_URL %>/<%= n.shortname %>" target="_blank" style="color: #00c6ff; text-decoration: none;"><%= n.channel_name %> (канал)</a></div>
-                  <div class="news-info-line">Краткое содержание:<br><span style="font-weight: normal;"><%= n.announce %></span></div>
-                  <div class="news-info-line">Публикация новости:<br><span style="font-weight: normal;"><%= formatDateMsk(n.created_at) %></span></div>
-                </div>
-                <div class="news-card-right">
-                  <% if (!isModOnly) { %>
-                  <button class="news-btn edit-news-btn" 
-                    data-id="<%= n.id %>" 
-                    data-title="<%= n.title %>" 
-                    data-announce="<%= n.announce || '' %>" 
-                    data-content="<%= n.content || '' %>">Редактировать</button>
+        <% } else { %>
+          <% newsItems.forEach(n => { 
+              const isHidden = n.is_hidden === 1;
+          %>
+            <div class="news-card <%= isHidden ? 'hidden-news' : '' %>">
+              <div class="news-card-left">
+                <a href="<%= APP_URL %>/<%= n.shortname %>" target="_blank" style="display: block;">
+                  <img src="<%= CDN_BASE_URL %><%= n.logo_url || '/images/default_user_avatar.png' %>" alt="avatar">
+                </a>
+              </div>
+              
+              <div class="news-card-middle">
+                <div class="news-title">
+                  <a href="<%= APP_URL %>/channels/<%= n.shortname %>/news/<%= n.id %>" target="_blank" class="news-title-link"><%= n.title %></a> <span>(id: <%= n.id %>)</span>
+                  <% if (isHidden) { %>
+                    <span style="background: #ff4d4d; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">Скрыта</span>
                   <% } %>
-                  
-                  <form action="/news/<%= n.id %>/hide" method="POST" style="width: 100%;">
-                    <button type="submit" class="news-btn"><%= isHidden ? 'Показать' : 'Скрыть (бан)' %></button>
-                  </form>
-
-                  <% if (!isModOnly) { %>
-                  <form action="/news/<%= n.id %>/delete" method="POST" style="width: 100%;" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите полностью удалить эту новость?', () => { form.submit(); });">
-                    <button type="submit" class="news-btn">Удалить полностью</button>
-                  </form>
-                  <% } %>
+                </div>
+                <div class="news-channel">
+                  От: <a href="<%= APP_URL %>/<%= n.shortname %>" target="_blank" style="color: #00c6ff; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= n.channel_name %> (канал)</a>
+                </div>
+                <div class="news-desc">
+                  Краткое содержание: <%= n.announce || 'Нет содержания' %>
+                </div>
+                <div class="news-date">
+                  Публикация новости: <%= formatDateMsk(n.created_at) %>
                 </div>
               </div>
-            <% }) %>
-          <% } %>
-
-          <% if (totalPages > 1) { %>
-            <div class="pagination-section" style="margin-top: 30px;">
-              <form action="/news" method="GET" class="limit-selector">
-                <% if (search) { %>
-                  <input type="hidden" name="search" value="<%= search %>">
-                <% } %>
-                <label style="color: #fff;">На страницу: </label>
-                <select name="limit" class="custom-select" onchange="this.form.submit()" style="background: #111; color: #fff; border: 1px solid #333; padding: 5px; border-radius: 4px;">
-                  <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
-                  <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
-                  <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
-                  <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
-                </select>
-              </form>
-
-              <div class="pagination" style="color: #fff;">
-                <% if (page > 1) { %>
-                  <a href="/news?page=<%= page - 1 %>&limit=<%= limit %><%= search ? '&search='+encodeURIComponent(search) : '' %>" class="page-link" style="color: #00c6ff;">Предыдущая</a>
+              
+              <div class="news-card-right">
+                <% if (!isModOnly) { %>
+                <button class="btn-action edit-news-btn" 
+                  data-id="<%= n.id %>" 
+                  data-title="<%= n.title %>" 
+                  data-announce="<%= n.announce || '' %>" 
+                  data-content="<%= n.content || '' %>">Редактировать</button>
                 <% } %>
                 
-                <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
-                
-                <% if (page < totalPages) { %>
-                  <a href="/news?page=<%= page + 1 %>&limit=<%= limit %><%= search ? '&search='+encodeURIComponent(search) : '' %>" class="page-link" style="color: #00c6ff;">Следующая</a>
+                <form action="/news/<%= n.id %>/hide" method="POST">
+                  <% if (isHidden) { %>
+                    <button type="submit" class="btn-action" style="background: #4CAF50; color: #fff; border: none;">Показать</button>
+                  <% } else { %>
+                    <button type="submit" class="btn-action" style="background: #ff4d4d; color: #fff; border: none;" onclick="event.preventDefault(); const form = this.closest('form'); yatvConfirm('Вы уверены, что хотите скрыть (заблокировать) эту новость?', () => { form.submit(); });">Скрыть (бан)</button>
+                  <% } %>
+                </form>
+
+                <% if (!isModOnly) { %>
+                <form action="/news/<%= n.id %>/delete" method="POST" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите полностью удалить эту новость?', () => { form.submit(); });">
+                  <button type="submit" class="btn-action btn-danger">Удалить полностью</button>
+                </form>
                 <% } %>
               </div>
             </div>
-          <% } %>
+          <% }) %>
+        <% } %>
+      </div>
 
+      <!-- Pagination & Limits -->
+      <% if (totalCount > 0 && totalPages > 1) { %>
+      <div class="pagination-section">
+        <form action="/news" method="GET" class="limit-selector">
+          <% if (search) { %><input type="hidden" name="search" value="<%= search %>"><% } %>
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/news?page=<%= page - 1 %>&limit=<%= limit %><%= search ? '&search=' + encodeURIComponent(search) : '' %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/news?page=<%= page + 1 %>&limit=<%= limit %><%= search ? '&search=' + encodeURIComponent(search) : '' %>" class="page-link">Следующая</a>
+          <% } %>
         </div>
       </div>
+      <% } %>
 
     </main>
   </div>
 
   <!-- Edit Modal -->
   <div id="editModal" class="modal-overlay">
-    <div class="modal-content">
-      <h2>Редактирование новости</h2>
+    <div class="modal-content" style="background: #1e1e1e;">
+      <h2 style="text-align: center; margin-bottom: 20px; font-weight: 700;">Редактирование новости</h2>
       <form id="editForm" method="POST" action="">
-        <label style="font-size: 13px; color: #888; margin-bottom: 5px; display: block;">Заголовок</label>
-        <input type="text" name="title" id="editTitle" required maxlength="150">
+        <div class="form-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 15px;">
+          <label style="margin-bottom: 8px;">Заголовок:</label>
+          <input type="text" name="title" id="editTitle" class="form-control" required maxlength="150" style="width: 100%; box-sizing: border-box;">
+        </div>
         
-        <label style="font-size: 13px; color: #888; margin-bottom: 5px; display: block;">Краткое содержание (Анонс) - до 100 символов</label>
-        <textarea name="announce" id="editAnnounce" rows="3" maxlength="100"></textarea>
+        <div class="form-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 15px;">
+          <label style="margin-bottom: 8px;">Краткое содержание (Анонс) - до 100 симв.:</label>
+          <textarea name="announce" id="editAnnounce" class="form-control" rows="3" maxlength="100" style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+        </div>
         
-        <label style="font-size: 13px; color: #888; margin-bottom: 5px; display: block;">Полный текст - до 200 символов</label>
-        <textarea name="content" id="editContent" rows="6" maxlength="200"></textarea>
+        <div class="form-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 20px;">
+          <label style="margin-bottom: 8px;">Полный текст - до 200 симв.:</label>
+          <textarea name="content" id="editContent" class="form-control" rows="5" maxlength="200" style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+        </div>
         
-        <div class="modal-actions">
-          <button type="button" class="btn-cancel" onclick="closeEditModal()">Отмена</button>
-          <button type="submit" class="btn-save">Сохранить</button>
+        <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 15px;">
+          <button type="submit" class="btn-black-border" style="flex: 1; background: #00c6ff; color: #000; border-color: #00c6ff;">Сохранить</button>
+          <button type="button" class="btn-black-border" style="flex: 1;" onclick="closeEditModal()">Отмена</button>
         </div>
       </form>
     </div>
@@ -383,7 +248,6 @@
         document.getElementById('editAnnounce').value = announce;
         document.getElementById('editContent').value = content;
         document.getElementById('editModal').style.display = 'flex';
-        // Allow display:flex to apply before adding opacity
         setTimeout(() => {
           document.getElementById('editModal').classList.add('active');
         }, 10);

@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
   const socket = io();
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const autoplayParam = urlParams.get('autoplay');
+  let enableAutoplay = autoplayParam !== '0' && autoplayParam !== 'false';
+
   // Elements
   const video = document.getElementById('etoyatv-video');
   const btnPlayPause = document.getElementById('btn-play-pause');
@@ -92,9 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
         let icon = '👤';
         if (u.role === 'owner') icon = '👑';
         else if (u.role === 'alien') icon = '👽';
-        else if (u.role === 'admin') icon = '🎭';
+        else if (u.role === 'admin') icon = '👽';
         else if (u.role === 'mod' || u.role === 'moderator') icon = '🛡️';
-        else if (u.role === 'registered' || u.role === 'editor' || u.role === 'reporter') icon = '♟️';
+        else if (u.role === 'registered' || u.role === 'editor' || u.role === 'reporter') icon = '👤';
 
         if (u.isBanned) {
           icon = '🚫';
@@ -110,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.setAttribute('data-banned', u.isBanned ? 'true' : 'false');
         div.style.cssText = `margin: 2px 0; color: ${userColor}; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 3px;`;
 
-        div.innerHTML = `${icon} <span style="${textStyle}">${u.username}</span>`;
+        div.innerHTML = `${icon} <span style="${textStyle}">${escapeHTML(u.username)}</span>`;
         list.appendChild(div);
       });
     }
@@ -118,6 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   socket.on('chat_cleared', () => {
     if (chatMessages) chatMessages.innerHTML = '';
+    const pinnedBox = document.getElementById('chat_pinned_box');
+    if (pinnedBox) {
+      pinnedBox.style.display = 'none';
+      const pinnedContent = document.getElementById('chat_pinned_content');
+      if (pinnedContent) pinnedContent.innerHTML = '';
+    }
   });
 
   socket.on('guests_toggled', (allowed) => {
@@ -142,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   socket.on('new_message', (msg) => {
     const div = document.createElement('div');
+    div.className = 'chat-message-row';
     div.style.font = '11px Verdana, Geneva, sans-serif';
     div.style.color = '#fff';
     div.style.margin = '1px';
@@ -153,13 +164,51 @@ document.addEventListener('DOMContentLoaded', () => {
     let roleColor = msg.color || '#3b9cd9'; // Use custom color if present, else fallback
 
     const now = new Date();
-    const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    let timeStr = '';
+    try {
+      timeStr = new Intl.DateTimeFormat('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: window.USER_TIMEZONE || 'Europe/Moscow'
+      }).format(now);
+    } catch (e) {
+      timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    }
 
-    div.innerHTML = `<span style="color: #666;">${timeStr}</span> <span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${msg.username}" data-role="${msg.role}" style="cursor: pointer;">${msg.username}</span>:</span> ${escapeHTML(msg.message)}`;
+    const escapedUser = escapeHTML(msg.username);
+    const escapedRole = escapeHTML(msg.role || 'guest');
+
+    let pinButtonHtml = '';
+    if (window.IS_MODERATOR === true) {
+      pinButtonHtml = ` <span class="btn-pin-message" data-msg-id="${msg.id}" title="Закрепить">📌</span>`;
+    }
+
+    div.innerHTML = `<span style="color: #666;">${timeStr}</span> <span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span>:</span> ${escapeHTML(msg.message)}${pinButtonHtml}`;
 
     if (chatMessages) {
       chatMessages.appendChild(div);
       scrollToBottom();
+    }
+  });
+
+  socket.on('message_pinned', (data) => {
+    const pinnedBox = document.getElementById('chat_pinned_box');
+    const pinnedContent = document.getElementById('chat_pinned_content');
+    if (pinnedBox && pinnedContent) {
+      const username = data.username || data.guest_name || 'Гость';
+      const color = data.color || '#3b9cd9';
+      const msgText = data.message || '';
+      pinnedContent.innerHTML = `<span style="color: ${color}; font-weight: bold;">${escapeHTML(username)}</span>: ${escapeHTML(msgText)}`;
+      pinnedBox.style.display = 'flex';
+    }
+  });
+
+  socket.on('message_unpinned', () => {
+    const pinnedBox = document.getElementById('chat_pinned_box');
+    if (pinnedBox) {
+      pinnedBox.style.display = 'none';
+      const pinnedContent = document.getElementById('chat_pinned_content');
+      if (pinnedContent) pinnedContent.innerHTML = '';
     }
   });
 
@@ -207,13 +256,295 @@ document.addEventListener('DOMContentLoaded', () => {
     updateChatPlaceholder();
   });
 
+  socket.on('guest_name_changed', (data) => {
+    guestName = data.name;
+    localStorage.setItem('etoyatv_guest_name', guestName);
+  });
+
   // --- Chat Input & Color ---
   const chatColorPalette = document.getElementById('chat-color-palette');
 
   if (chatColorBtn && chatColorPalette) {
+    const spectrumCanvas = chatColorPalette.querySelector('.chat-color-spectrum');
+    const sliderCanvas = chatColorPalette.querySelector('.chat-color-slider');
+
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, v = max;
+      const d = max - min;
+      s = max === 0 ? 0 : d / max;
+      if (max === min) {
+        h = 0;
+      } else {
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return [h, s, v];
+    }
+
+    function hsvToRgb(h, s, v) {
+      let r, g, b;
+      const i = Math.floor(h * 6);
+      const f = h * 6 - i;
+      const p = v * (1 - s);
+      const q = v * (1 - f * s);
+      const t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    function rgbToHex(r, g, b) {
+      const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+      return '#' + toHex(r) + toHex(g) + toHex(b);
+    }
+
+    function makeColorReadable(hex) {
+      if (!hex || typeof hex !== 'string') return '#3b9cd9';
+      let cleanHex = hex.replace('#', '');
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+      }
+      if (cleanHex.length !== 6) return '#3b9cd9';
+      let r = parseInt(cleanHex.substring(0, 2), 16);
+      let g = parseInt(cleanHex.substring(2, 4), 16);
+      let b = parseInt(cleanHex.substring(4, 6), 16);
+      if (isNaN(r) || isNaN(g) || isNaN(b)) return '#3b9cd9';
+      if (r === 0 && g === 0 && b === 0) {
+        r = 100; g = 100; b = 100;
+      }
+      let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      let iterations = 0;
+      while (brightness < 70 && iterations < 15) {
+        r = Math.round(r + (255 - r) * 0.2);
+        g = Math.round(g + (255 - g) * 0.2);
+        b = Math.round(b + (255 - b) * 0.2);
+        brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        iterations++;
+      }
+      const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+      return '#' + toHex(r) + toHex(g) + toHex(b);
+    }
+
+    function drawSpectrum(canvas, hSelected, sSelected) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const hueGrad = ctx.createLinearGradient(0, 0, w, 0);
+      hueGrad.addColorStop(0, '#ff0000');
+      hueGrad.addColorStop(0.17, '#ffff00');
+      hueGrad.addColorStop(0.33, '#00ff00');
+      hueGrad.addColorStop(0.5, '#00ffff');
+      hueGrad.addColorStop(0.67, '#0000ff');
+      hueGrad.addColorStop(0.83, '#ff00ff');
+      hueGrad.addColorStop(1, '#ff0000');
+      ctx.fillStyle = hueGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const satGrad = ctx.createLinearGradient(0, 0, 0, h);
+      satGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      satGrad.addColorStop(1, 'rgba(255, 255, 255, 1)');
+      ctx.fillStyle = satGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const cx = hSelected * w;
+      const cy = (1 - sSelected) * h;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy);
+      ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy + 5);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy); ctx.lineTo(cx - 2, cy);
+      ctx.moveTo(cx + 2, cy); ctx.lineTo(cx + 5, cy);
+      ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy - 2);
+      ctx.moveTo(cx, cy + 2); ctx.lineTo(cx, cy + 5);
+      ctx.stroke();
+    }
+
+    function drawSlider(canvas, hSelected, sSelected, vSelected) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const rgbBase = hsvToRgb(hSelected, sSelected, 1);
+      const baseColor = `rgb(${rgbBase[0]}, ${rgbBase[1]}, ${rgbBase[2]})`;
+      const valGrad = ctx.createLinearGradient(0, 0, 0, h);
+      valGrad.addColorStop(0, baseColor);
+      valGrad.addColorStop(1, '#000000');
+      ctx.fillStyle = valGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const cy = (1 - vSelected) * h;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, cy - 1, w, 2);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-1, cy - 2, w + 2, 4);
+    }
+
+    let hueVal = 0, satVal = 1, valVal = 1;
+
+    function updateFromHex(hex) {
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      const r = parseInt(hex.slice(1, 3), 16) || 0;
+      const g = parseInt(hex.slice(3, 5), 16) || 0;
+      const b = parseInt(hex.slice(5, 7), 16) || 0;
+      const hsv = rgbToHsv(r, g, b);
+      hueVal = hsv[0];
+      satVal = hsv[1];
+      valVal = hsv[2];
+    }
+
+    function render() {
+      if (spectrumCanvas && sliderCanvas) {
+        drawSpectrum(spectrumCanvas, hueVal, satVal);
+        drawSlider(sliderCanvas, hueVal, satVal, valVal);
+      }
+    }
+
+    function triggerChange() {
+      const rgb = hsvToRgb(hueVal, satVal, valVal);
+      let hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+      hex = makeColorReadable(hex);
+      if (chatColorPicker) chatColorPicker.value = hex;
+      chatColorBtn.style.backgroundColor = hex;
+      localStorage.setItem('etoyatv_chat_color', hex);
+      socket.emit('update_chat_color', { color: hex });
+    }
+
+    let isDraggingSpectrum = false;
+    let isDraggingSlider = false;
+
+    function handleSpectrumMove(e) {
+      if (!spectrumCanvas) return;
+      const rect = spectrumCanvas.getBoundingClientRect();
+      let x = e.clientX - rect.left;
+      let y = e.clientY - rect.top;
+      x = Math.max(0, Math.min(x, rect.width));
+      y = Math.max(0, Math.min(y, rect.height));
+      hueVal = x / rect.width;
+      satVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    function handleSliderMove(e) {
+      if (!sliderCanvas) return;
+      const rect = sliderCanvas.getBoundingClientRect();
+      let y = e.clientY - rect.top;
+      y = Math.max(0, Math.min(y, rect.height));
+      valVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    if (spectrumCanvas) {
+      spectrumCanvas.addEventListener('mousedown', (e) => {
+        isDraggingSpectrum = true;
+        handleSpectrumMove(e);
+      });
+    }
+
+    if (sliderCanvas) {
+      sliderCanvas.addEventListener('mousedown', (e) => {
+        isDraggingSlider = true;
+        handleSliderMove(e);
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDraggingSpectrum) handleSpectrumMove(e);
+      if (isDraggingSlider) handleSliderMove(e);
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDraggingSpectrum = false;
+      isDraggingSlider = false;
+    });
+
+    // Touch support
+    function handleSpectrumTouch(e) {
+      if (e.touches.length === 0 || !spectrumCanvas) return;
+      const touch = e.touches[0];
+      const rect = spectrumCanvas.getBoundingClientRect();
+      let x = touch.clientX - rect.left;
+      let y = touch.clientY - rect.top;
+      x = Math.max(0, Math.min(x, rect.width));
+      y = Math.max(0, Math.min(y, rect.height));
+      hueVal = x / rect.width;
+      satVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    function handleSliderTouch(e) {
+      if (e.touches.length === 0 || !sliderCanvas) return;
+      const touch = e.touches[0];
+      const rect = sliderCanvas.getBoundingClientRect();
+      let y = touch.clientY - rect.top;
+      y = Math.max(0, Math.min(y, rect.height));
+      valVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    if (spectrumCanvas) {
+      spectrumCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDraggingSpectrum = true;
+        handleSpectrumTouch(e);
+      });
+      spectrumCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (isDraggingSpectrum) handleSpectrumTouch(e);
+      });
+    }
+
+    if (sliderCanvas) {
+      sliderCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDraggingSlider = true;
+        handleSliderTouch(e);
+      });
+      sliderCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (isDraggingSlider) handleSliderTouch(e);
+      });
+    }
+
     chatColorBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       chatColorPalette.style.display = chatColorPalette.style.display === 'none' ? 'flex' : 'none';
+      if (chatColorPalette.style.display === 'flex') {
+        const chatMenu = document.getElementById('chat-menu');
+        if (chatMenu) chatMenu.style.display = 'none';
+        if (chatColorPicker && chatColorPicker.value) {
+          updateFromHex(chatColorPicker.value);
+        }
+        render();
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -222,17 +553,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    const swatches = document.querySelectorAll('.color-swatch');
-    swatches.forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        let c = swatch.getAttribute('data-color');
-        chatColorPicker.value = c;
-        chatColorBtn.style.backgroundColor = c;
-        chatColorPalette.style.display = 'none';
-        localStorage.setItem('etoyatv_chat_color', c);
-        socket.emit('update_chat_color', { color: c });
-      });
-    });
+    // Initialize values
+    if (chatColorPicker && chatColorPicker.value) {
+      updateFromHex(chatColorPicker.value);
+    }
+    render();
   }
 
   function sendChatMessage() {
@@ -265,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Click video to play/pause
   if (video) {
     video.addEventListener('click', () => {
+      enableAutoplay = true; // User interacted
       if (video && video.paused) {
         video.play().catch(e => { }); // Prime for user gesture
         if (window.CHANNEL_ID && typeof fetchAutopilotStatus === 'function') {
@@ -281,6 +607,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnPlayPause.addEventListener('click', () => {
+    enableAutoplay = true; // User interacted
     if (video && video.paused) {
       video.play().catch(e => { }); // Prime for user gesture
       if (window.CHANNEL_ID && typeof fetchAutopilotStatus === 'function') {
@@ -319,9 +646,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (video) { 
         video.volume = vol; 
         video.muted = muted; 
-        if (!muted && video.paused) {
-          video.play().catch(err => {});
-        }
       }
       if (btnVolume) btnVolume.textContent = muted ? '🔇' : '🔊';
       localStorage.setItem('etoyatv_volume', vol);
@@ -340,9 +664,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (video) {
         video.muted = isMuted;
         video.volume = isMuted ? 0 : vol;
-        if (!isMuted && video.paused) {
-          video.play().catch(err => {});
-        }
       }
 
       btnVolume.textContent = isMuted ? '🔇' : '🔊';
@@ -374,10 +695,6 @@ document.addEventListener('DOMContentLoaded', () => {
       video.volume = vol;
       video.muted = vol === 0;
 
-      if (!video.muted && video.paused) {
-        video.play().catch(err => {});
-      }
-
       if (btnVolume) btnVolume.textContent = video.muted ? '🔇' : '🔊';
       if (volumeSlider) volumeSlider.value = vol;
 
@@ -399,20 +716,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-hide player controls
   const playerContainer = document.getElementById('container_swf');
-  const uiElements = playerContainer.querySelectorAll('.player-ui');
-  let hideTimeout;
-
-  function showControls() {
-    uiElements.forEach(el => el.style.opacity = '1');
-    clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-      if (video && !video.paused) { // only hide if playing
-        uiElements.forEach(el => el.style.opacity = '0');
-      }
-    }, 3000);
-  }
-
   if (playerContainer) {
+    const uiElements = playerContainer.querySelectorAll('.player-ui');
+    let hideTimeout;
+
+    function showControls() {
+      uiElements.forEach(el => el.style.opacity = '1');
+      clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        if (video && !video.paused) { // only hide if playing
+          uiElements.forEach(el => el.style.opacity = '0');
+        }
+      }, 3000);
+    }
+
     playerContainer.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (!video) return;
@@ -427,10 +744,6 @@ document.addEventListener('DOMContentLoaded', () => {
       video.volume = vol;
       video.muted = vol === 0;
 
-      if (!video.muted && video.paused) {
-        video.play().catch(err => {});
-      }
-
       if (btnVolume) btnVolume.textContent = video.muted ? '🔇' : '🔊';
       if (volumeSlider) volumeSlider.value = vol;
 
@@ -443,24 +756,28 @@ document.addEventListener('DOMContentLoaded', () => {
     playerContainer.addEventListener('mouseleave', () => {
       if (video && !video.paused) uiElements.forEach(el => el.style.opacity = '0');
     });
-  }
 
-  if (video) {
-    video.addEventListener('play', showControls);
-    video.addEventListener('pause', () => {
-      uiElements.forEach(el => el.style.opacity = '1');
-      clearTimeout(hideTimeout);
-    });
-  }
+    if (video) {
+      video.addEventListener('play', showControls);
+      video.addEventListener('pause', () => {
+        uiElements.forEach(el => el.style.opacity = '1');
+        clearTimeout(hideTimeout);
+      });
+    }
 
-  // Show initially
-  showControls();
+    // Show initially
+    showControls();
+  }
 
   // Toggle Action Menu
   if (btnChatMenu && chatMenu) {
     btnChatMenu.addEventListener('click', (e) => {
       e.stopPropagation();
       chatMenu.style.display = chatMenu.style.display === 'none' ? 'block' : 'none';
+      if (chatMenu.style.display === 'block') {
+        const chatColorPalette = document.getElementById('chat-color-palette');
+        if (chatColorPalette) chatColorPalette.style.display = 'none';
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -501,6 +818,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnChangeGuestNick = document.getElementById('btn-change-guest-nick');
     if (btnChangeGuestNick) {
       btnChangeGuestNick.addEventListener('click', () => {
+        if (window.USER_IS_BANNED) {
+          alert('Вы не можете сменить никнейм, так как ваш IP-адрес заблокирован.');
+          chatMenu.style.display = 'none';
+          return;
+        }
         const newNick = prompt('Введите новый никнейм (максимум 13 символов):', guestName);
         if (newNick && newNick.trim()) {
           let trimmedNick = newNick.trim();
@@ -508,9 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Никнейм не должен превышать 13 символов!');
             return;
           }
-          guestName = trimmedNick;
-          localStorage.setItem('etoyatv_guest_name', guestName);
-          socket.emit('change_guest_name', { newName: guestName });
+          socket.emit('change_guest_name', { newName: trimmedNick });
         }
         chatMenu.style.display = 'none';
       });
@@ -522,6 +842,23 @@ document.addEventListener('DOMContentLoaded', () => {
   let contextMenuTargetUser = null;
 
   document.addEventListener('click', (e) => {
+    // Pin message click delegation
+    const pinBtn = e.target.closest('.btn-pin-message');
+    if (pinBtn) {
+      const messageId = pinBtn.getAttribute('data-msg-id');
+      if (messageId) {
+        socket.emit('pin_message', { messageId: parseInt(messageId) });
+      }
+      return;
+    }
+
+    // Unpin message click delegation
+    const unpinBtn = e.target.closest('#btn-chat-unpin');
+    if (unpinBtn) {
+      socket.emit('unpin_message');
+      return;
+    }
+
     // Hide context menu if clicking outside
     if (userContextMenu && !userContextMenu.contains(e.target)) {
       userContextMenu.style.display = 'none';
@@ -663,6 +1000,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!data.active) {
         // Offline
         if (offlineOverlay) offlineOverlay.style.display = 'flex';
+        const recordBtn = document.getElementById('btn-record-stream');
+        if (recordBtn) recordBtn.style.display = 'none';
         
         const scheduleLiveItem = document.getElementById('schedule_live_item');
         const scheduleEmptyMsg = document.getElementById('schedule_empty_msg');
@@ -694,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      if (!force && !isInitial && video && video.paused) {
+      if (!force && !isInitial && video && video.paused && !video.ended) {
         // User has manually paused. Do not interrupt with a new video.
         // Keep polling so that when they press play, it snaps to live.
         let nextPoll = 30000;
@@ -762,6 +1101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show live label and update program title
         const liveLabel = document.getElementById('player_live_label');
         if (liveLabel) liveLabel.style.display = 'block';
+        const recordBtn = document.getElementById('btn-record-stream');
+        if (recordBtn) recordBtn.style.display = 'flex';
         const progTitle = document.getElementById('channel_program_title');
         if (progTitle) {
           let editBtn = '';
@@ -810,7 +1151,7 @@ document.addEventListener('DOMContentLoaded', () => {
           hlsInstance.loadSource(data.rtmp_url);
           hlsInstance.attachMedia(video);
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            video.play().catch(e => console.log('Autoplay prevented:', e));
+            if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
           });
           hlsInstance.on(Hls.Events.ERROR, function (event, errData) {
             if (errData.fatal) {
@@ -831,13 +1172,15 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
           video.src = data.rtmp_url;
-          video.play().catch(e => console.log('Autoplay prevented:', e));
+          if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
         }
       } else {
         currentlyPlayingLive = false;
 
         const liveLabel = document.getElementById('player_live_label');
         if (liveLabel) liveLabel.style.display = 'none';
+        const recordBtn = document.getElementById('btn-record-stream');
+        if (recordBtn) recordBtn.style.display = 'none';
         const progTitle = document.getElementById('channel_program_title');
         if (progTitle) {
           progTitle.innerHTML = `→ <span class="blue">Автопилот</span>`;
@@ -866,15 +1209,15 @@ document.addEventListener('DOMContentLoaded', () => {
           hlsInstance.loadSource(v.hls_url);
           hlsInstance.attachMedia(video);
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            video.play().catch(e => console.log('Autoplay prevented:', e));
+            if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
           });
         } else if (v.video_url) {
           video.src = v.video_url + '#t=' + offset;
-          video.play().catch(e => console.log('Autoplay prevented:', e));
+          if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
         } else {
           if (v.hls_url && video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = v.hls_url + '#t=' + offset;
-            video.play().catch(e => console.log('Autoplay prevented:', e));
+            if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
           }
         }
       }
@@ -895,6 +1238,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (window.CHANNEL_ID) {
     fetchAutopilotStatus();
+
+    if (video) {
+      video.addEventListener('ended', () => {
+        console.log('[Player] Video ended naturally, advancing to next autopilot video...');
+        fetchAutopilotStatus(true);
+      });
+    }
 
     socket.on('autopilot_update', () => {
       fetchAutopilotStatus();

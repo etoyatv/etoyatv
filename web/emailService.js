@@ -97,9 +97,30 @@ async function sendEmailChangeVerificationCode(email, username, code) {
   await sendEmailFallback(email, subject, text, html);
 }
 
+async function sendChannelTransferEmail(email, username, channelName, transferLink) {
+  const subject = 'Подтверждение передачи владения телеканалом на ЭтоЯTV';
+  const text = `Здравствуйте, ${username}!\n\nВы запросили передачу владения телеканалом "${channelName}".\nДля подтверждения этого действия перейдите по следующей ссылке:\n${transferLink}\n\nЕсли вы не запрашивали передачу владения, срочно смените пароль и проигнорируйте это письмо.`;
+  const html = `<p>Здравствуйте, <b>${username}</b>!</p><p>Вы запросили передачу владения телеканалом "<b>${channelName}</b>".</p><p>Для подтверждения этого действия перейдите по следующей ссылке:</p><p><a href="${transferLink}">${transferLink}</a></p><p>Если вы не запрашивали передачу владения, срочно смените пароль и проигнорируйте это письмо.</p>`;
+
+  try {
+    await transporter.sendMail({
+      from: `"ЭтоЯTV" <${process.env.SMTP_USER || 'noreply@etoyatv.ru'}>`,
+      to: email,
+      subject: subject,
+      text: text,
+      html: html,
+    });
+    console.log(`Channel transfer email sent to ${email} via SMTP.`);
+  } catch (err) {
+    console.error('SMTP failed, logging email locally:', err.message);
+  }
+  await sendEmailFallback(email, subject, text, html);
+}
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
-  sendEmailChangeVerificationCode
+  sendEmailChangeVerificationCode,
+  sendChannelTransferEmail
 };
 

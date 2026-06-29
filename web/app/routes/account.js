@@ -47,7 +47,7 @@ router.get('/ru/account,programs', async (req, res) => {
       });
     }
     
-    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? LIMIT 1', [profileUser.id]);
+    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? AND is_personal = TRUE LIMIT 1', [profileUser.id]);
     const profileChannel = profileChannelRows.length > 0 ? profileChannelRows[0] : null;
 
     connection.release();
@@ -96,6 +96,7 @@ router.get('/ru/account,userinfo/', async (req, res) => {
     }
     let friendshipStatus = 'none';
     let pendingRequests = [];
+    let pendingOutgoingRequests = [];
 
     if (req.session.user && req.session.user.id) {
       const currentUserId = req.session.user.id;
@@ -122,6 +123,12 @@ router.get('/ru/account,userinfo/', async (req, res) => {
           FROM friendships f
           JOIN users u ON f.requester_id = u.id
           WHERE f.receiver_id = ? AND f.status = 'pending'
+        `, [currentUserId]);
+        [pendingOutgoingRequests] = await connection.query(`
+          SELECT u.* 
+          FROM friendships f
+          JOIN users u ON f.receiver_id = u.id
+          WHERE f.requester_id = ? AND f.status = 'pending'
         `, [currentUserId]);
       }
     }
@@ -153,7 +160,7 @@ router.get('/ru/account,userinfo/', async (req, res) => {
     const favoriteChannelsTotal = favChannelsCountRow[0].cnt;
 
     const [profileChannelRows] = await connection.query(`
-      SELECT * FROM channels WHERE user_id = ? LIMIT 1
+      SELECT * FROM channels WHERE user_id = ? AND is_personal = TRUE LIMIT 1
     `, [profileUser.id]);
     const profileChannel = profileChannelRows.length > 0 ? profileChannelRows[0] : null;
 
@@ -196,6 +203,23 @@ router.get('/ru/account,userinfo/', async (req, res) => {
       });
     }
 
+    const cpage = parseInt(req.query.cpage) || 1;
+    const cperPage = 7;
+    const coffset = (cpage - 1) * cperPage;
+
+    const [commentCountRows] = await connection.query('SELECT COUNT(*) as cnt FROM profile_comments WHERE profile_user_id = ? AND is_hidden = 0', [profileUser.id]);
+    const totalComments = commentCountRows[0].cnt;
+    const commentsTotalPages = Math.ceil(totalComments / cperPage);
+
+    const [commentsRows] = await connection.query(`
+      SELECT c.id, c.text, c.created_at, u.id as user_id, u.username, u.avatar 
+      FROM profile_comments c 
+      JOIN users u ON c.author_id = u.id 
+      WHERE c.profile_user_id = ? AND c.is_hidden = 0
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [profileUser.id, cperPage, coffset]);
+
     connection.release();
 
     res.render('profile', {
@@ -203,6 +227,7 @@ router.get('/ru/account,userinfo/', async (req, res) => {
       profileUser: profileUser,
       friendshipStatus: friendshipStatus,
       pendingRequests: pendingRequests,
+      pendingOutgoingRequests: pendingOutgoingRequests,
       friends: friends,
       favoriteChannels: favoriteChannels,
       favoriteChannelsTotal: favoriteChannelsTotal,
@@ -210,7 +235,11 @@ router.get('/ru/account,userinfo/', async (req, res) => {
       favoriteRecordsTotal: favoriteRecordsTotal,
       profileChannel: profileChannel,
       personalSchedules: personalSchedules,
-      personalSchedulesTotal: personalSchedulesTotal
+      personalSchedulesTotal: personalSchedulesTotal,
+      comments: commentsRows,
+      cpage,
+      commentsTotalPages,
+      totalComments
     });
   } catch (err) {
     console.error(err);
@@ -285,7 +314,7 @@ router.get('/ru/account,favrecords', async (req, res) => {
       WHERE f.status = 'accepted' AND u.id != ? AND (f.requester_id = ? OR f.receiver_id = ?) ORDER BY u.id DESC
     `, [profileUser.id, profileUser.id, profileUser.id]);
 
-    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? LIMIT 1', [profileUser.id]);
+    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? AND is_personal = TRUE LIMIT 1', [profileUser.id]);
     const profileChannel = profileChannelRows.length > 0 ? profileChannelRows[0] : null;
 
     connection.release();
@@ -375,7 +404,7 @@ router.get('/ru/account,favchannels', async (req, res) => {
       WHERE f.status = 'accepted' AND u.id != ? AND (f.requester_id = ? OR f.receiver_id = ?) ORDER BY u.id DESC
     `, [profileUser.id, profileUser.id, profileUser.id]);
 
-    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? LIMIT 1', [profileUser.id]);
+    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? AND is_personal = TRUE LIMIT 1', [profileUser.id]);
     const profileChannel = profileChannelRows.length > 0 ? profileChannelRows[0] : null;
 
     connection.release();
@@ -508,7 +537,7 @@ router.get('/ru/account,profile/', requireAuth, async (req, res) => {
     const successAbout = req.session.successAbout;
     delete req.session.successAbout;
 
-    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? LIMIT 1', [req.session.user.id]);
+    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? AND is_personal = TRUE LIMIT 1', [req.session.user.id]);
     const profileChannel = profileChannelRows.length > 0 ? profileChannelRows[0] : null;
 
     connection.release();
@@ -945,7 +974,7 @@ router.post('/settings/delete-account', requireAuth, async (req, res) => {
     for (const ch of channels) {
       if (ch.shortname) {
         try {
-          await axios.delete(`http://rtmp:8000/api/streams/live/${ch.shortname}`, {
+          await axios.delete(`http://192.168.90.5:8000/api/streams/live/${ch.shortname}`, {
             auth: {
               username: process.env.RTMP_API_USER || 'admin',
               password: process.env.RTMP_API_PASS || 'admin'
@@ -1092,7 +1121,7 @@ router.get(['/ru/account,friends', '/ru/account,friendof'], async (req, res) => 
       ORDER BY u.id DESC
     `, [profileUser.id, profileUser.id, profileUser.id]);
 
-    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? LIMIT 1', [profileUser.id]);
+    const [profileChannelRows] = await connection.query('SELECT * FROM channels WHERE user_id = ? AND is_personal = TRUE LIMIT 1', [profileUser.id]);
     const profileChannel = profileChannelRows.length > 0 ? profileChannelRows[0] : null;
 
     connection.release();
@@ -1335,477 +1364,7 @@ router.get('/api/users/search', requireAuth, async (req, res) => {
   }
 });
 
-// API Toggle Channel Favorite
-router.post('/api/channels/:id/favorite', requireAuth, async (req, res) => {
-  const channelId = req.params.id;
-  const userId = req.session.user.id;
-  try {
-    const connection = await pool.getConnection();
-    const [existing] = await connection.query('SELECT id FROM channel_fans WHERE user_id = ? AND channel_id = ?', [userId, channelId]);
-    let isFan = false;
-    if (existing.length > 0) {
-      await connection.query('DELETE FROM channel_fans WHERE id = ?', [existing[0].id]);
-    } else {
-      await connection.query('INSERT INTO channel_fans (user_id, channel_id) VALUES (?, ?)', [userId, channelId]);
-      isFan = true;
-    }
-    const [countRows] = await connection.query('SELECT COUNT(*) as count FROM channel_fans WHERE channel_id = ?', [channelId]);
-    const [fansRows] = await connection.query(`
-      SELECT u.id, u.username, u.avatar 
-      FROM channel_fans f 
-      JOIN users u ON f.user_id = u.id 
-      WHERE f.channel_id = ? 
-      ORDER BY f.created_at DESC 
-      LIMIT 6
-    `, [channelId]);
-    connection.release();
-    res.json({ success: true, isFan, count: countRows[0].count, fans: fansRows });
-  } catch (e) {
-    console.error('Error toggling favorite:', e);
-    res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
 
-
-// API Toggle Record Fan
-router.post('/api/records/:id/favorite_fan', requireAuth, async (req, res) => {
-  const recordId = req.params.id;
-  const userId = req.session.user.id;
-  try {
-    const connection = await pool.getConnection();
-    const [existing] = await connection.query('SELECT id FROM record_favorites WHERE user_id = ? AND record_id = ?', [userId, recordId]);
-    let isFan = false;
-    if (existing.length > 0) {
-      await connection.query('DELETE FROM record_favorites WHERE id = ?', [existing[0].id]);
-    } else {
-      await connection.query('INSERT INTO record_fans (user_id, record_id) VALUES (?, ?)', [userId, recordId]);
-      isFan = true;
-    }
-    const [countRows] = await connection.query('SELECT COUNT(*) as count FROM record_favorites WHERE record_id = ?', [recordId]);
-    connection.release();
-    res.json({ success: true, isFan, count: countRows[0].count });
-  } catch (e) {
-    console.error('Error toggling record fan:', e);
-    res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
-
-// API Report Channel
-router.post('/api/channels/:id/report', requireAuth, async (req, res) => {
-  const channelId = req.params.id;
-  const userId = req.session.user.id;
-  const { reason } = req.body;
-
-  if (!reason || reason.trim() === '') {
-    return res.status(400).json({ success: false, error: 'Reason is required' });
-  }
-
-  try {
-    const connection = await pool.getConnection();
-    // Verify channel exists
-    const [channel] = await connection.query('SELECT user_id FROM channels WHERE id = ?', [channelId]);
-    if (channel.length === 0) {
-      connection.release();
-      return res.status(404).json({ success: false, error: 'Channel not found' });
-    }
-    if (channel[0].user_id === userId) {
-      connection.release();
-      return res.status(403).json({ success: false, error: 'Cannot report your own channel' });
-    }
-
-    await connection.query('INSERT INTO channel_reports (reporter_id, channel_id, reason) VALUES (?, ?, ?)', [userId, channelId, reason]);
-    connection.release();
-    res.json({ success: true });
-  } catch (e) {
-    console.error('Error reporting channel:', e);
-    res.status(500).json({ success: false, error: 'Server error' });
-  }
-});
-
-// Dashboard feature
-router.get('/dashboard', requireAuth, (req, res) => {
-  res.redirect('/ru/panel,dashboard');
-});
-
-// Channels feature
-router.get('/ru/channel,records', async (req, res, next) => {
-  const shortname = req.query.shortname;
-  if (!shortname) return next();
-
-  try {
-    const [channels] = await pool.query('SELECT c.*, u.username as owner_username FROM channels c JOIN users u ON c.user_id = u.id WHERE c.shortname = ?', [shortname]);
-    if (channels.length === 0) return next();
-    const channel = channels[0];
-    const owner = { username: channel.owner_username };
-
-    const [records] = await pool.query(`
-      SELECT id, title, duration, views, thumbnail_url, created_at, is_18_plus,
-             (SELECT COUNT(*) FROM record_favorites rf WHERE rf.record_id = records.id) as fans_count
-             ${req.session.user ? `, (SELECT COUNT(*) FROM record_favorites rf WHERE rf.record_id = records.id AND rf.user_id = ${req.session.user.id}) > 0 as is_fan` : ', 0 as is_fan'}
-      FROM records 
-      WHERE channel_id = ?
-      ORDER BY created_at DESC
-    `, [channel.id]);
-
-    res.render('channel_records', {
-      pageTitle: 'Записи телеканала ' + channel.name + ' | ЭтоЯTV',
-      channel,
-      owner,
-      records,
-      user: req.session.user
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).send('Server Error');
-  }
-});
-
-router.get('/ru/channel,programs', async (req, res, next) => {
-  const shortname = req.query.shortname;
-  if (!shortname) return next();
-
-  try {
-    const [channels] = await pool.query('SELECT c.*, u.username as owner_username FROM channels c JOIN users u ON c.user_id = u.id WHERE c.shortname = ?', [shortname]);
-    if (channels.length === 0) return next();
-    const channel = channels[0];
-    const owner = { username: channel.owner_username };
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = 10;
-    const offset = (page - 1) * limit;
-
-    const [countRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR', [channel.id]);
-    const totalProgramsCount = countRows[0].cnt;
-    const totalPages = Math.ceil(totalProgramsCount / limit) || 1;
-
-    const query = `
-      SELECT p.*, 
-             (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id) as bookmarks_count
-             ${req.session.user ? `, (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id AND ps.user_id = ${req.session.user.id}) > 0 as is_bookmarked` : ', 0 as is_bookmarked'}
-      FROM programs p
-      WHERE p.channel_id = ? AND p.start_time >= NOW() - INTERVAL 2 HOUR
-      ORDER BY p.start_time ASC
-      LIMIT ? OFFSET ?
-    `;
-    const [programs] = await pool.query(query, [channel.id, limit, offset]);
-
-    res.render('channel_programs', {
-      pageTitle: 'Расписание телеканала ' + channel.name + ' | ЭтоЯTV',
-      channel,
-      owner,
-      programs,
-      user: req.session.user,
-      page,
-      totalPages
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).send('Server Error');
-  }
-});
-
-router.get('/ru/channel,friends', async (req, res, next) => {
-  const shortname = req.query.shortname;
-  if (!shortname) return next();
-
-  try {
-    const [channels] = await pool.query('SELECT c.*, u.username FROM channels c JOIN users u ON c.user_id = u.id WHERE c.shortname = ?', [shortname]);
-
-    if (channels.length === 0) {
-      return next();
-    }
-
-    const channelId = channels[0].id;
-    const [fans] = await pool.query(`
-      SELECT f.user_id, u.username, u.avatar, u.last_active 
-      FROM channel_fans f 
-      JOIN users u ON f.user_id = u.id 
-      WHERE f.channel_id = ? 
-      ORDER BY f.created_at DESC
-    `, [channelId]);
-
-    res.render('channel_friends', {
-      pageTitle: 'Фанаты телеканала ' + channels[0].name + ' | ЭтоЯTV',
-      channel: channels[0],
-      owner: { username: channels[0].username },
-      fans
-    });
-  } catch (e) {
-    console.error('Error fetching friends:', e);
-    next();
-  }
-});
-router.get('/channels/create', requireAuth, async (req, res) => {
-  let hasRecentlyDeletedChannel = false;
-  let hasAdminDeletedChannel = false;
-  let adminDeletedDaysLeft = 0;
-  
-  try {
-    const connection = await pool.getConnection();
-    const [banned] = await connection.query("SELECT id FROM channels WHERE user_id = ? AND status = 'banned'", [req.session.user.id]);
-    if (banned.length > 0) {
-      connection.release();
-      return res.redirect('/ru/panel,select?error=' + encodeURIComponent('Ваш аккаунт ограничен в создании новых каналов из-за блокировки предыдущего.'));
-    }
-
-    const [active] = await connection.query("SELECT id FROM channels WHERE user_id = ? AND status != 'deleted' AND status != 'banned'", [req.session.user.id]);
-    if (active.length > 0) {
-      connection.release();
-      return res.redirect('/ru/panel,select?error=' + encodeURIComponent('У вас уже есть созданный телеканал. Одновременно можно иметь только один.'));
-    }
-
-    const [deleted] = await connection.query("SELECT id, deleted_at, deleted_by_admin FROM channels WHERE user_id = ? AND status = 'deleted' ORDER BY deleted_at DESC LIMIT 1", [req.session.user.id]);
-    connection.release();
-    if (deleted.length > 0) {
-      const diff = Date.now() - new Date(deleted[0].deleted_at).getTime();
-      
-      if (deleted[0].deleted_by_admin) {
-        const daysLeft = 3 - Math.floor(diff / (1000 * 60 * 60 * 24));
-        if (daysLeft > 0) {
-          hasAdminDeletedChannel = true;
-          adminDeletedDaysLeft = daysLeft;
-        }
-      } else {
-        const daysLeft = 30 - Math.floor(diff / (1000 * 60 * 60 * 24));
-        hasRecentlyDeletedChannel = daysLeft > 0 ? daysLeft : false;
-      }
-    }
-  } catch (e) { }
-  res.render('channel_create', { 
-    pageTitle: 'Создание телеканала | ЭтоЯTV', 
-    error: req.query.error, 
-    hasRecentlyDeletedChannel,
-    hasAdminDeletedChannel,
-    adminDeletedDaysLeft
-  });
-});
-
-router.post('/channels/restore', requireAuth, async (req, res) => {
-  try {
-    const connection = await pool.getConnection();
-    const [del] = await connection.query("SELECT deleted_by_admin FROM channels WHERE user_id = ? AND status = 'deleted'", [req.session.user.id]);
-    if (del.length > 0 && del[0].deleted_by_admin) {
-        connection.release();
-        return res.redirect('/channels/create?error=' + encodeURIComponent('Восстановление невозможно. Канал был удален администрацией.'));
-    }
-    await connection.query("UPDATE channels SET status = 'active', deleted_at = NULL, rtmp_disabled = 0 WHERE user_id = ? AND status = 'deleted'", [req.session.user.id]);
-    
-    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-    logAction('team', req.session.user.username, 'Отменил удаление канала', userIp);
-
-    connection.release();
-    res.redirect('/ru/panel,dashboard');
-  } catch (e) {
-    console.error(e);
-    res.redirect('/channels/create?error=' + encodeURIComponent('Ошибка восстановления'));
-  }
-});
-
-router.post('/channels/create', requireAuth, async (req, res) => {
-  const { name, description, shortname } = req.body;
-  if (!name || !shortname) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Имя канала и короткое имя обязательны.'));
-  }
-  if (name.length > 77) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Название телеканала не должно превышать 77 символов.'));
-  }
-  if (description && description.length > 200) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Описание телеканала не должно превышать 200 символов.'));
-  }
-
-  const restrictedSlugs = ['login', 'register', 'api', 'news', 'account', 'channels', 'admin', 'panel'];
-  if (restrictedSlugs.includes(shortname.toLowerCase())) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Это короткое имя недоступно.'));
-  }
-
-  const slugRegex = /^[a-zA-Z0-9_-]+$/;
-  if (!slugRegex.test(shortname)) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Короткое имя может содержать только латинские буквы, цифры, дефис и подчеркивание.'));
-  }
-
-  if (!req.session.user.staff_role && await wordFilter.containsBadWords(shortname)) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Данный URL адрес нельзя назвать.'));
-  }
-
-  try {
-    const connection = await pool.getConnection();
-    const [banned] = await connection.query("SELECT id FROM channels WHERE user_id = ? AND status = 'banned'", [req.session.user.id]);
-    if (banned.length > 0) {
-      connection.release();
-      return res.redirect('/ru/panel,select?error=' + encodeURIComponent('Ваш аккаунт ограничен в создании новых каналов из-за блокировки предыдущего.'));
-    }
-
-    const [active] = await connection.query("SELECT id FROM channels WHERE user_id = ? AND status != 'deleted' AND status != 'banned'", [req.session.user.id]);
-    if (active.length > 0) {
-      connection.release();
-      return res.redirect('/ru/panel,select?error=' + encodeURIComponent('У вас уже есть созданный телеканал. Одновременно можно иметь только один.'));
-    }
-
-    const [deleted] = await connection.query("SELECT id, deleted_at, deleted_by_admin FROM channels WHERE user_id = ? AND status = 'deleted' ORDER BY deleted_at DESC LIMIT 1", [req.session.user.id]);
-    if (deleted.length > 0) {
-      const diff = Date.now() - new Date(deleted[0].deleted_at).getTime();
-      if (deleted[0].deleted_by_admin) {
-        const daysLeft = 3 - Math.floor(diff / (1000 * 60 * 60 * 24));
-        if (daysLeft > 0) {
-          connection.release();
-          return res.redirect('/ru/panel,select?error=' + encodeURIComponent('Ваш аккаунт ограничен в создании новых каналов.'));
-        }
-      } else {
-        const daysLeft = 30 - Math.floor(diff / (1000 * 60 * 60 * 24));
-        if (daysLeft > 0) {
-          connection.release();
-          return res.redirect('/channels/create?error=' + encodeURIComponent('Вы недавно удалили канал. Восстановите его или дождитесь окончательного удаления.'));
-        }
-      }
-    }
-
-    const [existing] = await connection.query('SELECT id FROM channels WHERE shortname = ?', [shortname]);
-    if (existing.length > 0) {
-      connection.release();
-      return res.redirect('/channels/create?error=' + encodeURIComponent('Это короткое имя уже занято.'));
-    }
-
-    const filteredName = req.session.user.staff_role ? name : await wordFilter.filter(name);
-    const filteredDescription = req.session.user.staff_role ? description : await wordFilter.filter(description);
-
-    await connection.query('INSERT INTO channels (user_id, name, description, shortname, bg_color, logo_url, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-      [req.session.user.id, filteredName, filteredDescription, shortname, '#262626', '/images/default_channel_logo.png', 'active']);
-
-    const [newChannel] = await connection.query('SELECT id FROM channels WHERE shortname = ?', [shortname]);
-    connection.release();
-    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-    logAction('team', req.session.user.username, `Создал новый телеканал "${name}" (${shortname}, ID: ${newChannel[0].id})`, userIp);
-
-    res.redirect('/' + shortname);
-  } catch (e) {
-    console.error('Error creating channel:', e);
-    res.redirect('/channels/create?error=' + encodeURIComponent('Внутренняя ошибка сервера.'));
-  }
-});
-
-
-// Comments API
-router.post('/channels/:shortname/comments/add', requireAuth, async (req, res) => {
-  const { shortname } = req.params;
-  const { text } = req.body;
-  if (!text || !text.trim()) {
-    return res.redirect('/' + shortname + '#comments');
-  }
-
-  try {
-    const connection = await pool.getConnection();
-    const [channels] = await connection.query('SELECT id FROM channels WHERE shortname = ?', [shortname]);
-    if (channels.length === 0) {
-      connection.release();
-      return res.status(404).send('Channel not found');
-    }
-    let commentText = text.trim();
-    if (commentText.length > 300) commentText = commentText.substring(0, 300);
-
-    const filteredComment = req.session.user.staff_role ? commentText : await wordFilter.filter(commentText);
-
-    await connection.query('INSERT INTO channel_comments (channel_id, user_id, text) VALUES (?, ?, ?)', [channels[0].id, req.session.user.id, filteredComment]);
-    connection.release();
-    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-    logAction('user', req.session.user.username, `Отправил комментарий на канал ${shortname}: "${commentText}"`, userIp);
-    res.redirect('/' + shortname + '#comments');
-  } catch (e) {
-    console.error('Error adding comment:', e);
-    res.status(500).send('Internal Server Error');
-  }
-});
-
-router.post('/channels/:shortname/comments/:id/delete', requireAuth, async (req, res) => {
-  const { shortname, id } = req.params;
-
-  try {
-    const connection = await pool.getConnection();
-    const [comments] = await connection.query('SELECT c.user_id, ch.user_id as owner_id FROM channel_comments c JOIN channels ch ON c.channel_id = ch.id WHERE c.id = ?', [id]);
-
-    if (comments.length === 0) {
-      connection.release();
-      return res.status(404).send('Comment not found');
-    }
-
-    const isAuthor = comments[0].user_id === req.session.user.id;
-    const isOwner = comments[0].owner_id === req.session.user.id;
-    const isAdmin = req.session.user.is_admin || false; // stub for platform admin
-    const isModerator = false; // stub for channel moderator
-
-    if (isAuthor || isOwner || isAdmin || isModerator) {
-      await connection.query('DELETE FROM channel_comments WHERE id = ?', [id]);
-    }
-    connection.release();
-    res.redirect('/' + shortname + '#comments');
-  } catch (e) {
-    console.error('Error deleting comment:', e);
-    res.status(500).send('Internal Server Error');
-  }
-});
-
-// News API
-router.post('/channels/:shortname/news/add', requireAuth, async (req, res) => {
-  const { shortname } = req.params;
-  const { title, announce, content } = req.body;
-
-  if (!title || !title.trim()) {
-    return res.redirect('/ru/panel,news?error=' + encodeURIComponent('Title is required'));
-  }
-
-  try {
-    const connection = await pool.getConnection();
-    const [channels] = await connection.query('SELECT id, user_id FROM channels WHERE shortname = ?', [shortname]);
-    if (channels.length === 0) {
-      connection.release();
-      return res.redirect('/ru/panel,news?error=' + encodeURIComponent('Channel not found'));
-    }
-
-    const isOwner = channels[0].user_id === req.session.user.id;
-    const isModerator = false; // stub for channel moderator
-
-    if (!isOwner && !isModerator) {
-      connection.release();
-      return res.status(403).send('Forbidden');
-    }
-
-    await connection.query('INSERT INTO channel_news (channel_id, title, announce, content, author_id) VALUES (?, ?, ?, ?, ?)',
-      [channels[0].id, title.trim(), announce ? announce.trim() : null, content ? content.trim() : null, req.session.user.id]);
-
-    connection.release();
-    res.redirect('/' + shortname);
-  } catch (e) {
-    console.error('Error adding channel news:', e);
-    res.redirect('/ru/panel,news?error=' + encodeURIComponent('Server Error'));
-  }
-});
-
-router.post('/channels/:shortname/news/:id/delete', requireAuth, async (req, res) => {
-  const { shortname, id } = req.params;
-
-  try {
-    const connection = await pool.getConnection();
-    const [news] = await connection.query('SELECT ch.user_id as owner_id FROM channel_news n JOIN channels ch ON n.channel_id = ch.id WHERE n.id = ?', [id]);
-
-    if (news.length === 0) {
-      connection.release();
-      return res.status(404).send('News not found');
-    }
-
-    const isOwner = news[0].owner_id === req.session.user.id;
-    const isAdmin = req.session.user.is_admin || false;
-    const isModerator = false; // stub for channel moderator
-
-    if (isOwner || isAdmin || isModerator) {
-      await connection.query('DELETE FROM channel_news WHERE id = ?', [id]);
-    }
-
-    connection.release();
-    res.redirect('/' + shortname);
-  } catch (e) {
-    console.error('Error deleting news:', e);
-    res.status(500).send('Internal Server Error');
-  }
-});
 
 
 router.post('/settings/invites/generate', requireAuth, async (req, res) => {
@@ -1872,6 +1431,118 @@ router.post('/ru/account,profile/invites/delete/:id', requireAuth, async (req, r
     req.session.save(() => {
       res.redirect('/ru/account,profile/#tab-invites');
     });
+  }
+});
+
+// Profile comments API routes
+router.get('/api/profiles/:username/comments_html', async (req, res) => {
+  const { username } = req.params;
+  const cpage = parseInt(req.query.cpage) || 1;
+  const cperPage = 7;
+  const coffset = (cpage - 1) * cperPage;
+
+  try {
+    const connection = await pool.getConnection();
+    const [users] = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
+    if (users.length === 0) {
+      connection.release();
+      return res.status(404).send('User not found');
+    }
+    const profileUser = users[0];
+
+    const [commentCountRows] = await connection.query('SELECT COUNT(*) as cnt FROM profile_comments WHERE profile_user_id = ? AND is_hidden = 0', [profileUser.id]);
+    const totalComments = commentCountRows[0].cnt;
+    const commentsTotalPages = Math.ceil(totalComments / cperPage);
+
+    const [commentsRows] = await connection.query(`
+      SELECT c.id, c.text, c.created_at, u.id as user_id, u.username, u.avatar 
+      FROM profile_comments c 
+      JOIN users u ON c.author_id = u.id 
+      WHERE c.profile_user_id = ? AND c.is_hidden = 0
+      ORDER BY c.created_at DESC
+      LIMIT ? OFFSET ?
+    `, [profileUser.id, cperPage, coffset]);
+
+    connection.release();
+
+    res.render('partials/profile_comments_list', {
+      comments: commentsRows,
+      cpage,
+      commentsTotalPages,
+      user: req.session.user,
+      profileUser: profileUser
+    });
+  } catch (e) {
+    console.error('Error in profile comments html:', e);
+    res.status(500).send('Error');
+  }
+});
+
+router.get('/api/profiles/:username/comments_count', async (req, res) => {
+  const { username } = req.params;
+  try {
+    const [users] = await pool.query('SELECT id FROM users WHERE username = ?', [username]);
+    if (users.length === 0) return res.json({ success: false, error: 'User not found' });
+    const [countRows] = await pool.query('SELECT COUNT(*) as cnt FROM profile_comments WHERE profile_user_id = ? AND is_hidden = 0', [users[0].id]);
+    res.json({ success: true, count: countRows[0].cnt });
+  } catch (e) {
+    res.json({ success: false, error: e.message });
+  }
+});
+
+router.post('/api/profiles/:username/comment', requireAuth, async (req, res) => {
+  const { username } = req.params;
+  const { text } = req.body;
+  if (!text || !text.trim()) return res.json({ success: false, error: 'Text is empty' });
+
+  try {
+    const connection = await pool.getConnection();
+    const [users] = await connection.query('SELECT id FROM users WHERE username = ?', [username]);
+    if (users.length === 0) {
+      connection.release();
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    let commentText = text.trim();
+    if (commentText.length > 300) commentText = commentText.substring(0, 300);
+
+    const filteredComment = req.session.user.staff_role ? commentText : await wordFilter.filter(commentText);
+
+    await connection.query('INSERT INTO profile_comments (profile_user_id, author_id, text) VALUES (?, ?, ?)', [users[0].id, req.session.user.id, filteredComment]);
+
+    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+    logAction('user', req.session.user.username, `Оставил комментарий в профиле пользователя ${username}: "${filteredComment}"`, userIp);
+
+    connection.release();
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error adding profile comment:', e);
+    res.json({ success: false, error: 'Server error' });
+  }
+});
+
+router.delete('/api/profiles/:username/comment/:id', requireAuth, async (req, res) => {
+  const { username, id } = req.params;
+  try {
+    const connection = await pool.getConnection();
+    const [comments] = await connection.query('SELECT author_id, profile_user_id FROM profile_comments WHERE id = ?', [id]);
+    if (comments.length === 0) {
+      connection.release();
+      return res.json({ success: false, error: 'Comment not found' });
+    }
+    const comment = comments[0];
+    const staffRole = req.session.user.staff_role || '';
+    const isStaff = ['admin', 'moderator', 'mod'].includes(staffRole);
+
+    if (req.session.user.id !== comment.author_id && req.session.user.id !== comment.profile_user_id && !isStaff) {
+      connection.release();
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+    await connection.query('DELETE FROM profile_comments WHERE id = ?', [id]);
+    connection.release();
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error deleting profile comment:', e);
+    res.json({ success: false, error: 'Server error' });
   }
 });
 

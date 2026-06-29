@@ -22,9 +22,9 @@
                   </div>
                   <div class="block-content" style="padding: 10px;">
                     <ul style="list-style: none; padding: 0; margin: 0;">
-                      <% pendingRequests.forEach(function(reqUser) { %>
-                        <li
-                          style="margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+                      <% pendingRequests.forEach(function(reqUser, index) { %>
+                        <li class="incoming-req-item"
+                          style="margin-bottom: 10px; display: <%= index >= 5 ? 'none' : 'flex' %>; align-items: center; justify-content: space-between;">
                           <span style="font-size: 14px; color: #fff;">
                             <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(reqUser.username) %>"
                               style="color: #6fdeee; font-weight: bold; text-decoration: none;">
@@ -40,6 +40,11 @@
                         </li>
                         <% }) %>
                     </ul>
+                    <% if (pendingRequests.length > 5) { %>
+                      <div class="show-all-incoming" style="text-align: center; margin-top: 10px;">
+                        <a href="#" onclick="$('.incoming-req-item').css('display', 'flex'); $('.show-all-incoming').hide(); return false;" style="color: #6fdeee; text-decoration: none; font-size: 12px; font-weight: bold;">Показать все (<%= pendingRequests.length %>)</a>
+                      </div>
+                    <% } %>
                     <div class="clear_both"></div>
                   </div>
                   <div class="clear_both"></div>
@@ -55,7 +60,62 @@
         <!-- << PENDING FRIEND REQUESTS -->
         <% } %>
 
+      <% if (user && user.username===profileUser.username && typeof pendingOutgoingRequests !== 'undefined' && pendingOutgoingRequests.length> 0) { %>
+        <!-- OUTGOING FRIEND REQUESTS>> -->
+        <div class="block_item">
+          <div class="blackbox" style="width: auto;">
+            <div class="blackbox_tl"></div>
+            <div class="blackbox_tc"></div>
+            <div class="blackbox_tr"></div>
+            <div class="blackbox_cw">
+              <div class="blackbox_c" style="">
+                <div class="blackbox_ci">
+                  <div class="block-head-bg"></div>
+                  <div class="block-head">
+                    <div class="block-head-right">
+                      <div class="block-title">Исходящие заявки (<span class="white"><%= pendingOutgoingRequests.length %></span>)</div>
+                    </div>
+                  </div>
+                  <div class="block-content" style="padding: 10px;">
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+                      <% pendingOutgoingRequests.forEach(function(reqUser, index) { %>
+                        <li class="outgoing-req-item"
+                          style="margin-bottom: 10px; display: <%= index >= 5 ? 'none' : 'flex' %>; align-items: center; justify-content: space-between;">
+                          <span style="font-size: 14px; color: #fff;">
+                            Ожидает ответа: <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(reqUser.username) %>"
+                              style="color: #ffcc00; font-weight: bold; text-decoration: none;">
+                              <%= reqUser.username %>
+                            </a>
+                          </span>
+                          <div style="margin-top: 5px;">
+                            <a href="/friends/remove?username=<%= encodeURIComponent(reqUser.username) %>"
+                              style="background: #c0392b; color: white; padding: 3px 8px; text-decoration: none; border-radius: 3px; font-size: 11px;">Отменить запрос</a>
+                          </div>
+                        </li>
+                        <% }) %>
+                    </ul>
+                    <% if (pendingOutgoingRequests.length > 5) { %>
+                      <div class="show-all-outgoing" style="text-align: center; margin-top: 10px;">
+                        <a href="#" onclick="$('.outgoing-req-item').css('display', 'flex'); $('.show-all-outgoing').hide(); return false;" style="color: #ffcc00; text-decoration: none; font-size: 12px; font-weight: bold;">Показать все (<%= pendingOutgoingRequests.length %>)</a>
+                      </div>
+                    <% } %>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+                <div class="clear_both"></div>
+              </div>
+            </div>
+            <div class="blackbox_bl"></div>
+            <div class="blackbox_bc"></div>
+            <div class="blackbox_br"></div>
+          </div>
+        </div>
+        <!-- << OUTGOING FRIEND REQUESTS -->
+      <% } %>
+
           <!-- PROGRAMMS LIST>> -->
+
           <div class="block_item">
             <div class="blackbox" style="width: auto;">
               <div class="blackbox_tl"></div>
@@ -184,7 +244,7 @@
                                 </div>
                                 <div style="position: absolute; right: 0; top: 0;">
                                   <% if (locals.user) { %>
-                                  <div style="background: #111; padding: 0 6px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                  <div class="likes-badge">
                                     <span id="record_fans_count_<%= rec.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;"><%= rec.fans_count || 0 %></span>
                                     <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;" style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>" id="record_fan_icon_<%= rec.id %>" style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
                                   </div>
@@ -259,7 +319,7 @@
                                         src="<%= CDN_BASE_URL %><%= chan.logo_url || '/images/default_channel_logo.png'  %>"
                                         alt="<%= chan.name %>" style="object-fit: cover; display: block; <%= chan.is_18_plus ? 'filter: blur(4px);' : '' %>"></a>
                                     <% if (locals.user) { %>
-                                    <div style="background: #111; width: 52px; height: 18px; border-radius: 0 0 3px 3px; display: flex; align-items: center; justify-content: center; gap: 3px;">
+                                    <div class="likes-badge channel-badge">
                                       <span id="fans_count_<%= chan.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 16px;">
                                         <%= chan.fans_count || 0 %>
                                       </span>
@@ -297,6 +357,59 @@
             </div>
           </div>
           <!-- << FAVORITES CHANNEL -->
+
+          <!-- COMMENTS LIST>> -->
+          <div class="block_item">
+            <div class="blackbox" style="width: auto;">
+              <div class="blackbox_tl"></div>
+              <div class="blackbox_tc"></div>
+              <div class="blackbox_tr"></div>
+              <div class="blackbox_cw">
+                <div class="blackbox_c" style="">
+                  <div class="blackbox_ci">
+                    <div class="block-head-bg"></div>
+                    <div class="block-head">
+                      <div class="block-head-right">
+                        <div class="block-title">Комментарии <%- `(<span class="blue" id="comments_count">${typeof totalComments !== 'undefined' ? totalComments : 0}</span>)` %></div>
+                        <div class="block-buttons"></div>
+                      </div>
+                    </div>
+                    <div class="block-content">
+                      <div id="comments_list">
+                        <div id="comment_add_form" style="display: block;">
+                          <% if (typeof user !=='undefined' && user) { %>
+                            <form action="#" onsubmit="addProfileComment(event, '<%= profileUser.username %>'); return false;">
+                              <textarea class="input-textarea" id="profileCommentText" name="text" cols="10" rows="10"
+                                style="width: 540px; height: 50px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; padding: 5px;"
+                                maxlength="300" required></textarea>
+
+                              <div class="button button_grey" style="width: 120px; margin-top: 10px;">
+                                <div class="button_left"></div>
+                                <input type="submit" class="button_right" style="width: 108px" value="Отправить">
+                              </div>
+                              <div id="comment_form_error"></div>
+                              <div class="clear_both"></div>
+                            </form>
+                          <% } else { %>
+                            <p style="color: #c0c0b2; margin-bottom: 20px;">Пожалуйста, <a href="/login" style="color: #6fdeee;">войдите</a> или <a href="/register" style="color: #6fdeee;">зарегистрируйтесь</a>, чтобы оставить комментарий.</p>
+                          <% } %>
+                        </div>
+                        <div class="comments" id="profile_comments_container" style="margin-top: 15px;">
+                          <%- include('partials/profile_comments_list') %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+              </div>
+              <div class="blackbox_bl"></div>
+              <div class="blackbox_bc"></div>
+              <div class="blackbox_br"></div>
+            </div>
+          </div>
+          <!-- << COMMENTS LIST -->
 
     </div>
     <!-- << LEFT COLUMN -->
@@ -520,7 +633,7 @@
                         <div style="color: #c0c0b2;">Список пуст</div>
                         <% } else { %>
                           <div class="users" style="display: flex; flex-wrap: wrap; gap: 15px 7px;">
-                            <% friends.slice(0, 9).forEach(function(friendUser, index) { %>
+                            <% friends.slice(0, 6).forEach(function(friendUser, index) { %>
                               <div class="item" style="margin-right: 0;">
                                 <a class="logo"
                                   href="/ru/account,userinfo/?username=<%= encodeURIComponent(friendUser.username) %>"
@@ -619,6 +732,72 @@ window.toggleBookmark = async function(programId, el) {
   } catch (e) {
     alert('Ошибка сети');
   }
+};
+
+window.loadProfileComments = async function(event, username, page) {
+  if (event) event.preventDefault();
+  try {
+    const res = await fetch(`/api/profiles/${encodeURIComponent(username)}/comments_html?cpage=${page}`);
+    const html = await res.text();
+    document.getElementById('profile_comments_container').innerHTML = html;
+  } catch (e) {
+    console.error('Error loading comments', e);
+  }
+};
+
+window.refreshProfileCommentsCount = async function(username) {
+  try {
+    const res = await fetch(`/api/profiles/${encodeURIComponent(username)}/comments_count`);
+    const data = await res.json();
+    if (data.success && document.getElementById('comments_count')) {
+      document.getElementById('comments_count').innerText = data.count;
+    }
+  } catch (e) {
+    console.error('Error refreshing comment count', e);
+  }
+};
+
+window.addProfileComment = async function(event, username) {
+  event.preventDefault();
+  const textInput = document.getElementById('profileCommentText');
+  const text = textInput.value;
+  if (!text.trim()) return;
+  try {
+    const res = await fetch(`/api/profiles/${encodeURIComponent(username)}/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.success) {
+      textInput.value = '';
+      window.loadProfileComments(null, username, 1);
+      window.refreshProfileCommentsCount(username);
+    } else {
+      alert(data.error || 'Ошибка при добавлении комментария');
+    }
+  } catch (e) {
+    alert('Ошибка соединения');
+  }
+};
+
+window.deleteProfileComment = async function(username, commentId) {
+  yatvConfirm('Вы уверены, что хотите удалить комментарий?', async () => {
+    try {
+      const res = await fetch(`/api/profiles/${encodeURIComponent(username)}/comment/${commentId}`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.loadProfileComments(null, username, 1);
+        window.refreshProfileCommentsCount(username);
+      } else {
+        alert(data.error || 'Ошибка при удалении комментария');
+      }
+    } catch (e) {
+      alert('Ошибка соединения');
+    }
+  });
 };
 </script>
 

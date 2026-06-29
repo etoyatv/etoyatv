@@ -238,7 +238,7 @@ router.get('/ru/tv,records', async (req, res) => {
       FROM records r
       JOIN channels c ON r.channel_id = c.id
       ${whereClause} 
-      ORDER BY r.created_at DESC 
+      ORDER BY fans_count DESC, r.created_at DESC 
       LIMIT ? OFFSET ?
     `, queryParams);
 
@@ -321,7 +321,7 @@ router.get('/ru/tv,programs', async (req, res) => {
 router.get('/ru/tv,channels', async (req, res) => {
   const searchQuery = req.query.q || '';
   const page = parseInt(req.query.page) || 1;
-  const limit = 20;
+  const limit = 21;
   const offset = (page - 1) * limit;
 
   try {
@@ -339,7 +339,7 @@ router.get('/ru/tv,channels', async (req, res) => {
       params.push(`%${searchQuery}%`, `%${searchQuery}%`);
     }
 
-    queryStr += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    queryStr += " ORDER BY c.is_verified DESC, c.is_premium DESC, fans_count DESC, (c.is_live = 1 OR c.autopilot_enabled = 1) DESC, c.created_at DESC LIMIT ? OFFSET ?";
 
     const [countRows] = await connection.query(countQueryStr, params);
     const totalChannels = countRows[0].count;

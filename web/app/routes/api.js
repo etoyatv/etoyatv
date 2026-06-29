@@ -158,7 +158,25 @@ router.post('/api/channel/live_title', async (req, res) => {
     
     const [channels] = await pool.query('SELECT id, user_id FROM channels WHERE shortname = ?', [shortname]);
     if (channels.length === 0) return res.status(404).json({ success: false, error: 'Channel not found' });
-    if (channels[0].user_id !== req.session.user.id) return res.status(403).json({ success: false, error: 'Forbidden' });
+    
+    // Check if user is owner
+    let isAuthorized = (channels[0].user_id == req.session.user.id);
+    
+    // If not owner, check if team member with editor/reporter/moderator role
+    if (!isAuthorized) {
+      const [team] = await pool.query(
+        'SELECT id FROM channel_team WHERE channel_id = ? AND user_id = ? AND (is_editor = 1 OR is_reporter = 1 OR is_moderator = 1)',
+        [channels[0].id, req.session.user.id]
+      );
+      if (team.length > 0) isAuthorized = true;
+    }
+    
+    // Or if staff admin
+    if (!isAuthorized && req.session.user.staff_role && req.session.user.mask_mode !== 'user_mask') {
+      isAuthorized = true;
+    }
+
+    if (!isAuthorized) return res.status(403).json({ success: false, error: 'Forbidden' });
     
     await pool.query('UPDATE channels SET live_title = ? WHERE shortname = ?', [title.substring(0, 255), shortname]);
     res.json({ success: true });
@@ -186,7 +204,7 @@ router.post('/api/internal/rtmp/on_publish', async (req, res) => {
     // 2. Prevent multiple publishers
     try {
       const axios = require('axios');
-      const response = await axios.get('http://rtmp:8000/api/streams', {
+      const response = await axios.get('http://192.168.90.5:8000/api/streams', {
         auth: {
           username: process.env.RTMP_API_USER || 'admin',
           password: process.env.RTMP_API_PASS || 'admin'
@@ -217,6 +235,21 @@ router.post('/api/internal/rtmp/on_publish', async (req, res) => {
 
     const streamerUsername = keys[0].username;
     const logIdentifier = `${streamerUsername}(${channelName})`;
+
+    // Cancel grace period if active
+    global.pendingStreamEnds = global.pendingStreamEnds || {};
+    if (global.pendingStreamEnds[channelId]) {
+      console.log(`[RTMP] Reconnected within grace period for channel ${channelId}. Cancelling teardown.`);
+      clearTimeout(global.pendingStreamEnds[channelId]);
+      delete global.pendingStreamEnds[channelId];
+    }
+
+    // Clear any stale immediate stream end flags
+    global.immediateStreamEnds = global.immediateStreamEnds || {};
+    if (global.immediateStreamEnds[channelId]) {
+      console.log(`[RTMP] Found and cleared stale immediate stream end flag for channel ${channelId}`);
+      delete global.immediateStreamEnds[channelId];
+    }
 
     // 4. Start stream
     const [chRows] = await pool.query('SELECT is_live FROM channels WHERE id = ?', [channelId]);
@@ -253,9 +286,36 @@ router.post('/api/internal/rtmp/on_done', async (req, res) => {
       const streamerUsername = channels[0].username || 'Неизвестный';
       const logIdentifier = `${streamerUsername}(${channelName})`;
 
-      await pool.query('UPDATE channels SET is_live = 0, current_streamer_id = NULL WHERE id = ?', [channelId]);
-      req.app.get('io').to(`channel_${channelId}`).emit('stream_ended');
-      logAction('rtmp', logIdentifier, 'Окончена трансляция', ip);
+      global.immediateStreamEnds = global.immediateStreamEnds || {};
+      global.pendingStreamEnds = global.pendingStreamEnds || {};
+
+      if (global.immediateStreamEnds[channelId]) {
+        console.log(`[RTMP] Immediate teardown requested for channel ${channelId}`);
+        delete global.immediateStreamEnds[channelId];
+        if (global.pendingStreamEnds[channelId]) {
+          clearTimeout(global.pendingStreamEnds[channelId]);
+          delete global.pendingStreamEnds[channelId];
+        }
+        await pool.query('UPDATE channels SET is_live = 0, current_streamer_id = NULL WHERE id = ?', [channelId]);
+        req.app.get('io').to(`channel_${channelId}`).emit('stream_ended');
+        logAction('rtmp', logIdentifier, 'Окончена трансляция', ip);
+      } else {
+        console.log(`[RTMP] Connection closed for channel ${channelId}. Starting 14s grace period.`);
+        if (global.pendingStreamEnds[channelId]) {
+          clearTimeout(global.pendingStreamEnds[channelId]);
+        }
+        global.pendingStreamEnds[channelId] = setTimeout(async () => {
+          try {
+            delete global.pendingStreamEnds[channelId];
+            await pool.query('UPDATE channels SET is_live = 0, current_streamer_id = NULL WHERE id = ?', [channelId]);
+            req.app.get('io').to(`channel_${channelId}`).emit('stream_ended');
+            logAction('rtmp', logIdentifier, 'Окончена трансляция', ip);
+            console.log(`[RTMP] Grace period expired. Closed stream for channel ${channelId}`);
+          } catch (err) {
+            console.error('[RTMP] Error executing delayed stream teardown:', err);
+          }
+        }, 14000);
+      }
     }
     res.json({ success: true });
   } catch (e) {
@@ -334,6 +394,9 @@ router.post('/api/complaints', requireAuth, async (req, res) => {
       if (r.length) targetContent = r[0].text;
     } else if (target_type === 'record_comment') {
       const [r] = await connection.query('SELECT text FROM record_comments WHERE id = ?', [target_id]);
+      if (r.length) targetContent = r[0].text;
+    } else if (target_type === 'profile_comment') {
+      const [r] = await connection.query('SELECT text FROM profile_comments WHERE id = ?', [target_id]);
       if (r.length) targetContent = r[0].text;
     }
 

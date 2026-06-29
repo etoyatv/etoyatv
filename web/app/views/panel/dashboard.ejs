@@ -28,14 +28,37 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
 <div class="card" style="margin-top: 20px; padding: 0; background: transparent; border: none;">
 `}
 <div class="playerchat" style="display: flex; width: 100%; height: 331px; background: #000; font-family: Tahoma, sans-serif;">
+  <!-- Scoped player overrides -->
+  <style>
+    #etoyatv-offline-overlay {
+      ${locals.panelChannel && locals.panelChannel.player_bg_url ? `background-image: url('${locals.CDN_BASE_URL || ''}${locals.panelChannel.player_bg_url}') !important; background-size: cover !important; background-position: center !important; background-repeat: no-repeat !important;` : ''}
+      ${locals.panelChannel && locals.panelChannel.player_bg_color ? `background-color: ${locals.panelChannel.player_bg_color} !important;` : ''}
+    }
+    #container_swf .player-menu-bg, 
+    #container_swf .player-actions button, 
+    #container_swf .player-actions a, 
+    #container_swf .volume-slider-wrapper {
+      ${locals.panelChannel && locals.panelChannel.player_menu_color ? `background: ${locals.panelChannel.player_menu_color} !important;` : ''}
+    }
+    #container_swf .player-ui a, 
+    #container_swf .player-ui button, 
+    #container_swf .player-ui span, 
+    #container_swf #viewers-count-player {
+      ${locals.panelChannel && locals.panelChannel.player_link_color ? `color: ${locals.panelChannel.player_link_color} !important;` : ''}
+    }
+  </style>
   
   <!-- LEFT: PLAYER -->
   <div id="container_swf" style="flex: 1; height: 331px; position: relative; background: #000; border-right: 1px solid #333;">
     
-    <video id="etoyatv-video" width="100%" height="100%" style="background: #000; object-fit: contain; cursor: pointer;" poster="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo.png') : '/images/default_channel_logo.png')}" disablePictureInPicture disableRemotePlayback></video>
+    <video id="etoyatv-video" width="100%" height="100%" style="width: 100%; height: 100%; background: #000; object-fit: contain; cursor: pointer;" disablePictureInPicture disableRemotePlayback></video>
 
     <!-- Transition Canvas -->
     <canvas id="etoyatv-transition-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.5s ease-out; object-fit: contain;"></canvas>
+
+    <!-- Overlays Canvas -->
+    <canvas id="etoyatv-overlays-canvas" width="1280" height="720"
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; object-fit: contain; display: none;"></canvas>
 
     <!-- Loading Spinner -->
     <div id="etoyatv-spinner" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;">
@@ -51,10 +74,10 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
       </svg>
     </div>
     <style>@keyframes etoyatv-spin { to { transform: rotate(360deg); } }</style>
-
+ 
     <!-- Offline Overlay -->
-    <div id="etoyatv-offline-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
-      Нет трансляции
+    <div id="etoyatv-offline-overlay" style="display: ${locals.panelChannel && (locals.panelChannel.player_bg_url || locals.panelChannel.player_bg_color) ? 'flex' : 'none'}; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
+      ${locals.panelChannel && locals.panelChannel.player_bg_url ? '' : 'Нет трансляции'}
     </div>
 
     ${locals.panelChannel && locals.panelChannel.is_18_plus ? `
@@ -86,17 +109,13 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
     <!-- Logo and Title -->
     <div class="player-ui" style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
       <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="display: block;">
-        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo_50.png') : '/images/default_channel_logo_50.png')}" alt="Logo" style="width: 50px; height: 50px; background: #fff; border: 1px solid #444;">
+        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo_50.png') : '/images/default_channel_logo_50.png')}" alt="Logo" style="width: 50px; height: 50px; background: #fff; border: 1px solid #444; box-sizing: border-box; object-fit: cover;">
       </a>
       <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
         <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="background: rgba(0,0,0,0.6); color: #00FFFF; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-block; text-decoration: none; white-space: nowrap;">
           ${locals.panelChannel ? escapeHtml(locals.panelChannel.name) : ''}
         </a>
         <div class="live_label" id="player_live_label" style="display: none; position: relative; width: 32px; height: 17px; background: url(${(locals.CDN_BASE_URL || '')}/images/css_img_2_sprite1.png) no-repeat -124px -254px; top: 0; left: 0;"></div>
-        <div id="player_record_indicator" style="display: none; align-items: center; gap: 5px; background: rgba(220,53,69,0.85); color: #fff; font-size: 11px; font-weight: bold; font-family: Tahoma, sans-serif; padding: 3px 6px; border-radius: 3px; z-index: 12;">
-          <span style="display: inline-block; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: rec-blink 1s infinite alternate;"></span>
-          REC <span id="player_record_timer">00:00</span>
-        </div>
       </div>
     </div>
     <style>
@@ -111,20 +130,19 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
       <button onclick="copyShareLink('${locals.panelChannel ? locals.panelChannel.shortname : ''}')" title="Поделиться" style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;">🔗</button>
       <button title="Пожаловаться" style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;">⚠️</button>
       <a href="/ru/channel,records?shortname=${locals.panelChannel ? locals.panelChannel.shortname : ''}" title="Записи" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; text-decoration: none; font-size: 16px;">📺</a>
-      <button id="btn-record-stream" onclick="toggleRecordStream()" title="Записать эфир" style="display: none; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #ff4a4a; cursor: pointer; border-radius: 3px; font-size: 16px; justify-content: center; align-items: center;">⏺️</button>
     </div>
 
     <!-- Bottom Left Controls -->
-    <div class="player-ui" style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s;">
-      <button id="btn-play-pause" title="Play/Pause" style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none;">⏻</button>
+    <div class="player-ui player-menu-bg" style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s;">
+      <button id="btn-play-pause" title="Play/Pause" style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none; display: inline-flex; align-items: center; justify-content: center; padding: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button>
     </div>
 
     <!-- Bottom Right Controls -->
-    <div class="player-ui" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+    <div class="player-ui player-menu-bg" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
       <div style="position: relative; display: flex; align-items: center; justify-content: center;" class="volume-container" onmouseenter="this.querySelector('.volume-slider-wrapper').style.display='block'" onmouseleave="this.querySelector('.volume-slider-wrapper').style.display='none'">
         <button id="btn-volume" style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; padding: 0 5px; position: relative; z-index: 5;">🔊</button>
-        <div class="volume-slider-wrapper" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
-          <div style="position: absolute; bottom: -20px; left: 0; width: 100%; height: 20px; background: transparent;"></div>
+        <div class="volume-slider-wrapper" style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
+          <div style="position: absolute; bottom: -25px; left: 0; width: 100%; height: 25px; background: transparent;"></div>
           <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
         </div>
       </div>
@@ -149,16 +167,45 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
             position: relative;
           }
           .chat-message-row .btn-pin-message {
-            visibility: hidden;
+            display: none;
             cursor: pointer;
             margin-left: 5px;
             opacity: 0.7;
           }
           .chat-message-row:hover .btn-pin-message {
-            visibility: visible;
+            display: inline;
           }
           .chat-message-row .btn-pin-message:hover {
             opacity: 1;
+          }
+          /* Custom scrollbar for WebKit (Chrome, Safari, Edge) */
+          #chat_text_field::-webkit-scrollbar,
+          #chat_users::-webkit-scrollbar,
+          #chat_pinned_box::-webkit-scrollbar {
+            width: 6px;
+          }
+          #chat_text_field::-webkit-scrollbar-track,
+          #chat_users::-webkit-scrollbar-track,
+          #chat_pinned_box::-webkit-scrollbar-track {
+            background: #000;
+          }
+          #chat_text_field::-webkit-scrollbar-thumb,
+          #chat_users::-webkit-scrollbar-thumb,
+          #chat_pinned_box::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+          }
+          #chat_text_field::-webkit-scrollbar-thumb:hover,
+          #chat_users::-webkit-scrollbar-thumb:hover,
+          #chat_pinned_box::-webkit-scrollbar-thumb:hover {
+            background: #666;
+          }
+          /* Standard scrollbar for Firefox */
+          #chat_text_field,
+          #chat_users,
+          #chat_pinned_box {
+            scrollbar-width: thin;
+            scrollbar-color: #444 #000;
           }
         </style>
 
@@ -183,7 +230,7 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
             return "<div class=\"chat-message-row\" style=\"font: 11px Verdana, Geneva, sans-serif; color: #fff; margin: 1px; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;\">" +
                    "<span style=\"color: #666;\">" + timeStr + "</span> " +
                    "<span style=\"color: " + userColor + "; font-weight: bold;\">" +
-                     "<span class=\"chat-username\" data-username=\"" + escapeHtml(displayNick) + "\" data-role=\"" + escapeHtml(role) + "\" style=\"cursor: pointer;\">" + escapeHtml(displayNick) + "</span>:" +
+                     "<span class=\"chat-username\" data-username=\"" + escapeHtml(displayNick) + "\" data-color=\"" + escapeHtml(userColor) + "\" data-role=\"" + escapeHtml(role) + "\" style=\"cursor: pointer;\">" + escapeHtml(displayNick) + "</span>:" +
                    "</span> " +
                    escapeHtml(msg.message) +
                    " <span class=\"btn-pin-message\" data-msg-id=\"" + msg.id + "\" title=\"Закрепить\">📌</span>" +
@@ -197,7 +244,7 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
 
       <!-- Users List (130px) -->
       <div id="chat_users" style="width: 130px; height: 100%; overflow-y: auto; padding: 5px; box-sizing: border-box; border-left: 1px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; font: 11px Verdana, Geneva, sans-serif; color: #F2FFF9;">
-        <div style="padding-bottom: 5px; color: #aaa;">В чате: <span id="chat-viewers-count">0</span></div>
+        <div style="padding-bottom: 5px; color: #aaa;"><span id="chat-viewers-prefix" style="display: none;">В чате: </span><span id="chat-viewers-count">Загрузка...</span></div>
         <div id="chat-users-list">
           <!-- Users will be injected here via JS -->
         </div>
@@ -207,12 +254,12 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
 
     <!-- Bottom Input Area -->
     ${(locals.panelChannel && locals.panelChannel.status !== 'banned') ? `
-    <div style="height: 41px; background: #000; padding: 3px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+    <div style="height: 41px; background: #000; padding: 5px; box-sizing: border-box; display: flex; align-items: center; width: 100%;">
       <!-- Chat Input -->
-      <div class="inputs" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'flex' : 'none'}; align-items: center; width: 380px; height: 30px; background-color: ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border: 4px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border-radius: 5px; box-sizing: border-box;">
-        <input type="text" id="chat-input" maxlength="400" placeholder="${locals.panelChannel && locals.panelChannel.chat_enabled ? 'Написать...' : 'Чат выключен'}" ${locals.panelChannel && locals.panelChannel.chat_enabled ? '' : 'disabled'} style="width: 260px; height: 100%; background: rgba(0,0,0,0.6); color: #F2FFF9; font: 12px Verdana, Geneva, sans-serif; border: 1px solid #000; padding: 0 5px; outline: none; border-radius: 2px; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);">
+      <div class="inputs" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'flex' : 'none'}; align-items: center; width: 100%; height: 30px; background-color: ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border: 4px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border-radius: 5px; box-sizing: border-box;">
+        <input type="text" id="chat-input" maxlength="400" placeholder="${locals.panelChannel && locals.panelChannel.chat_enabled ? 'Написать...' : 'Чат выключен'}" ${locals.panelChannel && locals.panelChannel.chat_enabled ? '' : 'disabled'} style="flex-grow: 1; min-width: 50px; height: 100%; background: rgba(0,0,0,0.6); color: #F2FFF9; font: 12px Verdana, Geneva, sans-serif; border: 1px solid #000; padding: 0 5px; outline: none; border-radius: 2px; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);">
         
-        <div style="display: flex; align-items: center; justify-content: flex-end; flex: 1; padding-right: 4px; gap: 8px;">
+        <div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; gap: 8px; flex-shrink: 0;">
           <!-- Submit Button -->
           <button id="btn-chat-submit" style="background: transparent; border: none; cursor: pointer; color: #fff; font-size: 20px; font-weight: bold; outline: none; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; padding: 0; line-height: 1; margin-top: -2px;" title="Отправить">↵</button>
 
@@ -221,10 +268,9 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
             <button id="chat-color-btn" style="width: 16px; height: 16px; padding: 0; border: 2px solid #fff; cursor: pointer; background-color: ${locals.user ? (locals.user.chat_color || '#3b9cd9') : '#3b9cd9'}; box-shadow: 0 0 0 1px #000;" title="Цвет ника"></button>
             <input type="hidden" id="chat-color-picker" value="${locals.user ? (locals.user.chat_color || '#3b9cd9') : '#3b9cd9'}">
             
-            <div id="chat-color-palette" style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 5px; width: 100px; flex-wrap: wrap; gap: 3px; z-index: 50;">
-              ${['#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#3b9cd9', '#ffa500', '#800080', '#008000', '#ffc0cb'].map(c => `
-                <div class="color-swatch" data-color="${c}" style="width: 20px; height: 20px; background-color: ${c}; cursor: pointer; border: 1px solid #000;"></div>
-              `).join('')}
+            <div id="chat-color-palette" style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 8px; width: 195px; flex-direction: row; gap: 8px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box;">
+              <canvas class="chat-color-spectrum" width="150" height="80" style="cursor: crosshair; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+              <canvas class="chat-color-slider" width="16" height="80" style="cursor: row-resize; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
             </div>
           </div>
 
@@ -233,7 +279,7 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
       </div>
 
       <!-- Guest Not Authorized Box -->
-      <div class="login" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'none' : 'flex'}; align-items: center; width: 380px; height: 25px; background-color: rgba(0,0,0,0.4); border: 5px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; border-radius: 5px; box-sizing: border-box; font: 13px Verdana, Geneva, sans-serif; color: #F2FFF9; padding: 0 5px;">
+      <div class="login" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'none' : 'flex'}; align-items: center; justify-content: center; width: 100%; height: 25px; background-color: rgba(0,0,0,0.4); border: 5px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; border-radius: 5px; box-sizing: border-box; font: 13px Verdana, Geneva, sans-serif; color: #F2FFF9; padding: 0 5px;">
         Вы не <a href="/login" target="_blank" style="color: #F2FFF9; margin-left: 4px; text-decoration: underline;">авторизованы</a>
       </div>
     </div>
@@ -253,6 +299,20 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
   </div>
 </div>
 </div> <!-- /card playerchat -->
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-title">Коды для встраивания</div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fff;">Код для встраивания плеера:</div>
+            <textarea readonly onclick="this.select()" style="width: 100%; height: 60px; background: #1a1e20; border: 1px solid #4a5359; color: #c0c0b2; font-family: monospace; font-size: 11px; padding: 8px; resize: none; box-sizing: border-box; border-radius: 4px; outline: none; cursor: pointer;"><iframe id="player" src="${locals.APP_URL}/widget/player/${locals.panelChannel ? locals.panelChannel.shortname : ''}" width="640" height="360" frameborder="0" allowfullscreen></iframe></textarea>
+        </div>
+        <div style="flex: 1; min-width: 250px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fff;">Код для встраивания чата:</div>
+            <textarea readonly onclick="this.select()" style="width: 100%; height: 60px; background: #1a1e20; border: 1px solid #4a5359; color: #c0c0b2; font-family: monospace; font-size: 11px; padding: 8px; resize: none; box-sizing: border-box; border-radius: 4px; outline: none; cursor: pointer;"><iframe id="chat" src="${locals.APP_URL}/widget/chat/${locals.panelChannel ? locals.panelChannel.shortname : ''}" width="400" height="331" frameborder="0" scrolling="no"></iframe></textarea>
+        </div>
+    </div>
+</div>
 
 <div class="card" style="margin-top: 20px;">
     <div class="card-title" style="border:none; padding-bottom: 0;">Количество одновременных зрителей за 24 часа <a href="/ru/panel,stat,viewers" style="font-size: 12px; font-weight: normal; color: #00a0e3; text-decoration: none;">(Вся статистика)</a></div>
@@ -330,143 +390,5 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const recordBtn = document.getElementById('btn-record-stream');
-    const recordIndicator = document.getElementById('player_record_indicator');
-    const recordTimer = document.getElementById('player_record_timer');
-    let timerInterval = null;
-    let secondsElapsed = 0;
-
-    function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        toast.style.position = 'fixed';
-        toast.style.bottom = '20px';
-        toast.style.right = '20px';
-        toast.style.backgroundColor = type === 'success' ? '#2ecc71' : '#e74c3c';
-        toast.style.color = '#fff';
-        toast.style.padding = '12px 20px';
-        toast.style.borderRadius = '4px';
-        toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-        toast.style.zIndex = '99999';
-        toast.style.fontFamily = 'Tahoma, sans-serif';
-        toast.style.fontSize = '13px';
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-        toast.style.transform = 'translateY(20px)';
-        toast.innerText = message;
-        
-        document.body.appendChild(toast);
-        
-        // Trigger reflow
-        void toast.offsetWidth;
-        
-        toast.style.opacity = '1';
-        toast.style.transform = 'translateY(0)';
-        
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(20px)';
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    }
-    
-    // Status check
-    function checkRecordStatus() {
-        fetch('/api/panel/records/record/status')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.recording) {
-                    startLocalTimer(data.elapsed);
-                } else {
-                    // Only stop if we were recording (to avoid toggling state back to offline if the start request is in progress)
-                    if (timerInterval && !data.recording) {
-                        stopLocalTimer();
-                    }
-                }
-            })
-            .catch(err => console.error('Error checking recording status:', err));
-    }
-
-    function startLocalTimer(initialSeconds = 0) {
-        secondsElapsed = initialSeconds;
-        updateTimerDisplay();
-        
-        if (recordIndicator) recordIndicator.style.display = 'flex';
-        if (recordBtn) {
-            recordBtn.innerHTML = '⏹️';
-            recordBtn.style.color = '#fff';
-            recordBtn.style.backgroundColor = 'rgba(220,53,69,0.85)';
-            recordBtn.title = 'Остановить запись';
-            recordBtn.style.display = 'flex';
-        }
-        
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            secondsElapsed++;
-            updateTimerDisplay();
-            if (secondsElapsed >= 300) { // 5 min max
-                stopLocalTimer();
-                showToast('Запись завершена автоматически (лимит 5 минут)', 'success');
-            }
-        }, 1000);
-    }
-
-    function stopLocalTimer() {
-        if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-        }
-        if (recordIndicator) recordIndicator.style.display = 'none';
-        if (recordBtn) {
-            recordBtn.innerHTML = '⏺️';
-            recordBtn.style.color = '#ff4a4a';
-            recordBtn.style.backgroundColor = 'rgba(0,0,0,0.7)';
-            recordBtn.title = 'Записать эфир';
-        }
-    }
-
-    function updateTimerDisplay() {
-        if (!recordTimer) return;
-        const mins = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
-        const secs = (secondsElapsed % 60).toString().padStart(2, '0');
-        recordTimer.innerText = mins + ':' + secs;
-    }
-
-    window.toggleRecordStream = function() {
-        const isCurrentlyRecording = !!timerInterval;
-        const url = isCurrentlyRecording ? '/api/panel/records/record/stop' : '/api/panel/records/record/start';
-        
-        if (recordBtn) recordBtn.disabled = true;
-        fetch(url, { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                if (recordBtn) recordBtn.disabled = false;
-                if (data.success) {
-                    if (isCurrentlyRecording) {
-                        stopLocalTimer();
-                        showToast('Запись эфира успешно остановлена и добавлена в Медиа-архив на обработку!', 'success');
-                    } else {
-                        startLocalTimer(0);
-                        showToast('Запись эфира запущена (максимум 5 минут)', 'success');
-                    }
-                } else {
-                    showToast(data.error || 'Ошибка при изменении статуса записи', 'error');
-                }
-            })
-            .catch(err => {
-                if (recordBtn) recordBtn.disabled = false;
-                console.error(err);
-                showToast('Ошибка сети при отправке запроса', 'error');
-            });
-    };
-
-    // Initial check
-    checkRecordStatus();
-    // Periodically poll status in case it was stopped by the server (e.g. 5 minutes timeout)
-    setInterval(checkRecordStatus, 15000);
-});
-</script>
 
 ` }) %>

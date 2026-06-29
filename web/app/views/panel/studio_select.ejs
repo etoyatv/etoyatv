@@ -1,0 +1,199 @@
+<%- include('../partials/header') %>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <style>
+    .studio-select-list {
+      margin: 15px 0;
+      border: 1px solid #222;
+      background: #1a1a1a;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .studio-select-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      border-bottom: 1px solid #222;
+      color: #ccc;
+      font-size: 13px;
+      justify-content: space-between;
+    }
+
+    .studio-select-row:last-child {
+      border-bottom: none;
+    }
+
+    .studio-select-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .channel-icon {
+      width: 32px;
+      height: 32px;
+      margin-right: 15px;
+      border-radius: 3px;
+      object-fit: cover;
+      border: 1px solid #333;
+    }
+
+    .channel-info-block {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .channel-name {
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .channel-role {
+      font-size: 11px;
+      color: #8c989e;
+      margin-top: 2px;
+    }
+
+    .studio-select-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .btn-enter-studio {
+      background: linear-gradient(180deg, #009ce2 0%, #007bb3 100%);
+      border: 1px solid #005f8a;
+      color: #fff;
+      padding: 6px 15px;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 3px;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn-enter-studio:hover {
+      background: #009ce2;
+    }
+
+    .btn-locked-studio {
+      background: #333;
+      border: 1px solid #444;
+      color: #777;
+      padding: 6px 15px;
+      font-size: 11px;
+      font-weight: bold;
+      border-radius: 3px;
+      text-decoration: none;
+      cursor: not-allowed;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .premium-badge {
+      font-size: 9px;
+      background: #ffc107;
+      color: #000;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .alert-danger-studio {
+      background-color: #3a2a2a;
+      border: 1px solid #8a4a4a;
+      color: #ffaaaa;
+      padding: 10px 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+  </style>
+
+  <div id="content">
+    <div class="left_blocks" style="width: 620px; margin: 50px auto; float: none;">
+      <div class="blackbox" id="select_block" style="width: auto;">
+        <div class="blackbox_tl"></div>
+        <div class="blackbox_tc"></div>
+        <div class="blackbox_tr"></div>
+        <div class="blackbox_cw">
+          <div class="blackbox_c">
+            <div class="blackbox_ci">
+              <div class="block-head-bg"></div>
+              <div class="block-head">
+                <div class="block-head-right">
+                  <div class="block-title">Эфирная студия - выбор телеканала</div>
+                </div>
+              </div>
+              <div class="block-content" style="padding: 20px;">
+
+                <% if (locals.error) { %>
+                  <div class="alert-danger-studio">
+                    <%= locals.error %>
+                  </div>
+                <% } %>
+
+                <p style="color: #aaa; font-size: 12px; line-height: 1.5; margin-bottom: 15px;">
+                  Выберите телеканал для входа в Эфирную студию вещания. 
+                  <br>
+                  <strong>Внимание:</strong> Доступ в Эфирную студию предоставляется только телеканалам с активным Premium-статусом.
+                </p>
+
+                <% if (availableChannels && availableChannels.length > 0) { %>
+                  <div class="studio-select-list">
+                    <% availableChannels.forEach((ch) => {
+                      let roleName = ch.panel_role;
+                      if (roleName === 'owner') roleName = 'Владелец';
+                      if (roleName === 'coowner') roleName = 'Совладелец';
+                      if (roleName === 'reporter') roleName = 'Репортер';
+                      if (roleName === 'editor') roleName = 'Редактор';
+                      %>
+                      <div class="studio-select-row">
+                        <div class="studio-select-left">
+                          <img src="<%= CDN_BASE_URL %><%= ch.logo_url || '/images/default_channel_logo.png' %>" class="channel-icon" alt="Logo">
+                          <div class="channel-info-block">
+                            <span class="channel-name"><%= ch.name %></span>
+                            <span class="channel-role"><%= roleName %> &nbsp;|&nbsp; https://etoyatv.top/<%= ch.shortname %></span>
+                          </div>
+                        </div>
+                        
+                        <div class="studio-select-right">
+                          <% if (ch.is_premium || (typeof allowEveryone !== 'undefined' && allowEveryone)) { %>
+                            <% if (ch.is_premium) { %>
+                              <span class="premium-badge">Premium</span>
+                            <% } %>
+                            <a href="/ru/tv,studio?channel_id=<%= ch.id %>" class="btn-enter-studio">Войти в студию</a>
+                          <% } else { %>
+                            <button class="btn-locked-studio" onclick="alert('Доступ заблокирован. Телеканал должен иметь Premium статус для работы в Эфирной студии!')">
+                              🔒 Заблокировано
+                            </button>
+                          <% } %>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+                <% } else { %>
+                  <div style="text-align: center; padding: 30px; color: #ccc;">
+                    <p>У вас нет доступных телеканалов.</p>
+                    <a href="/channels/create" style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: #3b9cd9; color: #fff; text-decoration: none; border-radius: 3px;">
+                      Создать телеканал
+                    </a>
+                  </div>
+                <% } %>
+
+              </div>
+              <div class="clear_both"></div>
+            </div>
+          </div>
+        </div>
+        <div class="blackbox_bl"></div>
+        <div class="blackbox_bc"></div>
+        <div class="blackbox_br"></div>
+      </div>
+    </div>
+    <div class="clear_both"></div>
+  </div>
+
+<%- include('../partials/footer') %>

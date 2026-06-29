@@ -31,9 +31,23 @@
                     <label style="width: 150px; color: #8c989e;">Короткое имя (URL):</label>
                     <div style="flex-grow: 1; display: flex; align-items: center;">
                         <span style="color: #8c989e; margin-right: 5px;">https://etoyatv.top/</span>
-                        <input type="text" name="shortname" class="form-control"
-                            style="width: 150px; background-color: #222; border: 1px solid #444; color: #ccc;"
-                            value="${ locals.panelChannel ? locals.panelChannel.shortname : '' }" readonly>
+                        ${(() => {
+                            if (locals.panelRole === 'owner') {
+                                if (locals.panelChannel && locals.panelChannel.shortname_changed_at) {
+                                    const lastChange = new Date(locals.panelChannel.shortname_changed_at);
+                                    const daysSinceChange = (Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
+                                    if (daysSinceChange < 7) {
+                                        const nextDate = new Date(lastChange.getTime() + 7 * 24 * 60 * 60 * 1000);
+                                        return `<input type="text" name="shortname" class="form-control" style="width: 150px; background-color: #222; border: 1px solid #444; color: #ccc;" value="${locals.panelChannel.shortname}" readonly>
+                                                <span style="font-size: 11px; color: #ff4d4d; margin-left: 10px;">Смена будет доступна: ${nextDate.toLocaleDateString('ru-RU')}</span>`;
+                                    }
+                                }
+                                return `<input type="text" name="shortname" class="form-control" style="width: 150px;" value="${locals.panelChannel.shortname}">
+                                        <span style="font-size: 11px; color: #8c989e; margin-left: 10px;">Раз в 7 дней</span>`;
+                            } else {
+                                return `<input type="text" name="shortname" class="form-control" style="width: 150px; background-color: #222; border: 1px solid #444; color: #ccc;" value="${locals.panelChannel ? locals.panelChannel.shortname : ''}" readonly>`;
+                            }
+                        })()}
                     </div>
                 </div>
                 ` : '' }
@@ -67,6 +81,40 @@
                 </div>
                 ` : '' }
             </form>
+
+            ${ (locals.panelRole === 'owner' && locals.panelChannel.is_personal) ? `
+            <div
+                style="font-size: 18px; color: #fff; margin-top: 40px; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+                Тип телеканала
+            </div>
+            <div style="background-color: #3a4247; border: 1px solid #3b99fc; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <p style="color: #8c989e; margin-bottom: 15px; font-size: 13px;">
+                    Сейчас этот канал является <strong>Личным</strong>. Вы можете преобразовать его в <strong>Кооперативный</strong>. Это позволит вам добавлять совладельцев и настраивать порядок их отображения.
+                    <br><strong style="color: #ff4d4d;">Внимание:</strong> Обратное преобразование в Личный канал возможно только через обращение к администратору сайта.
+                </p>
+                <form action="/ru/panel,settings,channel,make_cooperative" method="POST"
+                      onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите сделать этот телеканал кооперативным? Это действие нельзя отменить самостоятельно.', () => { form.submit(); });">
+                    ${ locals.cooperativeCount >= 3 ? `
+                        <p style="color: #ff4d4d; font-size: 12px; margin-bottom: 10px;">Достигнут лимит кооперативных каналов (3/3). Преобразование невозможно.</p>
+                        <button type="button" class="btn" style="background: #555; color: #aaa; cursor: not-allowed;" disabled>Преобразовать в кооперативный (Лимит 3/3)</button>
+                    ` : `
+                        <button type="submit" class="btn btn-blue">Преобразовать в кооперативный (${locals.cooperativeCount}/3)</button>
+                    ` }
+                </form>
+            </div>
+            ` : '' }
+
+            ${ (locals.panelRole === 'owner' && !locals.panelChannel.is_personal) ? `
+            <div
+                style="font-size: 18px; color: #fff; margin-top: 40px; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+                Тип телеканала
+            </div>
+            <div style="background-color: #3a4247; border: 1px solid #39b54a; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                <p style="color: #8c989e; margin-bottom: 0; font-size: 13px;">
+                    Этот телеканал является <strong>Кооперативным</strong>. Вы можете добавлять совладельцев во вкладке «Команда».
+                </p>
+            </div>
+            ` : '' }
 
             ${ locals.panelRole === 'owner' ? `
             <div

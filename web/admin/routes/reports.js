@@ -93,6 +93,14 @@ async function renderReportsPage(req, res, targetType, viewPath, title) {
           c.target_avatar = r[0].avatar || c.target_avatar;
           c.target_content = targetContentSnapshot || r[0].content;
         }
+      } else if (c.target_type === 'profile_comment') {
+        const [r] = await connection.query('SELECT u.id, u.username, u.avatar, x.text as content FROM profile_comments x JOIN users u ON x.author_id = u.id WHERE x.id = ?', [c.target_id]);
+        if (r.length) { 
+          c.offender_id = r[0].id; 
+          c.offender_name = r[0].username; 
+          c.target_avatar = r[0].avatar || c.target_avatar;
+          c.target_content = targetContentSnapshot || r[0].content;
+        }
       }
     }
     
@@ -116,7 +124,7 @@ async function renderReportsPage(req, res, targetType, viewPath, title) {
 
 router.get('/', (req, res) => res.redirect('/reports/users'));
 
-router.get('/users', (req, res) => renderReportsPage(req, res, 'user', '/reports/users', 'Пользователи'));
+router.get('/users', (req, res) => renderReportsPage(req, res, ['user', 'profile_comment'], '/reports/users', 'Пользователи и комментарии'));
 router.get('/channels', (req, res) => renderReportsPage(req, res, ['channel', 'channel_comment'], '/reports/channels', 'Каналы и комментарии'));
 router.get('/records', (req, res) => renderReportsPage(req, res, ['record', 'record_comment'], '/reports/records', 'Записи и комментарии'));
 router.get('/pms', (req, res) => renderReportsPage(req, res, 'pm', '/reports/pms', 'Личные сообщения'));
@@ -211,6 +219,14 @@ router.get('/archive', async (req, res) => {
           c.target_avatar = r[0].avatar || c.target_avatar;
           c.target_content = targetContentSnapshot || r[0].content;
         }
+      } else if (c.target_type === 'profile_comment') {
+        const [r] = await connection.query('SELECT u.id, u.username, u.avatar, x.text as content FROM profile_comments x JOIN users u ON x.author_id = u.id WHERE x.id = ?', [c.target_id]);
+        if (r.length) { 
+          c.offender_id = r[0].id; 
+          c.offender_name = r[0].username; 
+          c.target_avatar = r[0].avatar || c.target_avatar;
+          c.target_content = targetContentSnapshot || r[0].content;
+        }
       }
     }
     connection.release();
@@ -271,6 +287,9 @@ router.post('/:id/resolve', async (req, res) => {
     } else if (targetType === 'record_comment') {
       const [r] = await connection.query('SELECT user_id FROM record_comments WHERE id = ?', [targetId]);
       if (r.length) offenderId = r[0].user_id;
+    } else if (targetType === 'profile_comment') {
+      const [r] = await connection.query('SELECT author_id FROM profile_comments WHERE id = ?', [targetId]);
+      if (r.length) offenderId = r[0].author_id;
     } else if (targetType === 'record') {
       const [r] = await connection.query('SELECT c.user_id FROM records r JOIN channels c ON r.channel_id = c.id WHERE r.id = ?', [targetId]);
       if (r.length) offenderId = r[0].user_id;
@@ -299,6 +318,10 @@ router.post('/:id/resolve', async (req, res) => {
         await connection.query('UPDATE record_comments SET is_hidden = 1 WHERE id = ?', [targetId]);
         appliedActionsText.push('Комментарий скрыт');
         if (offenderId) await sendSystemMessage(offenderId, 'Ваш комментарий к записи был скрыт администрацией платформы из-за нарушения правил.');
+      } else if (targetType === 'profile_comment') {
+        await connection.query('UPDATE profile_comments SET is_hidden = 1 WHERE id = ?', [targetId]);
+        appliedActionsText.push('Комментарий скрыт');
+        if (offenderId) await sendSystemMessage(offenderId, 'Ваш комментарий в профиле пользователя был скрыт администрацией платформы из-за нарушения правил.');
       } else if (targetType === 'record') {
         await connection.query('UPDATE records SET status = "deleted" WHERE id = ?', [targetId]);
         appliedActionsText.push('Запись мягко удалена');

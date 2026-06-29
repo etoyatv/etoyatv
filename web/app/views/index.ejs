@@ -278,7 +278,7 @@
 
             <!--- Center: Control Panel / Create Channel -->
             <div style="width: 350px;">
-              <% if (typeof userChannel !== 'undefined' && userChannel) { %>
+              <% if (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) { %>
                 <a href="/ru/panel,dashboard"><img src="<%= CDN_BASE_URL %>/images/control_panel.png" alt="Панель управления"
                     style="display: block; margin: 0 auto; border: none; max-width: 100%;"></a>
                 <% } else { %>
@@ -322,7 +322,7 @@
           <div style="position: relative;">
             <% if (popularChannels.length> 0) { %>
               <button id="scrollLeft"
-                style="position: absolute; left: -40px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; background: transparent; border: none; color: #555; font-size: 30px; cursor: pointer; transition: color 0.2s;">&lt;</button>
+                style="position: absolute; left: -40px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; background: transparent; border: none; color: #555; font-size: 30px; cursor: pointer; transition: color 0.2s; z-index: 10;">&lt;</button>
               <% } %>
 
                 <div id="channelsContainer"
@@ -391,7 +391,7 @@
 
                 <% if (popularChannels.length> 0) { %>
                   <button id="scrollRight"
-                    style="position: absolute; right: -40px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; background: transparent; border: none; color: #555; font-size: 30px; cursor: pointer; transition: color 0.2s;">&gt;</button>
+                    style="position: absolute; right: -40px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; background: transparent; border: none; color: #555; font-size: 30px; cursor: pointer; transition: color 0.2s; z-index: 10;">&gt;</button>
                   <% } %>
           </div>
 

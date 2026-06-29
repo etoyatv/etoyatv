@@ -290,9 +290,16 @@ router.get('/ru/channel,friends', async (req, res, next) => {
 
 router.get('/channels/create', requireAuth, async (req, res) => {
   let hasRecentlyDeletedChannel = false;
+  let personalCount = 0;
+  let cooperativeCount = 0;
   try {
     const connection = await pool.getConnection();
     const [deleted] = await connection.query("SELECT id, deleted_at FROM channels WHERE user_id = ? AND status = 'deleted' AND deleted_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) LIMIT 1", [req.session.user.id]);
+    
+    const [owned] = await connection.query("SELECT is_personal FROM channels WHERE user_id = ? AND status IN ('active', 'banned')", [req.session.user.id]);
+    personalCount = owned.filter(c => c.is_personal).length;
+    cooperativeCount = owned.filter(c => !c.is_personal).length;
+
     connection.release();
     if (deleted.length > 0) {
       const diff = Date.now() - new Date(deleted[0].deleted_at).getTime();
@@ -300,7 +307,13 @@ router.get('/channels/create', requireAuth, async (req, res) => {
       hasRecentlyDeletedChannel = daysLeft > 0 ? daysLeft : false;
     }
   } catch (e) { }
-  res.render('channel_create', { pageTitle: 'Создание телеканала | ЭтоЯTV', error: req.query.error, hasRecentlyDeletedChannel });
+  res.render('channel_create', { 
+    pageTitle: 'Создание телеканала | ЭтоЯTV', 
+    error: req.query.error, 
+    hasRecentlyDeletedChannel,
+    personalCount,
+    cooperativeCount
+  });
 });
 
 router.post('/channels/restore', requireAuth, async (req, res) => {
@@ -320,9 +333,12 @@ router.post('/channels/restore', requireAuth, async (req, res) => {
 });
 
 router.post('/channels/create', requireAuth, async (req, res) => {
-  const { name, description, shortname } = req.body;
-  if (!name || !shortname) {
-    return res.redirect('/channels/create?error=' + encodeURIComponent('Имя канала и короткое имя обязательны.'));
+  const { name, description, shortname, channel_type, team_username, team_usernames } = req.body;
+  if (!name || !shortname || !channel_type) {
+    return res.redirect('/channels/create?error=' + encodeURIComponent('Имя канала, короткое имя и тип канала обязательны.'));
+  }
+  if (channel_type !== 'personal' && channel_type !== 'cooperative') {
+    return res.redirect('/channels/create?error=' + encodeURIComponent('Неверный тип канала.'));
   }
   if (name.length > 77) {
     return res.redirect('/channels/create?error=' + encodeURIComponent('Название телеканала не должно превышать 77 символов.'));
@@ -347,6 +363,58 @@ router.post('/channels/create', requireAuth, async (req, res) => {
 
   try {
     const connection = await pool.getConnection();
+
+    // Check limits
+    const [owned] = await connection.query("SELECT is_personal FROM channels WHERE user_id = ? AND status IN ('active', 'banned')", [req.session.user.id]);
+    const personalCount = owned.filter(c => c.is_personal).length;
+    const cooperativeCount = owned.filter(c => !c.is_personal).length;
+
+    if (channel_type === 'personal' && personalCount >= 1) {
+      connection.release();
+      return res.redirect('/channels/create?error=' + encodeURIComponent('Превышен лимит личных каналов (максимум 1).'));
+    }
+    if (channel_type === 'cooperative' && cooperativeCount >= 3) {
+      connection.release();
+      return res.redirect('/channels/create?error=' + encodeURIComponent('Превышен лимит кооперативных каналов (максимум 3).'));
+    }
+
+    // Check team member usernames if cooperative
+    const teamUserIds = [];
+    if (channel_type === 'cooperative') {
+      let usernamesList = [];
+      if (team_usernames) {
+        if (Array.isArray(team_usernames)) {
+          usernamesList = team_usernames.map(u => u.trim()).filter(Boolean);
+        } else if (typeof team_usernames === 'string') {
+          usernamesList = [team_usernames.trim()].filter(Boolean);
+        }
+      }
+      if (team_username && team_username.trim()) {
+        const singleInput = team_username.trim();
+        if (!usernamesList.includes(singleInput)) {
+          usernamesList.push(singleInput);
+        }
+      }
+      // Unique list
+      usernamesList = [...new Set(usernamesList)];
+
+      for (const username of usernamesList) {
+        const [users] = await connection.query('SELECT id FROM users WHERE username = ? AND deleted_at IS NULL AND is_banned = 0', [username]);
+        if (users.length === 0) {
+          connection.release();
+          return res.redirect('/channels/create?error=' + encodeURIComponent(`Пользователь "${username}" не найден.`));
+        }
+        const teamUserId = users[0].id;
+        if (teamUserId === req.session.user.id) {
+          connection.release();
+          return res.redirect('/channels/create?error=' + encodeURIComponent('Вы не можете добавить себя в команду.'));
+        }
+        if (!teamUserIds.includes(teamUserId)) {
+          teamUserIds.push(teamUserId);
+        }
+      }
+    }
+
     const [existing] = await connection.query('SELECT id FROM channels WHERE shortname = ?', [shortname]);
     if (existing.length > 0) {
       connection.release();
@@ -356,14 +424,137 @@ router.post('/channels/create', requireAuth, async (req, res) => {
     const filteredName = req.session.user.staff_role ? name : await wordFilter.filter(name);
     const filteredDescription = req.session.user.staff_role ? description : await wordFilter.filter(description);
 
-    await connection.query('INSERT INTO channels (user_id, name, description, shortname, bg_color, logo_url, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-      [req.session.user.id, filteredName, filteredDescription, shortname, '#262626', '/images/default_channel_logo.png', 'active']);
+    const [result] = await connection.query('INSERT INTO channels (user_id, name, description, shortname, bg_color, logo_url, status, is_personal, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+      [req.session.user.id, filteredName, filteredDescription, shortname, '#262626', '/images/default_channel_logo.png', 'active', channel_type === 'personal' ? 1 : 0]);
+
+    const channelId = result.insertId;
+
+    if (channel_type === 'cooperative' && teamUserIds.length > 0) {
+      for (const teamUserId of teamUserIds) {
+        await connection.query('INSERT INTO channel_team (channel_id, user_id, is_editor, is_reporter, is_moderator, is_coowner) VALUES (?, ?, 1, 1, 1, 1)', [channelId, teamUserId]);
+      }
+    }
 
     connection.release();
     res.redirect('/' + shortname);
   } catch (e) {
     console.error('Error creating channel:', e);
     res.redirect('/channels/create?error=' + encodeURIComponent('Внутренняя ошибка сервера.'));
+  }
+});
+
+router.get('/channels/transfer/confirm', async (req, res) => {
+  const { token } = req.query;
+  if (!token) {
+    return res.status(400).render('error', {
+      title: 'Неверная ссылка',
+      message: 'Токен передачи не указан или неверен.',
+      status: 400
+    });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query('SELECT id FROM pending_channel_transfers WHERE token = ?', [token]);
+    if (rows.length === 0) {
+      connection.release();
+      return res.status(404).render('error', {
+        title: 'Запрос не найден',
+        message: 'Запрос на передачу владения не существует или уже устарел.',
+        status: 404
+      });
+    }
+
+    await connection.query('UPDATE pending_channel_transfers SET email_confirmed = TRUE WHERE token = ?', [token]);
+    connection.release();
+
+    res.render('error', {
+      title: 'Передача подтверждена',
+      message: 'Передача успешно подтверждена вами по почте. Теперь получатель увидит предложение в своей панели и должен принять его для завершения процесса.',
+      status: 'OK'
+    });
+  } catch (e) {
+    console.error('Error confirming channel transfer:', e);
+    res.status(500).render('error', {
+      title: 'Ошибка сервера',
+      message: 'Произошла непредвиденная ошибка на сервере.',
+      status: 500
+    });
+  }
+});
+
+router.post('/channels/transfer/accept', requireAuth, async (req, res) => {
+  const { transfer_id } = req.body;
+  if (!transfer_id) {
+    return res.status(400).send('Transfer ID is required');
+  }
+
+  const userId = req.session.user.id;
+
+  try {
+    const connection = await pool.getConnection();
+    const [transferRows] = await connection.query(
+      'SELECT * FROM pending_channel_transfers WHERE id = ? AND new_owner_id = ? AND email_confirmed = TRUE',
+      [transfer_id, userId]
+    );
+
+    if (transferRows.length === 0) {
+      connection.release();
+      return res.status(404).send('Запрос на передачу не найден или не подтвержден владельцем.');
+    }
+
+    const transfer = transferRows[0];
+    const channelId = transfer.channel_id;
+
+    const [owned] = await connection.query(
+      "SELECT id FROM channels WHERE user_id = ? AND is_personal = FALSE AND status IN ('active', 'banned')",
+      [userId]
+    );
+    if (owned.length >= 3) {
+      connection.release();
+      return res.status(400).send('Вы не можете принять владение этим каналом, так как у вас уже есть 3 кооперативных канала.');
+    }
+
+    await connection.beginTransaction();
+
+    await connection.query('UPDATE channels SET user_id = ? WHERE id = ?', [userId, channelId]);
+
+    await connection.query('DELETE FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, userId]);
+
+    await connection.query('DELETE FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, transfer.old_owner_id]);
+    await connection.query(
+      'INSERT INTO channel_team (channel_id, user_id, is_reporter, is_moderator, is_editor, is_coowner) VALUES (?, ?, 1, 0, 1, 0)',
+      [channelId, transfer.old_owner_id]
+    );
+
+    await connection.query('DELETE FROM pending_channel_transfers WHERE id = ?', [transfer_id]);
+
+    await connection.commit();
+    connection.release();
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error accepting channel transfer:', e);
+    res.status(500).send('Internal server error');
+  }
+});
+
+router.post('/channels/transfer/reject', requireAuth, async (req, res) => {
+  const { transfer_id } = req.body;
+  if (!transfer_id) {
+    return res.status(400).send('Transfer ID is required');
+  }
+
+  const userId = req.session.user.id;
+
+  try {
+    const connection = await pool.getConnection();
+    await connection.query('DELETE FROM pending_channel_transfers WHERE id = ? AND new_owner_id = ?', [transfer_id, userId]);
+    connection.release();
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error rejecting channel transfer:', e);
+    res.status(500).send('Internal server error');
   }
 });
 
@@ -584,6 +775,85 @@ router.get('/widget/chat/:shortname', async (req, res, next) => {
   }
 });
 
+router.get('/widget/player/:shortname', async (req, res, next) => {
+  const { shortname } = req.params;
+
+  try {
+    const [channels] = await pool.query('SELECT c.*, u.username FROM channels c JOIN users u ON c.user_id = u.id WHERE c.shortname = ?', [shortname]);
+
+    if (channels.length === 0) {
+      return res.status(404).send('Channel not found');
+    }
+
+    if (channels[0].status === 'deleted' || channels[0].status === 'banned') {
+      return res.status(403).send('Channel is banned or deleted');
+    }
+
+    const channelId = channels[0].id;
+
+    let channelRole = 'guest';
+    let isModerator = false;
+    if (req.session.user) {
+      if (req.session.user.id === channels[0].user_id) {
+        channelRole = 'owner';
+        isModerator = true;
+      } else {
+        const [teamRow] = await pool.query('SELECT is_reporter, is_moderator, is_editor FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, req.session.user.id]);
+        if (teamRow.length > 0) {
+          const t = teamRow[0];
+          if (t.is_moderator) channelRole = 'moderator';
+          else if (t.is_editor) channelRole = 'editor';
+          else if (t.is_reporter) channelRole = 'reporter';
+
+          if (t.is_moderator) isModerator = true;
+        }
+      }
+    }
+
+    const isGlobalAdminOrMod = req.session.user && ['admin', 'moderator', 'mod'].includes(req.session.user.staff_role);
+    if (isGlobalAdminOrMod) {
+      channelRole = 'alien';
+      isModerator = true;
+    }
+
+    res.render('player_widget', {
+      channel: channels[0],
+      user: req.session.user,
+      channelRole,
+      isModerator,
+      CDN_BASE_URL: res.locals.CDN_BASE_URL || ''
+    });
+  } catch (e) {
+    console.error('Error fetching player widget:', e);
+    res.status(500).send('Server error');
+  }
+});
+router.get('/widget/combined/:shortname', async (req, res, next) => {
+  const { shortname } = req.params;
+  const { layout, autoplay } = req.query;
+
+  try {
+    const [channels] = await pool.query('SELECT status FROM channels WHERE shortname = ?', [shortname]);
+
+    if (channels.length === 0) {
+      return res.status(404).send('Channel not found');
+    }
+
+    if (channels[0].status === 'deleted' || channels[0].status === 'banned') {
+      return res.status(403).send('Channel is banned or deleted');
+    }
+
+    res.render('combined_widget', {
+      shortname,
+      layout: layout === 'vertical' ? 'vertical' : 'horizontal',
+      autoplay: autoplay === '1' ? '1' : '0'
+    });
+  } catch (e) {
+    console.error('Error fetching combined widget:', e);
+    res.status(500).send('Server error');
+  }
+});
+
 router.get('/:shortname', async (req, res, next) => {
   const { shortname } = req.params;
 
@@ -631,6 +901,18 @@ router.get('/:shortname', async (req, res, next) => {
       } catch (e) {
         console.error('Error loading pinned message:', e);
       }
+    }
+
+    let coowners = [];
+    if (!channels[0].is_personal) {
+      const [coownerRows] = await pool.query(`
+        SELECT t.user_id, u.username 
+        FROM channel_team t 
+        JOIN users u ON t.user_id = u.id 
+        WHERE t.channel_id = ? AND t.is_coowner = 1 
+        ORDER BY t.order_index ASC, t.id ASC
+      `, [channelId]);
+      coowners = coownerRows;
     }
 
     if (channels[0].access_level === 'password') {
@@ -775,7 +1057,8 @@ router.get('/:shortname', async (req, res, next) => {
       channelRole,
       isModerator,
       programs: programsRows,
-      totalPrograms
+      totalPrograms,
+      coowners: coowners
     });
   } catch (e) {
     console.error('Error fetching channel:', e);
@@ -1043,6 +1326,7 @@ router.get('/api/channels/:id/autopilot_status', async (req, res) => {
       return res.json({
         active: true,
         is_live: true,
+        autopilot_enabled: channel.autopilot_enabled,
         live_title: channel.live_title,
         live_started_at: channel.live_started_at,
         is_owner: isOwner,
@@ -1055,7 +1339,7 @@ router.get('/api/channels/:id/autopilot_status', async (req, res) => {
 
     if (!channel.autopilot_enabled || !channel.autopilot_album_id) {
       console.log(`[AUTOPILOT] Channel ${channelId} inactive because is_live=${channel.is_live}, enabled=${channel.autopilot_enabled}, album_id=${channel.autopilot_album_id}`);
-      return res.json({ active: false, totalPrograms: totalPrograms });
+      return res.json({ active: false, autopilot_enabled: channel.autopilot_enabled, totalPrograms: totalPrograms });
     }
 
     const [records] = await pool.query(`
@@ -1108,6 +1392,7 @@ router.get('/api/channels/:id/autopilot_status', async (req, res) => {
 
     res.json({
       active: true,
+      autopilot_enabled: channel.autopilot_enabled,
       video: {
         id: currentVideo.id,
         title: currentVideo.title,

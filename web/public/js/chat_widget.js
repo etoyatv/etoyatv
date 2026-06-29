@@ -29,16 +29,50 @@
     localStorage.setItem('etoyatv_guest_name', guestName);
   }
 
-  socket.emit('join_channel', {
-    channelId: window.CHANNEL_ID,
-    user: window.CURRENT_USER,
-    guestName: guestName,
-    color: document.getElementById('chat-color-picker')?.value || '#3b9cd9'
+  // --- Active Chat Users Colors & Reply Verification ---
+  const chatUserColors = {};
+
+  function registerUserColor(username, color) {
+    if (!username) return;
+    chatUserColors[username.toLowerCase()] = color || '#3b9cd9';
+  }
+
+  function initUserColorsMap() {
+    document.querySelectorAll('.chat-username').forEach(el => {
+      const username = el.getAttribute('data-username');
+      const color = el.getAttribute('data-color') || el.style.color;
+      registerUserColor(username, color);
+    });
+  }
+
+  // Initialize on load
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initUserColorsMap);
+  } else {
+    initUserColorsMap();
+  }
+
+  socket.on('connect', () => {
+    socket.emit('join_channel', {
+      channelId: window.CHANNEL_ID,
+      user: window.CURRENT_USER,
+      guestName: guestName,
+      color: document.getElementById('chat-color-picker')?.value || '#3b9cd9'
+    });
   });
 
-  socket.on('update_users', ({ count }) => {
+  socket.on('update_users', ({ count, users }) => {
     const viewersCount = document.getElementById('chat-viewers-count');
-    if (viewersCount) viewersCount.textContent = count;
+    if (viewersCount) {
+      viewersCount.textContent = count;
+      const prefix = document.getElementById('chat-viewers-prefix');
+      if (prefix) prefix.style.display = 'inline';
+    }
+    if (users && Array.isArray(users)) {
+      users.forEach(u => {
+        registerUserColor(u.username, u.color);
+      });
+    }
   });
 
   socket.on('chat_cleared', () => {
@@ -52,6 +86,8 @@
   });
 
   socket.on('new_message', (msg) => {
+    registerUserColor(msg.username || msg.guest_name, msg.color);
+
     const div = document.createElement('div');
     div.className = 'chat-message-row';
     div.style.font = '11px Verdana, Geneva, sans-serif';
@@ -59,7 +95,6 @@
     div.style.margin = '1px';
     div.style.wordWrap = 'break-word';
     div.style.overflowWrap = 'break-word';
-    div.style.wordBreak = 'break-all';
     div.style.whiteSpace = 'pre-wrap';
 
     let roleColor = msg.color || '#3b9cd9';
@@ -76,7 +111,8 @@
       timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     }
 
-    const escapedUser = escapeHTML(msg.username);
+    const senderNick = msg.username || msg.guest_name || 'Гость';
+    const escapedUser = escapeHTML(senderNick);
     const escapedRole = escapeHTML(msg.role || 'guest');
 
     let pinButtonHtml = '';
@@ -84,7 +120,31 @@
       pinButtonHtml = ` <span class="btn-pin-message" data-msg-id="${msg.id}" title="Закрепить">📌</span>`;
     }
 
-    div.innerHTML = `<span style="color: #666;">${timeStr}</span> <span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span>:</span> ${escapeHTML(msg.message)}${pinButtonHtml}`;
+    let rawMsg = msg.message || '';
+    let isReply = false;
+    let replyTo = '';
+    let restOfMsg = rawMsg;
+
+    const replyMatch = rawMsg.match(/^([a-zA-Z0-9_\-\u0400-\u04FF\.]{2,25}),\s*(.*)$/);
+    if (replyMatch) {
+      const potentialRecipient = replyMatch[1];
+      if (chatUserColors[potentialRecipient.toLowerCase()] && potentialRecipient.toLowerCase() !== senderNick.toLowerCase()) {
+        isReply = true;
+        replyTo = potentialRecipient;
+        restOfMsg = replyMatch[2];
+      }
+    }
+
+    let nameHtml = '';
+    if (isReply) {
+      const recipientColor = chatUserColors[replyTo.toLowerCase()] || '#3b9cd9';
+      const escapedRecipient = escapeHTML(replyTo);
+      nameHtml = `<span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-color="${roleColor}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span></span><span style="color: #fff;">&gt;</span><span style="color: ${recipientColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedRecipient}" data-color="${recipientColor}" style="cursor: pointer;">${escapedRecipient}</span>,</span>`;
+    } else {
+      nameHtml = `<span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-color="${roleColor}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span>:</span>`;
+    }
+
+    div.innerHTML = `<span style="color: #666;">${timeStr}</span> ${nameHtml} ${escapeHTML(isReply ? restOfMsg : rawMsg)}${pinButtonHtml}`;
 
     if (chatMessages) {
       chatMessages.appendChild(div);

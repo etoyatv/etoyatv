@@ -32,11 +32,12 @@ router.get('/ru/panel,select', async (req, res) => {
     }
 
     const [ownedChannels] = await connection.query("SELECT c.*, 'owner' as panel_role FROM channels c WHERE c.user_id = ? AND c.status IN ('active', 'banned')", [req.session.user.id]);
-    const [teamChannels] = await connection.query("SELECT c.*, t.is_editor, t.is_reporter FROM channels c JOIN channel_team t ON c.id = t.channel_id WHERE t.user_id = ? AND c.status IN ('active', 'banned') AND (t.is_editor = 1 OR t.is_reporter = 1)", [req.session.user.id]);
+    const [teamChannels] = await connection.query("SELECT c.*, t.is_editor, t.is_reporter, t.is_coowner FROM channels c JOIN channel_team t ON c.id = t.channel_id WHERE t.user_id = ? AND c.status IN ('active', 'banned') AND (t.is_editor = 1 OR t.is_reporter = 1 OR t.is_coowner = 1)", [req.session.user.id]);
 
     let availableChannels = [...ownedChannels, ...teamChannels.map(c => {
       let role = 'reporter';
-      if (c.is_editor) role = 'editor';
+      if (c.is_coowner) role = 'coowner';
+      else if (c.is_editor) role = 'editor';
       return { ...c, panel_role: role };
     })];
 
@@ -51,14 +52,24 @@ router.get('/ru/panel,select', async (req, res) => {
       }
     }
 
+    const [pendingTransfers] = await connection.query(`
+      SELECT t.id as transfer_id, t.created_at, c.name as channel_name, c.shortname, u.username as old_owner_username
+      FROM pending_channel_transfers t
+      JOIN channels c ON t.channel_id = c.id
+      JOIN users u ON t.old_owner_id = u.id
+      WHERE t.new_owner_id = ? AND t.email_confirmed = TRUE
+    `, [req.session.user.id]);
+
     connection.release();
 
-    if (availableChannels.length === 1 && !isStaff) {
+    if (availableChannels.length === 1 && !isStaff && pendingTransfers.length === 0 && req.query.to !== 'channel') {
       req.session.panel_channel_id = availableChannels[0].id;
       return res.redirect('/ru/panel,dashboard');
     }
 
-    res.render('panel/select', { availableChannels });
+    const to = req.query.to || '';
+    const pageTitle = to === 'channel' ? 'Мои каналы | ЭтоЯTV' : 'Выбор телеканала | Панель управления | ЭтоЯTV';
+    res.render('panel/select', { pageTitle, availableChannels, pendingTransfers, to });
   } catch (e) {
     console.error('Error loading channels:', e);
     res.status(500).send('Server Error');
@@ -67,8 +78,21 @@ router.get('/ru/panel,select', async (req, res) => {
 
 router.post('/ru/panel,set_channel', async (req, res) => {
   const { channel_id } = req.body;
+  const to = req.query.to || req.body.to;
   if (channel_id) {
     req.session.panel_channel_id = channel_id;
+    if (to === 'channel') {
+      try {
+        const connection = await pool.getConnection();
+        const [ch] = await connection.query("SELECT shortname FROM channels WHERE id = ?", [channel_id]);
+        connection.release();
+        if (ch.length > 0) {
+          return res.redirect('/' + ch[0].shortname);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
   }
   res.redirect('/ru/panel,dashboard');
 });
@@ -709,7 +733,19 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
   if (res.locals.panelChannel.design_disabled) {
     return res.redirect('/ru/panel,settings,design?error=Изменение дизайна запрещено администрацией');
   }
-  const { bg_color, text_color, delete_logo, delete_banner, delete_background } = req.body;
+  const { 
+    bg_color, 
+    text_color, 
+    player_bg_color, 
+    player_menu_color, 
+    player_link_color, 
+    player_bg_fit,
+    bg_fit,
+    delete_logo, 
+    delete_banner, 
+    delete_background,
+    delete_player_background
+  } = req.body;
   const channelId = res.locals.panelChannel.id;
 
   let updates = [];
@@ -717,7 +753,7 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
   
   let oldDesign = {};
   try {
-    const [oldRows] = await pool.query('SELECT logo_url, banner_url, bg_url FROM channels WHERE id = ?', [channelId]);
+    const [oldRows] = await pool.query('SELECT logo_url, banner_url, bg_url, player_bg_url FROM channels WHERE id = ?', [channelId]);
     if (oldRows.length > 0) oldDesign = oldRows[0];
   } catch(e) {}
 
@@ -732,6 +768,11 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
 
   if (bg_color) { updates.push('bg_color = ?'); params.push(bg_color); }
   if (text_color) { updates.push('text_color = ?'); params.push(text_color); }
+  if (player_bg_color !== undefined) { updates.push('player_bg_color = ?'); params.push(player_bg_color || null); }
+  if (player_menu_color !== undefined) { updates.push('player_menu_color = ?'); params.push(player_menu_color || null); }
+  if (player_link_color !== undefined) { updates.push('player_link_color = ?'); params.push(player_link_color || null); }
+  if (player_bg_fit !== undefined) { updates.push('player_bg_fit = ?'); params.push(player_bg_fit || 'stretch'); }
+  if (bg_fit !== undefined) { updates.push('bg_fit = ?'); params.push(bg_fit || 'stretch'); }
 
   if (delete_logo) {
     updates.push('logo_url = "/images/default_channel_logo.png"');
@@ -757,7 +798,7 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
 
     try {
       await sharp(oldPath)
-        .resize(970, 303, { fit: 'cover', position: 'center' })
+        .resize(970, 303, { fit: 'inside' })
         .toFile(newPath);
       
       fs.unlink(oldPath, (err) => { if (err) console.error('Failed to delete original banner:', err); });
@@ -782,6 +823,15 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
     deleteOldFile(oldDesign.bg_url);
   }
 
+  if (delete_player_background) {
+    updates.push('player_bg_url = NULL');
+    deleteOldFile(oldDesign.player_bg_url);
+  } else if (req.files && req.files.player_background && req.files.player_background[0]) {
+    updates.push('player_bg_url = ?');
+    params.push('/images/design/' + req.files.player_background[0].filename);
+    deleteOldFile(oldDesign.player_bg_url);
+  }
+
   if (updates.length > 0) {
     params.push(channelId);
     try {
@@ -802,8 +852,61 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
   res.redirect('/ru/panel,settings,design?success=1');
 });
 
-router.get('/ru/panel,settings,channel', panelMiddleware, (req, res) => {
-  res.render('panel/channel', { activeMenu: 'settings', activeSubmenu: 'channel', query: req.query });
+router.get('/ru/panel,settings,channel', panelMiddleware, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [cooperativeChannels] = await connection.query(
+      "SELECT id FROM channels WHERE user_id = ? AND is_personal = FALSE AND status IN ('active', 'banned')",
+      [req.session.user.id]
+    );
+    connection.release();
+    res.render('panel/channel', {
+      activeMenu: 'settings',
+      activeSubmenu: 'channel',
+      query: req.query,
+      cooperativeCount: cooperativeChannels.length
+    });
+  } catch (e) {
+    console.error('Error in GET /ru/panel,settings,channel:', e);
+    res.render('panel/channel', {
+      activeMenu: 'settings',
+      activeSubmenu: 'channel',
+      query: req.query,
+      cooperativeCount: 0
+    });
+  }
+});
+
+router.post('/ru/panel,settings,channel,make_cooperative', panelMiddleware, async (req, res) => {
+  if (res.locals.panelRole !== 'owner') {
+    return res.status(403).send('Только владелец канала может менять его тип.');
+  }
+  if (!res.locals.panelChannel.is_personal) {
+    return res.redirect('/ru/panel,settings,channel?error=' + encodeURIComponent('Этот канал уже является кооперативным.'));
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    const [cooperativeChannels] = await connection.query(
+      "SELECT id FROM channels WHERE user_id = ? AND is_personal = FALSE AND status IN ('active', 'banned')",
+      [req.session.user.id]
+    );
+    if (cooperativeChannels.length >= 3) {
+      connection.release();
+      return res.redirect('/ru/panel,settings,channel?error=' + encodeURIComponent('Вы не можете иметь более 3 кооперативных каналов.'));
+    }
+
+    await connection.query('UPDATE channels SET is_personal = FALSE WHERE id = ?', [res.locals.panelChannel.id]);
+    
+    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+    logAction('team', req.session.user.username, `Преобразовал телеканал ${res.locals.panelChannel.shortname} в кооперативный`, userIp);
+
+    connection.release();
+    res.redirect('/ru/panel,settings,channel?success=1');
+  } catch (e) {
+    console.error('Error making channel cooperative:', e);
+    res.redirect('/ru/panel,settings,channel?error=' + encodeURIComponent('Ошибка базы данных.'));
+  }
 });
 
 router.post('/ru/panel,settings,channel', panelMiddleware, async (req, res) => {
@@ -845,21 +948,38 @@ router.post('/ru/panel,settings,channel', panelMiddleware, async (req, res) => {
     const filteredDescription = req.session.user.staff_role ? description.trim() : await wordFilter.filter(description.trim());
 
     if (res.locals.panelRole === 'owner' && shortname) {
-      // Check if shortname is unique
-      const [existing] = await connection.query('SELECT id FROM channels WHERE shortname = ? AND id != ?', [shortname, channelId]);
-      if (existing.length > 0) {
-        connection.release();
-        return res.redirect('/ru/panel,settings,channel?error=' + encodeURIComponent('Короткое имя уже занято.'));
+      if (shortname !== res.locals.panelChannel.shortname) {
+        if (res.locals.panelChannel.shortname_changed_at) {
+          const lastChange = new Date(res.locals.panelChannel.shortname_changed_at);
+          const daysSinceChange = (Date.now() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
+          if (daysSinceChange < 7) {
+            connection.release();
+            const nextAvailableDate = new Date(lastChange.getTime() + 7 * 24 * 60 * 60 * 1000);
+            return res.redirect('/ru/panel,settings,channel?error=' + encodeURIComponent('Изменять URL можно только раз в неделю. Следующее изменение будет доступно: ' + nextAvailableDate.toLocaleDateString('ru-RU')));
+          }
+        }
+        // Check if shortname is unique
+        const [existing] = await connection.query('SELECT id FROM channels WHERE shortname = ? AND id != ?', [shortname, channelId]);
+        if (existing.length > 0) {
+          connection.release();
+          return res.redirect('/ru/panel,settings,channel?error=' + encodeURIComponent('Короткое имя уже занято.'));
+        }
+        await connection.query('UPDATE channels SET name = ?, description = ?, shortname = ?, shortname_changed_at = NOW() WHERE id = ?',
+          [filteredName, filteredDescription, shortname.trim().toLowerCase(), channelId]);
+      } else {
+        await connection.query('UPDATE channels SET name = ?, description = ? WHERE id = ?',
+          [filteredName, filteredDescription, channelId]);
       }
-      await connection.query('UPDATE channels SET name = ?, description = ?, shortname = ? WHERE id = ?',
-        [filteredName, filteredDescription, shortname.trim().toLowerCase(), channelId]);
     } else {
       await connection.query('UPDATE channels SET name = ?, description = ? WHERE id = ?',
         [filteredName, filteredDescription, channelId]);
     }
-    
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-    logAction('team', req.session.user.username, 'Изменил настройки телеканала', userIp);
+    if (res.locals.panelRole === 'owner' && shortname && shortname !== res.locals.panelChannel.shortname) {
+      logAction('team', req.session.user.username, `Изменил настройки телеканала (в т.ч. URL с ${res.locals.panelChannel.shortname} на ${shortname.trim().toLowerCase()})`, userIp);
+    } else {
+      logAction('team', req.session.user.username, 'Изменил настройки телеканала', userIp);
+    }
     
     connection.release();
     res.redirect('/ru/panel,settings,channel?success=1');
@@ -901,6 +1021,7 @@ router.get('/ru/panel,settings,team', panelMiddleware, async (req, res) => {
       FROM channel_team t
       JOIN users u ON t.user_id = u.id
       WHERE t.channel_id = ?
+      ORDER BY t.order_index ASC, t.id ASC
     `, [res.locals.panelChannel.id]);
 
     res.render('panel/team', {
@@ -946,17 +1067,46 @@ router.post('/ru/panel,settings,team,add', panelMiddleware, async (req, res) => 
 });
 
 router.post('/ru/panel,settings,team,update', panelMiddleware, async (req, res) => {
-  const { user_id, is_reporter, is_moderator, is_editor } = req.body;
+  const { user_id, is_reporter, is_moderator, is_editor, is_coowner } = req.body;
   const channelId = res.locals.panelChannel.id;
+  const currentUserRole = res.locals.panelRole;
+
   try {
+    const [targetRows] = await pool.query('SELECT is_coowner FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, user_id]);
+    if (targetRows.length === 0) {
+      return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Пользователь не найден в команде'));
+    }
+    const targetIsCoowner = targetRows[0].is_coowner === 1;
+    const reqCoowner = (is_coowner && !res.locals.panelChannel.is_personal) ? 1 : 0;
+
+    if (currentUserRole === 'coowner') {
+      if (targetIsCoowner || (targetIsCoowner !== (reqCoowner === 1))) {
+        return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Действие запрещено. Совладельцы не могут изменять права совладельцев.'));
+      }
+    }
+
+    let finalReporter = is_reporter ? 1 : 0;
+    let finalModerator = is_moderator ? 1 : 0;
+    let finalEditor = is_editor ? 1 : 0;
+    if (reqCoowner === 1) {
+      finalReporter = 1;
+      finalModerator = 1;
+      finalEditor = 1;
+    }
+
+    if (!finalReporter && !finalModerator && !finalEditor) {
+      return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Выберите хотя бы одну роль для пользователя'));
+    }
+
     await pool.query(
-      'UPDATE channel_team SET is_reporter = ?, is_moderator = ?, is_editor = ? WHERE channel_id = ? AND user_id = ?',
-      [is_reporter ? 1 : 0, is_moderator ? 1 : 0, is_editor ? 1 : 0, channelId, user_id]
+      'UPDATE channel_team SET is_reporter = ?, is_moderator = ?, is_editor = ?, is_coowner = ? WHERE channel_id = ? AND user_id = ?',
+      [finalReporter, finalModerator, finalEditor, reqCoowner, channelId, user_id]
     );
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
     logAction('team', req.session.user.username, `Изменил права пользователя (ID: ${user_id}) в команде канала`, userIp);
     res.redirect('/ru/panel,settings,team?success=1');
   } catch (e) {
+    console.error('Error updating team member:', e);
     res.redirect('/ru/panel,settings,team?error=Ошибка сервера');
   }
 });
@@ -964,13 +1114,103 @@ router.post('/ru/panel,settings,team,update', panelMiddleware, async (req, res) 
 router.post('/ru/panel,settings,team,remove', panelMiddleware, async (req, res) => {
   const { user_id } = req.body;
   const channelId = res.locals.panelChannel.id;
+  const currentUserRole = res.locals.panelRole;
   try {
+    if (currentUserRole === 'coowner') {
+      const [targetRows] = await pool.query('SELECT is_coowner FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, user_id]);
+      if (targetRows.length > 0 && targetRows[0].is_coowner === 1) {
+        return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Действие запрещено. Совладельцы не могут удалять совладельцев.'));
+      }
+    }
     await pool.query('DELETE FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, user_id]);
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
     logAction('team', req.session.user.username, `Удалил пользователя (ID: ${user_id}) из команды канала`, userIp);
     res.redirect('/ru/panel,settings,team?success=1');
   } catch (e) {
     res.redirect('/ru/panel,settings,team?error=Ошибка сервера');
+  }
+});
+
+router.post('/ru/panel,settings,team,reorder', panelMiddleware, async (req, res) => {
+  const { user_ids } = req.body;
+  const channelId = res.locals.panelChannel.id;
+
+  if (!Array.isArray(user_ids)) {
+    return res.status(400).json({ error: 'Invalid user IDs' });
+  }
+
+  try {
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+    for (let i = 0; i < user_ids.length; i++) {
+      await connection.query(
+        'UPDATE channel_team SET order_index = ? WHERE channel_id = ? AND user_id = ?',
+        [i, channelId, user_ids[i]]
+      );
+    }
+    await connection.commit();
+    connection.release();
+
+    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+    logAction('team', req.session.user.username, 'Изменил порядок сортировки участников команды', userIp);
+
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Error reordering team:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/ru/panel,settings,team,transfer', panelMiddleware, async (req, res) => {
+  if (res.locals.panelRole !== 'owner') {
+    return res.status(403).send('Только владелец канала может передавать права.');
+  }
+
+  if (res.locals.panelChannel.is_personal) {
+    return res.status(403).send('Передача владения личным телеканалом запрещена.');
+  }
+
+  const { target_user_id } = req.body;
+  const channelId = res.locals.panelChannel.id;
+  const oldOwnerId = req.session.user.id;
+
+  if (!target_user_id) {
+    return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Не выбран пользователь для передачи прав'));
+  }
+
+  try {
+    const connection = await pool.getConnection();
+
+    const [teamCheck] = await connection.query('SELECT user_id FROM channel_team WHERE channel_id = ? AND user_id = ?', [channelId, target_user_id]);
+    if (teamCheck.length === 0) {
+      connection.release();
+      return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Пользователь должен быть членом команды канала'));
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+
+    await connection.query(
+      'INSERT INTO pending_channel_transfers (channel_id, old_owner_id, new_owner_id, token) VALUES (?, ?, ?, ?)',
+      [channelId, oldOwnerId, target_user_id, token]
+    );
+
+    const [ownerRows] = await connection.query('SELECT email, username FROM users WHERE id = ?', [oldOwnerId]);
+    if (ownerRows.length === 0) {
+      connection.release();
+      return res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Не удалось найти данные владельца'));
+    }
+    const ownerEmail = ownerRows[0].email;
+    const ownerUsername = ownerRows[0].username;
+
+    const appUrl = process.env.APP_URL || 'http://localhost:3001';
+    const transferLink = `${appUrl}/channels/transfer/confirm?token=${token}`;
+    await emailService.sendChannelTransferEmail(ownerEmail, ownerUsername, res.locals.panelChannel.name, transferLink);
+
+    connection.release();
+    res.redirect('/ru/panel,settings,team?success=' + encodeURIComponent('На вашу почту отправлено письмо для подтверждения передачи прав.'));
+  } catch (e) {
+    console.error('Error initiating transfer:', e);
+    res.redirect('/ru/panel,settings,team?error=' + encodeURIComponent('Ошибка сервера при инициализации передачи прав.'));
   }
 });
 
@@ -1051,6 +1291,94 @@ router.get('/ru/panel,stat,audience', panelMiddleware, (req, res) => {
 
 router.get('/ru/panel,stat,records', panelMiddleware, (req, res) => {
   res.render('panel/stat_records', { activeMenu: 'stat', activeSubmenu: 'records_stat', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Статистика &gt; Статистика всех записей' });
+});
+
+router.get('/ru/tv,studio', async (req, res) => {
+  if (!req.session.user) return res.redirect('/login');
+
+  const userId = req.session.user.id;
+  const allowEveryone = res.locals.systemSettings && res.locals.systemSettings['allow_features_for_everyone'] === '1';
+  try {
+    const connection = await pool.getConnection();
+
+    // 1. Get all channels owned by the user or where the user is a team member
+    const [ownedChannels] = await connection.query("SELECT c.*, 'owner' as panel_role FROM channels c WHERE c.user_id = ? AND c.status IN ('active', 'banned')", [userId]);
+    const [teamChannels] = await connection.query("SELECT c.*, t.is_editor, t.is_reporter, t.is_coowner FROM channels c JOIN channel_team t ON c.id = t.channel_id WHERE t.user_id = ? AND c.status IN ('active', 'banned') AND (t.is_editor = 1 OR t.is_reporter = 1 OR t.is_coowner = 1)", [userId]);
+
+    let availableChannels = [...ownedChannels, ...teamChannels.map(c => {
+      let role = 'reporter';
+      if (c.is_coowner) role = 'coowner';
+      else if (c.is_editor) role = 'editor';
+      return { ...c, panel_role: role };
+    })];
+
+    const isStaff = req.session.user.staff_role && req.session.user.mask_mode !== 'user_mask';
+    // If staff, load other channels if session.panel_channel_id exists
+    if (isStaff && req.session.panel_channel_id) {
+      const isAlreadyAvailable = availableChannels.some(c => c.id == req.session.panel_channel_id);
+      if (!isAlreadyAvailable) {
+        const [staffSelectedChannel] = await connection.query("SELECT c.*, 'owner' as panel_role FROM channels c WHERE c.id = ? AND c.status IN ('active', 'banned')", [req.session.panel_channel_id]);
+        if (staffSelectedChannel.length > 0) {
+          availableChannels.push(staffSelectedChannel[0]);
+        }
+      }
+    }
+
+    connection.release();
+
+    if (availableChannels.length === 0) {
+      return res.render('panel/studio_select', { availableChannels: [], error: 'У вас нет телеканалов для вещания.', allowEveryone });
+    }
+
+    // 2. Determine target channel
+    let selectedChannelId = req.query.channel_id || req.session.panel_channel_id;
+    let selectedChannel = availableChannels.find(c => c.id == selectedChannelId);
+
+    if (selectedChannelId && selectedChannel) {
+      req.session.panel_channel_id = selectedChannel.id;
+    }
+
+    if (!selectedChannel) {
+      return res.render('panel/studio_select', { availableChannels, error: null, allowEveryone });
+    }
+
+    if (!selectedChannel.is_premium && !allowEveryone) {
+      return res.render('panel/studio_select', { 
+        availableChannels, 
+        error: `Телеканал "${selectedChannel.name}" не имеет активного Premium статуса. Эфирная студия доступна только для премиум-каналов.`,
+        allowEveryone
+      });
+    }
+
+    req.session.panel_channel_id = selectedChannel.id;
+
+    let [keys] = await pool.query('SELECT stream_key FROM stream_keys WHERE channel_id = ? AND user_id = ?', [selectedChannel.id, userId]);
+    let streamKey = '';
+    if (keys.length === 0) {
+      streamKey = 'sk_live_' + crypto.randomBytes(16).toString('hex');
+      await pool.query('INSERT INTO stream_keys (channel_id, user_id, stream_key) VALUES (?, ?, ?)', [selectedChannel.id, userId, streamKey]);
+    } else {
+      streamKey = keys[0].stream_key;
+    }
+
+    const [records] = await pool.query(
+      'SELECT id, title, video_url, hls_url, duration, thumbnail_url FROM records WHERE channel_id = ? AND hls_url IS NOT NULL ORDER BY created_at DESC',
+      [selectedChannel.id]
+    );
+
+    res.render('panel/studio', {
+      activeMenu: 'studio',
+      activeSubmenu: '',
+      panelChannel: selectedChannel,
+      panelRole: selectedChannel.panel_role,
+      records,
+      streamKey,
+      breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Эфирная студия'
+    });
+  } catch (e) {
+    console.error('Error rendering Broadcast Studio:', e);
+    res.status(500).send('Server Error');
+  }
 });
 
 module.exports = router;

@@ -1,4 +1,5 @@
 <%- include('../partials/header') %>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <style>
     .channel-select-list {
@@ -72,6 +73,34 @@
       background: #555;
       color: #fff;
     }
+
+    @media (max-width: 768px) {
+      body {
+        min-width: 100% !important;
+      }
+      .left_blocks {
+        width: 100% !important;
+        float: none !important;
+        margin: 10px 0 !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
+      }
+      .channel-select-row {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      }
+      .channel-name {
+        width: auto !important;
+        flex-grow: 1 !important;
+      }
+      .channel-role {
+        width: auto !important;
+      }
+      .channel-url {
+        width: 100% !important;
+        margin-top: 5px !important;
+      }
+    }
   </style>
 
   <div id="content">
@@ -86,19 +115,68 @@
               <div class="block-head-bg"></div>
               <div class="block-head">
                 <div class="block-head-right">
-                  <div class="block-title">Панель управления - выбор телеканала</div>
+                  <div class="block-title"><%= typeof to !== 'undefined' && to === 'channel' ? (availableChannels.length === 1 ? 'Мой канал' : 'Мои каналы') : 'Панель управления - выбор телеканала' %></div>
                 </div>
               </div>
               <div class="block-content" style="padding: 15px;">
 
+                <% if (typeof pendingTransfers !== 'undefined' && pendingTransfers.length > 0) { %>
+                  <div style="background-color: #1e392a; border: 1px solid #2ecc71; border-radius: 8px; padding: 15px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div style="font-weight: bold; color: #2ecc71; margin-bottom: 10px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
+                      <span style="font-size: 18px;">✉</span> Предложение о передаче владения телеканалом
+                    </div>
+                    <% pendingTransfers.forEach(transfer => { %>
+                      <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05); gap: 15px;">
+                        <div style="color: #eee; font-size: 13px;">
+                          Пользователь <strong><%= transfer.old_owner_username %></strong> предлагает вам стать владельцем телеканала <strong><%= transfer.channel_name %></strong> (<%= transfer.shortname %>).
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-shrink: 0;">
+                          <button type="button" class="btn" style="background: #2ecc71; border-color: #27ae60; color: white; padding: 5px 12px; font-size: 12px; cursor: pointer; border-radius: 3px;" onclick="handleTransferDecision(<%= transfer.transfer_id %>, 'accept')">Принять</button>
+                          <button type="button" class="btn" style="background: #e74c3c; border-color: #c0392b; color: white; padding: 5px 12px; font-size: 12px; cursor: pointer; border-radius: 3px;" onclick="handleTransferDecision(<%= transfer.transfer_id %>, 'reject')">Отклонить</button>
+                        </div>
+                      </div>
+                    <% }) %>
+                  </div>
+
+                  <script>
+                    async function handleTransferDecision(transferId, action) {
+                      if (action === 'accept') {
+                        if (!confirm('Вы уверены, что хотите принять владение телеканалом?')) return;
+                      } else {
+                        if (!confirm('Вы уверены, что хотите отклонить предложение?')) return;
+                      }
+
+                      try {
+                        const response = await fetch('/channels/transfer/' + action, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({ transfer_id: transferId })
+                        });
+                        
+                        if (response.ok) {
+                          window.location.reload();
+                        } else {
+                          const text = await response.text();
+                          alert('Ошибка: ' + text);
+                        }
+                      } catch (err) {
+                        alert('Ошибка при выполнении запроса: ' + err.message);
+                      }
+                    }
+                  </script>
+                <% } %>
+
                 <% if (availableChannels && availableChannels.length> 0) { %>
-                  <form id="selectChannelForm" action="/ru/panel,set_channel" method="POST">
+                  <form id="selectChannelForm" action="/ru/panel,set_channel<%= typeof to !== 'undefined' && to ? '?to=' + encodeURIComponent(to) : '' %>" method="POST">
                     <input type="hidden" name="channel_id" id="selectedChannelId" value="">
 
                     <div class="channel-select-list">
                       <% availableChannels.forEach((ch, index)=> {
                         let roleName = ch.panel_role;
                         if (roleName === 'owner') roleName = 'владелец';
+                        if (roleName === 'coowner') roleName = 'совладелец';
                         if (roleName === 'reporter') roleName = 'репортер';
                         if (roleName === 'editor') roleName = 'редактор';
                         %>
@@ -118,13 +196,15 @@
                     </div>
 
                     <button type="button" class="btn-select" onclick="submitSelection()">ВЫБРАТЬ</button>
+                    <div style="text-align: center; margin-top: 20px;">
+                      <a href="/channels/create" style="color: #6fdeee; text-decoration: none; font-size: 13px; font-weight: bold;">+ Создать телеканал</a>
+                    </div>
                   </form>
                   <% } else { %>
                     <div style="text-align: center; padding: 30px; color: #ccc;">
                       <p>У вас нет доступных телеканалов.</p>
                       <a href="/channels/create"
-                        style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: #3b9cd9; color: #fff; text-decoration: none; border-radius: 3px;">Создать
-                        свой канал</a>
+                        style="display: inline-block; margin-top: 15px; padding: 10px 20px; background: #3b9cd9; color: #fff; text-decoration: none; border-radius: 3px;">Создать телеканал</a>
                     </div>
                     <% } %>
 

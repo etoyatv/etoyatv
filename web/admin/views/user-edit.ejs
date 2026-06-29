@@ -78,6 +78,8 @@
                   Удален (срок до вайпа акка: <%= formatDate(wipeDate, userTimezone, 'DD.MM.YYYY') %> - осталось <%= diffDays > 0 ? diffDays : 0 %> дн.)
                 <% } else if (u.is_banned) { %>
                   Заблокирован (срок бана до: <%= u.banned_until ? formatDate(u.banned_until, userTimezone, 'DD.MM.YYYY') : 'навсегда' %>)
+                <% } else if (u.is_verified === 0) { %>
+                  <span class="status-unconfirmed">Неподтвержденный</span>
                 <% } else { %>
                   Активный
                 <% } %>

@@ -130,6 +130,24 @@ app.use((req, res, next) => {
 
 // Pass variables to all templates
 app.use(async (req, res, next) => {
+  if (req.session && req.session.user) {
+    try {
+      const { pool } = require('../config/db');
+      const [users] = await pool.query('SELECT username, email, role, timezone, chat_color, avatar FROM users WHERE id = ?', [req.session.user.id]);
+      if (users.length > 0) {
+        const u = users[0];
+        req.session.user.username = u.username;
+        req.session.user.email = u.email;
+        req.session.user.role = u.role;
+        req.session.user.timezone = u.timezone;
+        req.session.user.chat_color = u.chat_color;
+        req.session.user.avatar = u.avatar;
+      }
+    } catch (e) {
+      console.error('Error refreshing user session:', e);
+    }
+  }
+
   if (req.session && req.session.user && req.session.user.staff_role) {
     try {
       const { pool } = require('../config/db');
@@ -362,8 +380,17 @@ const csrf = require('csurf');
 app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
-  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  frameguard: false
 }));
+
+// Apply X-Frame-Options: SAMEORIGIN to all routes except widget views
+app.use((req, res, next) => {
+  if (!req.path.startsWith('/widget/')) {
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  }
+  next();
+});
 
 // Rate limiting for auth routes
 const authLimiter = rateLimit({

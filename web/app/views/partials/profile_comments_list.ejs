@@ -1,0 +1,47 @@
+<% if (typeof comments !== 'undefined' && comments && comments.length > 0) { %>
+  <% comments.forEach(comment => { %>
+    <div class="item">
+      <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(comment.username) %>" class="foto">
+        <img width="32" height="32" src="<%= CDN_BASE_URL %><%= comment.avatar || '/images/default_user_avatar.png' %>" alt="<%= comment.username %>">
+      </a>
+      <div class="bubble bubble_left_grey">
+        <div class="bubble_header"></div>
+        <div class="bubble_center" style="position: relative;">
+          <div class="bubble_content"> 
+            <div class="comment_info">
+              <div class="comment_head white">
+                <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(comment.username) %>"><%= comment.username %></a>, 
+                <%= formatDate(comment.created_at, userTimezone, 'DD.MM.YYYY') %> в <%= formatDate(comment.created_at, userTimezone, 'HH:mm') %>
+              </div>
+              <div class="comment_text" style="word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;"><%= comment.text %></div>
+              <div style="text-align: right; margin-top: 5px; display: flex; justify-content: flex-end; gap: 10px;">
+                <% if (typeof user !== 'undefined' && user && user.id !== comment.user_id) { %>
+                  <button type="button" onclick="openReportModal('profile_comment', <%= comment.id %>)" style="background: none; border: none; color: #c0392b; cursor: pointer; font-size: 11px; text-decoration: underline; padding: 0;">пожаловаться</button>
+                <% } %>
+                <% if (typeof user !== 'undefined' && user && (user.id === comment.user_id || user.id === profileUser.id || ['admin', 'moderator', 'mod'].includes(user.staff_role))) { %>
+                  <button type="button" onclick="deleteProfileComment('<%= profileUser.username %>', <%= comment.id %>)" style="background: none; border: none; color: #cc0000; cursor: pointer; font-size: 11px; text-decoration: underline; padding: 0;">удалить</button>
+                <% } %>
+              </div>
+            </div> 
+          </div>
+        </div>
+        <div class="bubble_footer"></div>
+      </div>
+      <div class="clear_both"></div>
+    </div>
+  <% }) %>
+<% } else { %>
+  <p style="color: #c0c0b2;">Нет комментариев</p>
+<% } %>
+
+<% if (typeof commentsTotalPages !== 'undefined' && commentsTotalPages > 1) { %>
+  <div class="pagination" style="margin-top: 15px;">
+    <% if (cpage > 1) { %>
+      <a href="#" onclick="loadProfileComments(event, '<%= profileUser.username %>', <%= cpage - 1 %>); return false;" style="color: #6fdeee; margin-right: 10px;">&laquo; Предыдущие</a>
+    <% } %>
+    <span style="color: #c0c0b2;">Страница <%= cpage %> из <%= commentsTotalPages %></span>
+    <% if (cpage < commentsTotalPages) { %>
+      <a href="#" onclick="loadProfileComments(event, '<%= profileUser.username %>', <%= cpage + 1 %>); return false;" style="color: #6fdeee; margin-left: 10px;">Следующие &raquo;</a>
+    <% } %>
+  </div>
+<% } %>

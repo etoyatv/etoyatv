@@ -140,23 +140,57 @@
             Моя команда
         </div>
 
-        ${ teamMembers && teamMembers.length > 0 ? teamMembers.map(member => `
-            <form action="/ru/panel,settings,team,update" method="POST" style="display: flex; align-items: center; justify-content: space-between; background-color: #3a4247; padding: 10px; border-radius: 4px; border: 1px solid #1a1e20; margin-bottom: 10px;">
-                <input type="hidden" name="user_id" value="${ member.user_id }">
-                <div style="display: flex; align-items: center; gap: 10px; width: 150px;">
-                    <img src="${ escapeHtml(member.avatar) }" width="30" height="30" style="border-radius: 50%;">
-                    <a href="/ru/account,userinfo?username=${ encodeURIComponent(member.username) }" style="font-size: 14px; font-weight: bold; color: #6fdeee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ escapeHtml(member.username) }</a>
-                </div>
-                <div style="font-size: 12px; color: #8c989e; display: flex; align-items: center;">
-                    <label style="margin-right: 10px;"><input type="checkbox" name="is_reporter" value="1" ${ member.is_reporter ? 'checked' : '' }> Репортер</label>
-                    <label style="margin-right: 10px;"><input type="checkbox" name="is_moderator" value="1" ${ member.is_moderator ? 'checked' : '' }> Модератор</label>
-                    <label style="margin-right: 10px;"><input type="checkbox" name="is_editor" value="1" ${ member.is_editor ? 'checked' : '' }> Редактор</label>
-                    
-                    <button type="submit" class="btn" style="margin-left: 10px; padding: 3px 10px; font-size: 11px;">Сохранить</button>
-                    <button type="button" class="btn" style="margin-left: 5px; background: #c0392b; border-color: #e74c3c; color: white; padding: 3px 10px; font-size: 11px;" onclick="yatvConfirm('Удалить участника?', () => { const f = document.createElement('form'); f.method='POST'; f.action='/ru/panel,settings,team,remove'; const i = document.createElement('input'); i.type='hidden'; i.name='user_id'; i.value='${ member.user_id }'; f.appendChild(i); const c = document.createElement('input'); c.type='hidden'; c.name='_csrf'; c.value=window.csrfToken; f.appendChild(c); document.body.appendChild(f); f.submit(); });">Удалить</button>
+        <div id="team-members-list">
+        ${ teamMembers && teamMembers.length > 0 ? teamMembers.map(member => {
+            const isCoownerRow = member.is_coowner === 1;
+            const isDisabled = (locals.panelRole === 'coowner' && isCoownerRow) ? 'disabled' : '';
+            return `
+            <form action="/ru/panel,settings,team,update" method="POST" data-user-id="${ member.user_id }" class="team-member-row" style="display: flex; align-items: center; justify-content: space-between; background-color: #3a4247; padding: 0; border-radius: 4px; border: 1px solid #1a1e20; margin-bottom: 10px; position: relative;">
+                <div style="display: flex; align-items: center; flex-grow: 1; height: 50px;">
+                    <div class="drag-handle" style="cursor: grab; display: flex; align-items: center; justify-content: center; width: 35px; height: 100%; color: #8c989e; font-size: 16px; user-select: none; background: rgba(0,0,0,0.15); border-right: 1px solid #1a1e20; margin-right: 10px;" title="Перетащите для сортировки">☰</div>
+                    <div style="display: flex; align-items: center; gap: 10px; width: 150px; margin-left: 0;">
+                        <img src="${ escapeHtml(member.avatar) }" width="30" height="30" style="border-radius: 50%;">
+                        <a href="/ru/account,userinfo?username=${ encodeURIComponent(member.username) }" style="font-size: 14px; font-weight: bold; color: #6fdeee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${ escapeHtml(member.username) }</a>
+                    </div>
+                    <div style="font-size: 12px; color: #8c989e; display: flex; align-items: center; gap: 10px; flex-grow: 1; justify-content: flex-end; padding-right: 10px;">
+                        <label style="margin: 0; display: flex; align-items: center; gap: 3px;"><input type="checkbox" name="is_reporter" value="1" ${ member.is_reporter ? 'checked' : '' } ${ isDisabled }> Репортер</label>
+                        <label style="margin: 0; display: flex; align-items: center; gap: 3px;"><input type="checkbox" name="is_moderator" value="1" ${ member.is_moderator ? 'checked' : '' } ${ isDisabled }> Модератор</label>
+                        <label style="margin: 0; display: flex; align-items: center; gap: 3px;"><input type="checkbox" name="is_editor" value="1" ${ member.is_editor ? 'checked' : '' } ${ isDisabled }> Редактор</label>
+                        
+                        ${ (locals.panelRole === 'owner' && !locals.panelChannel.is_personal) ? `
+                        <label style="margin: 0; color: #39b54a; display: flex; align-items: center; gap: 3px;"><input type="checkbox" name="is_coowner" value="1" ${ member.is_coowner ? 'checked' : '' } ${ isDisabled }> Совладелец</label>
+                        ` : '' }
+                        
+                        <input type="hidden" name="user_id" value="${ member.user_id }">
+                        <button type="submit" class="btn" style="margin-left: 10px; padding: 3px 10px; font-size: 11px;" ${ isDisabled }>Сохранить</button>
+                        <button type="button" class="btn" style="margin-left: 5px; background: #c0392b; border-color: #e74c3c; color: white; padding: 3px 10px; font-size: 11px;" ${ isDisabled ? 'disabled' : '' } onclick="yatvConfirm('Удалить участника?', () => { const f = document.createElement('form'); f.method='POST'; f.action='/ru/panel,settings,team,remove'; const i = document.createElement('input'); i.type='hidden'; i.name='user_id'; i.value='${ member.user_id }'; f.appendChild(i); const c = document.createElement('input'); c.type='hidden'; c.name='_csrf'; c.value=window.csrfToken; f.appendChild(c); document.body.appendChild(f); f.submit(); });">Удалить</button>
+                    </div>
                 </div>
             </form>
-        `).join('') : '<div style="color: #c0c0b2; padding: 10px; background-color: #3a4247; border-radius: 4px; border: 1px solid #1a1e20;">В вашей команде пока никого нет.</div>' }
+            `;
+        }).join('') : '<div style="color: #c0c0b2; padding: 10px; background-color: #3a4247; border-radius: 4px; border: 1px solid #1a1e20;">В вашей команде пока никого нет.</div>' }
+        </div>
+
+        ${ (locals.panelRole === 'owner' && !locals.panelChannel.is_personal && teamMembers && teamMembers.length > 0) ? `
+        <div style="font-size: 18px; color: #fff; margin-top: 30px; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            Передать владение телеканалом
+        </div>
+        <div style="background-color: #3a4247; border: 1px solid #ff4d4d; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+            <p style="color: #8c989e; margin-bottom: 15px; font-size: 13px;">
+                Вы можете полностью передать владение данным телеканалом любому участнику вашей команды.
+                <br>После подтверждения передачи вами по электронной почте, новому владельцу будет выслано предложение. Как только он его примет, вы станете обычным участником команды с правами редактора и репортера.
+            </p>
+            <form action="/ru/panel,settings,team,transfer" method="POST"
+                  onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите передать владение телеканалом? Потребуется подтверждение по электронной почте.', () => { form.submit(); });"
+                  style="display: flex; align-items: center; gap: 10px;">
+                <select name="target_user_id" class="form-control" style="width: 250px; background: #222; border: 1px solid #444; color: #fff;" required>
+                    <option value="">Выберите получателя...</option>
+                    ${ teamMembers.map(member => `<option value="${member.user_id}">${escapeHtml(member.username)}</option>`).join('') }
+                </select>
+                <button type="submit" class="btn" style="background: #e74c3c; border-color: #c0392b; color: white;">Передать владение</button>
+            </form>
+        </div>
+        ` : '' }
 
     </div>
     
@@ -176,5 +210,84 @@
         </div>
     </div>
 </div>
+
+<script src="/js/jquery.js"></script>
+<script src="/js/jquery-ui.min.js"></script>
+<script>
+$(function() {
+    function initCoownerHandlers() {
+        $('.team-member-row').each(function() {
+            const row = $(this);
+            const coownerChk = row.find('input[name="is_coowner"]');
+            if (coownerChk.length) {
+                const sync = () => {
+                    const otherChks = row.find('input[type="checkbox"]').not(coownerChk);
+                    if (coownerChk.is(':checked')) {
+                        otherChks.each(function() {
+                            this.checked = true;
+                            this.onclick = function(e) {
+                                e.preventDefault();
+                                return false;
+                            };
+                        });
+                    } else {
+                        otherChks.each(function() {
+                            this.onclick = null;
+                        });
+                    }
+                };
+                coownerChk.on('change', sync);
+                sync(); // run initially
+            }
+        });
+    }
+    initCoownerHandlers();
+
+    if ($("#team-members-list").length && $(".drag-handle").length) {
+        $("#team-members-list").sortable({
+            handle: ".drag-handle",
+            axis: "y",
+            placeholder: {
+                element: function(currentItem) {
+                    return $("<div class='team-member-row ui-sortable-placeholder' style='background: rgba(111,222,238,0.05); border: 1px dashed #6fdeee; height: 52px; margin-bottom: 10px; border-radius: 4px;'></div>")[0];
+                },
+                update: function() { return; }
+            },
+            update: function(event, ui) {
+                const userIds = [];
+                $("#team-members-list .team-member-row").each(function() {
+                    userIds.push($(this).data("user-id"));
+                });
+                
+                fetch('/ru/panel,settings,team,reorder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user_ids: userIds })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        if (window.showToast) {
+                            window.showToast('Порядок команды сохранен', 'success');
+                        }
+                    } else {
+                        if (window.showToast) {
+                            window.showToast('Ошибка сохранения порядка', 'error');
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    if (window.showToast) {
+                        window.showToast('Ошибка сети при сохранении порядка', 'error');
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
 
 ` }) %>

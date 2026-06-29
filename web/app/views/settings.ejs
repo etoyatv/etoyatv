@@ -404,7 +404,9 @@
     
     const canvas = cropper.getCroppedCanvas({
       width: 100,
-      height: 100
+      height: 100,
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
     });
     
     canvas.toBlob(function(blob) {

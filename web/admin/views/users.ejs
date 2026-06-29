@@ -40,6 +40,8 @@
                   <span class="status-deleted">Удаленный</span>
                 <% } else if (u.is_banned) { %>
                   <span class="status-banned">Заблокированный</span>
+                <% } else if (u.is_verified === 0) { %>
+                  <span class="status-unconfirmed">Неподтвержденный</span>
                 <% } else { %>
                   <span class="status-active">Активный</span>
                 <% } %>

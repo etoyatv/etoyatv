@@ -45,6 +45,9 @@
                   <span class="status-active">Активный</span>
                 <% } %>
               </div>
+              <div class="u-card-status" style="margin-top: 5px;">
+                Тип канала: <strong><%= c.is_personal ? 'Личный' : 'Кооперативный' %></strong>
+              </div>
             </div>
             
             <div class="u-card-actions" style="margin-left: auto; align-items: flex-end; flex-shrink: 0;">
@@ -61,9 +64,9 @@
 
               <% if (!isModOnly) { %>
               <form action="/channels/<%= c.id %>/delete?redirect=<%= typeof baseUrl !== 'undefined' ? baseUrl : '/channels' %>" method="POST" style="display: contents;">
-                <input type="hidden" name="action" value="<%= c.status === 'deleted' ? 'restore' : 'delete' %>">
-                <button type="submit" class="btn-action <%= c.status === 'deleted' ? 'btn-restore' : 'btn-danger' %>" onclick="event.preventDefault(); const form = this.closest('form'); yatvConfirm('Вы уверены?', () => { form.submit(); });" style="white-space: nowrap; width: 170px;">
-                  <%= c.status === 'deleted' ? 'Восстановить' : 'Удалить полностью' %>
+                <input type="hidden" name="action" value="<%= (c.status === 'deleted' || c.deleted_at !== null) ? 'restore' : 'delete' %>">
+                <button type="submit" class="btn-action <%= (c.status === 'deleted' || c.deleted_at !== null) ? 'btn-restore' : 'btn-danger' %>" onclick="event.preventDefault(); const form = this.closest('form'); yatvConfirm('Вы уверены?', () => { form.submit(); });" style="white-space: nowrap; width: 170px;">
+                  <%= (c.status === 'deleted' || c.deleted_at !== null) ? 'Восстановить' : 'Удалить полностью' %>
                 </button>
               </form>
               <% } %>

@@ -354,7 +354,7 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
     const { 
       name, shortname, description, 
       rtmp_disabled, autopilot_disabled, chat_disabled, design_disabled,
-      cdn_quota_gb, is_premium, is_verified
+      cdn_quota_gb, is_premium, is_verified, is_personal
     } = req.body;
 
     const quotaMB = cdn_quota_gb ? Math.floor(parseFloat(cdn_quota_gb) * 1024) : 2048;
@@ -364,7 +364,7 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
 
     if (req.file) {
       const avatarPath = '/images/design/' + req.file.filename;
-      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, logo_url = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ? WHERE id = ?';
+      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, logo_url = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ?, is_personal = ? WHERE id = ?';
       params = [
         name, shortname, description, avatarPath,
         rtmp_disabled ? 1 : 0, 
@@ -376,10 +376,11 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
         quotaMB,
         is_premium ? 1 : 0,
         is_verified ? 1 : 0,
+        is_personal ? 1 : 0,
         id
       ];
     } else {
-      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ? WHERE id = ?';
+      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ?, is_personal = ? WHERE id = ?';
       params = [
         name, shortname, description, 
         rtmp_disabled ? 1 : 0, 
@@ -391,6 +392,7 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
         quotaMB,
         is_premium ? 1 : 0,
         is_verified ? 1 : 0,
+        is_personal ? 1 : 0,
         id
       ];
     }
@@ -511,10 +513,10 @@ router.post('/channels/:id/delete', requireAdminAuth, async (req, res) => {
   const redirectUrl = req.query.redirect || ('/channels/' + id + '/edit');
   try {
     const connection = await pool.getConnection();
-    const [c] = await connection.query('SELECT status, logo_url, bg_url, name FROM channels WHERE id = ?', [id]);
+    const [c] = await connection.query('SELECT status, deleted_at, logo_url, bg_url, name FROM channels WHERE id = ?', [id]);
     if (c.length > 0) {
-      if (c[0].status === 'deleted') {
-        // Отменить удаление (если канал был удален юзером)
+      if (c[0].status === 'deleted' || c[0].deleted_at !== null) {
+        // Отменить удаление (если канал был удален юзером или при удалении пользователя)
         const channel = c[0];
         await connection.query('UPDATE channels SET status = ?, deleted_at = NULL, deleted_by_admin = 0 WHERE id = ?', ['active', id]);
         const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;

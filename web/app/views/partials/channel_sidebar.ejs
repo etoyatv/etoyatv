@@ -40,8 +40,12 @@
 <h1 class="title darkblue" style="font-size: 16px; margin: 0 0 10px 0;"><%= channel.name %><% if (channel.is_verified) { %><span class="verified_icon" title="Подтвержденный канал"></span><% } %><% if(channel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></h1> 
 <div class="info">
 <div class="params">
-<div class="label" style="float: left; color: #777; width: 80px;">Владелец:</div>
-<div class="value white" style="float: left; color: #fff;"><a href="/ru/account,userinfo?username=<%= typeof owner !== 'undefined' ? owner.username : (channel.username || channel.user_id) %>"><%= typeof owner !== 'undefined' ? owner.username : (channel.username || channel.user_id) %></a></div>
+<div class="label" style="float: left; color: #777; width: 80px;"><%= (typeof coowners !== 'undefined' && coowners.length > 0) ? 'Владельцы:' : 'Владелец:' %></div>
+<div class="value white" style="float: left; color: #fff;">
+  <a href="/ru/account,userinfo?username=<%= typeof owner !== 'undefined' ? owner.username : (channel.username || channel.user_id) %>"><%= typeof owner !== 'undefined' ? owner.username : (channel.username || channel.user_id) %></a><% if (typeof coowners !== 'undefined' && coowners.length > 0) { %>, 
+    <% coowners.forEach((co, idx) => { %><a href="/ru/account,userinfo?username=<%= encodeURIComponent(co.username) %>"><%= co.username %></a><%= idx < coowners.length - 1 ? ', ' : '' %><% }) %>
+  <% } %>
+</div>
 <div class="clear_both"></div>
 </div>
 <div class="params">

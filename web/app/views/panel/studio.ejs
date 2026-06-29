@@ -1,0 +1,1081 @@
+<%
+const formatDuration = (secs) => {
+    if (!secs) return '00:00';
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    return `${m}:${s}`;
+};
+const escapeHtml = (str) => {
+    if (!str) return '';
+    return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[tag] || tag));
+};
+%>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Эфирная студия | <%= panelChannel.name %> | ЭтоЯTV</title>
+    <link rel="icon" type="image/svg+xml" href="<%= CDN_BASE_URL %>/images/favicon.svg">
+    <link rel="stylesheet" href="<%= CDN_BASE_URL %>/css/panel.css?v=1.0.1">
+    <style>
+        /* Scoped studio page design */
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            font-family: Arial, sans-serif;
+            color: #e0e0e0;
+            height: 100%;
+            overflow-x: hidden;
+        }
+        .studio-container {
+            display: flex;
+            flex-direction: column;
+            background-color: #2b2b2b;
+            color: #e0e0e0;
+            min-height: 100vh;
+            border: none;
+            box-shadow: none;
+        }
+
+        /* Top Bar */
+        .studio-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: linear-gradient(180deg, #444 0%, #2b2b2b 100%);
+            padding: 8px 20px;
+            border-bottom: 2px solid #555;
+            height: 48px;
+            box-sizing: border-box;
+        }
+        .studio-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .studio-title-block {
+            font-size: 14px;
+        }
+        .studio-title-block a {
+            color: #6fdeee;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .studio-header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
+        }
+        .studio-header-right span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-exit {
+            background: linear-gradient(180deg, #d9534f 0%, #c9302c 100%);
+            color: #fff;
+            border: 1px solid #ac2925;
+            padding: 5px 15px;
+            font-size: 11px;
+            cursor: pointer;
+            border-radius: 3px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .btn-exit:hover {
+            background: #c9302c;
+        }
+
+        /* Main Workspace Grid */
+        .studio-workspace {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background-color: #222;
+            flex-grow: 1;
+        }
+
+        /* Left Sidebar Panels */
+        .studio-sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background-color: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid #333;
+            background-color: #111;
+        }
+        .sidebar-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            color: #888;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .sidebar-tab.active {
+            color: #6fdeee;
+            border-bottom: 2px solid #6fdeee;
+            background-color: #1a1a1a;
+        }
+        .sidebar-content-area {
+            padding: 15px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        .source-item {
+            margin-bottom: 15px;
+        }
+        .source-label {
+            display: block;
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .source-select {
+            width: 100%;
+            background: #111;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            outline: none;
+        }
+        .local-video-preview {
+            width: 100%;
+            height: 150px;
+            background: #000;
+            border-radius: 4px;
+            border: 1px solid #333;
+            object-fit: cover;
+            margin-top: 10px;
+        }
+
+        /* Archive records list */
+        .archive-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .archive-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .archive-item:hover {
+            border-color: #6fdeee;
+            background-color: #222;
+        }
+        .archive-item.active {
+            background-color: #2b3b44;
+            border-color: #6fdeee;
+        }
+        .archive-item-title {
+            font-size: 11px;
+            color: #ddd;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 200px;
+        }
+        .archive-item-duration {
+            font-size: 10px;
+            color: #888;
+            font-weight: bold;
+        }
+
+        .studio-right-panel {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .window-tabs-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 8px;
+            margin-bottom: 5px;
+        }
+        .window-tabs {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+        .window-tab {
+            background: #1e1e1e;
+            color: #888;
+            border: 1px solid #333;
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .window-tab:hover {
+            border-color: #555;
+            color: #eee;
+        }
+        .window-tab.active {
+            background: #2b2b2b;
+            border-color: #00bcd4;
+            color: #00bcd4;
+            box-shadow: 0 0 8px rgba(0, 188, 212, 0.2);
+        }
+        .window-tab-close {
+            color: #888;
+            font-size: 10px;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 20%;
+            transition: all 0.15s ease;
+        }
+        .window-tab-close:hover {
+            background: rgba(255, 77, 77, 0.2);
+            color: #ff4d4d;
+        }
+        .btn-add-window {
+            background: #1e1e1e;
+            color: #aaa;
+            border: 1px solid #333;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .btn-add-window:hover {
+            border-color: #00bcd4;
+            color: #00bcd4;
+            background: rgba(0, 188, 212, 0.1);
+        }
+
+        /* Monitors Side-by-Side */
+        .monitors-row {
+            display: flex;
+            gap: 15px;
+            flex-grow: 1;
+        }
+        .monitor-box {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .monitor-title {
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #aaa;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            letter-spacing: 0.5px;
+        }
+        .monitor-canvas-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background-color: #000;
+            border: 2px solid #333;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .monitor-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .btn-live-transition {
+            width: 100%;
+            background: linear-gradient(180deg, #009ce2 0%, #007bb3 100%);
+            border: 1px solid #005f8a;
+            color: #fff;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        .btn-live-transition:hover {
+            background: #009ce2;
+        }
+        .btn-start-broadcast {
+            width: 100%;
+            background: linear-gradient(180deg, #5cb85c 0%, #4cae4c 100%);
+            border: 1px solid #4cae4c;
+            color: #fff;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        .btn-start-broadcast:hover {
+            background: #5cb85c;
+        }
+        .btn-start-broadcast.streaming {
+            background: linear-gradient(180deg, #d9534f 0%, #c9302c 100%);
+            border-color: #ac2925;
+        }
+        .btn-start-broadcast.streaming:hover {
+            background: #d9534f;
+        }
+        .btn-start-broadcast.connecting {
+            background: linear-gradient(180deg, #f0ad4e 0%, #ec971f 100%);
+            border-color: #d58512;
+            cursor: wait;
+            animation: pulse-orange 1.5s infinite alternate;
+        }
+        @keyframes pulse-orange {
+            0% { opacity: 0.85; }
+            100% { opacity: 1; }
+        }
+        .btn-record-studio {
+            background: linear-gradient(180deg, #333 0%, #222 100%);
+            border: 1px solid #444;
+            color: #ff4a4a;
+            padding: 10px;
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        .btn-record-studio:hover {
+            background: #444;
+        }
+        .btn-record-studio:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-record-studio.recording {
+            background: linear-gradient(180deg, #d9534f 0%, #c9302c 100%);
+            border-color: #ac2925;
+            color: #fff;
+        }
+        .btn-record-studio.recording:hover {
+            background: #d9534f;
+        }
+        @keyframes rec-blink {
+            from { opacity: 1; }
+            to { opacity: 0.2; }
+        }
+
+        .onair-status-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 11px;
+        }
+        .onair-status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #555;
+            transition: background 0.3s;
+        }
+        .onair-status-indicator.live {
+            background: #ff4d4d;
+            box-shadow: 0 0 8px #ff4d4d;
+            animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+
+        /* Applied elements preview list */
+        .applied-elements-list {
+            margin-top: 10px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 8px 12px;
+            min-height: 50px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .applied-element-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: #ddd;
+            padding: 4px 0;
+            border-bottom: 1px dashed #333;
+        }
+        .applied-element-row:last-child {
+            border-bottom: none;
+        }
+        .applied-element-label {
+            font-weight: bold;
+        }
+        .applied-element-remove {
+            color: #ff4d4d;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* Bottom Controls Row */
+        .studio-controls {
+            margin-top: 15px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .control-tabs {
+            display: flex;
+            background-color: #111;
+            border-bottom: 1px solid #333;
+        }
+        .control-tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            color: #888;
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .control-tab.active {
+            color: #6fdeee;
+            border-bottom: 2px solid #6fdeee;
+            background-color: #1a1a1a;
+        }
+        .control-content {
+            padding: 20px;
+            min-height: 150px;
+        }
+        .control-panel-pane {
+            display: none;
+        }
+        .control-panel-pane.active {
+            display: block;
+        }
+
+        /* Form elements inside panel */
+        .flex-row {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+        }
+        .flex-row-wrap {
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .flex-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 150px;
+        }
+        .ctrl-input {
+            background: #111;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 8px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            outline: none;
+        }
+        .ctrl-color {
+            width: 70px;
+            height: 32px;
+            cursor: pointer;
+            padding: 0 4px;
+            outline: none;
+            border-radius: 4px;
+            border: 1px solid #4a5359;
+            font-family: monospace;
+            font-size: 11px;
+            text-align: center;
+            box-sizing: border-box;
+            caret-color: transparent;
+            user-select: none;
+        }
+        .btn-apply-overlay {
+            background: #3b9cd9;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-apply-overlay:hover {
+            background: #2a8cc8;
+        }
+        .eye-toggle-btn {
+            background: #333;
+            color: #aaa;
+            border: 1px solid #444;
+            border-radius: 3px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .eye-toggle-btn.active {
+            color: #6fdeee;
+            border-color: #6fdeee;
+            background-color: #2b3b44;
+        }
+
+        /* Mockup for Call Tab */
+        .call-mockup-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: #111;
+            padding: 15px;
+            border: 1px solid #333;
+            border-radius: 4px;
+        }
+        .call-user-avatar {
+            width: 60px;
+            height: 60px;
+            background: #222;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            border: 1px solid #444;
+        }
+
+        /* Chat design inside studio */
+        .studio-chat-wrapper {
+            display: flex;
+            gap: 15px;
+            height: 120px;
+        }
+        .studio-chat-log {
+            flex-grow: 1;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 8px;
+            overflow-y: auto;
+        }
+        .studio-chat-users {
+            width: 150px;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 3px;
+            padding: 8px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .studio-chat-input-row {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        .studio-chat-input {
+            flex-grow: 1;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .studio-chat-send {
+            background: #3b9cd9;
+            color: #fff;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 3px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        /* ----------------------------------------------------
+        /* Responsive Overrides (Adaptive Layout for all devices)
+        /* ---------------------------------------------------- */
+        
+        /* Allow wrapping for tabs */
+        .window-tabs {
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 1024px) {
+            .studio-workspace {
+                flex-direction: column;
+                gap: 15px;
+                padding: 10px;
+            }
+            .studio-sidebar {
+                width: 100%;
+                height: auto;
+            }
+            .local-video-preview {
+                height: 180px;
+                max-width: 320px;
+                margin: 10px auto 0 auto;
+                display: block;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .studio-header {
+                height: auto;
+                flex-direction: column;
+                gap: 10px;
+                padding: 10px 15px;
+                align-items: stretch;
+            }
+            .studio-header-left {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            .studio-title-block {
+                font-size: 13px;
+            }
+            .studio-header-right {
+                justify-content: space-between;
+                width: 100%;
+                border-top: 1px solid #444;
+                padding-top: 8px;
+            }
+            .monitors-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+            .monitor-box {
+                width: 100%;
+            }
+            .flex-row, .flex-row-wrap {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+            }
+            .flex-col {
+                flex: none !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .ctrl-color {
+                width: 100% !important;
+                box-sizing: border-box !important;
+                text-align: left !important;
+                padding-left: 15px !important;
+            }
+            .ctrl-input {
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .source-select {
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+            .btn-apply-overlay {
+                width: 100% !important;
+                margin-left: 0 !important;
+                margin-top: 8px !important;
+            }
+            .eye-toggle-btn {
+                width: 100% !important;
+                margin-top: 8px !important;
+            }
+            .studio-chat-wrapper {
+                flex-direction: column;
+                height: auto;
+            }
+            .studio-chat-log {
+                height: 150px;
+            }
+            .studio-chat-users {
+                width: 100%;
+                height: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="studio-container">
+        <!-- Top Bar -->
+        <div class="studio-header">
+            <div class="studio-header-left">
+                <a href="/" style="display: flex; align-items: center; text-decoration: none;">
+                    <img src="<%= CDN_BASE_URL %>/images/logo.svg" height="28" alt="ЭтоЯTV" style="vertical-align: middle; margin-right: 10px;">
+                </a>
+                <div class="studio-title-block" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <strong>Эфирная студия</strong> &nbsp;|&nbsp; 
+                    Телеканал: <a href="/<%= locals.panelChannel.shortname %>" target="_blank"><%= escapeHtml(locals.panelChannel.name) %></a>
+                    <span id="studio-live-title-container" style="display: none; align-items: center; gap: 4px;">
+                        &nbsp;|&nbsp;
+                        Передача: <span id="studio-live-title-span" style="color: #6fdeee; font-weight: bold;"><%= locals.panelChannel.live_title || 'Прямой эфир' %></span>
+                        <button onclick="editStudioLiveTitle()" title="Изменить название передачи" style="background: none; border: none; cursor: pointer; font-size: 12px; padding: 0 4px; color: #aaa; transition: color 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#aaa'">✏️</button>
+                    </span>
+                </div>
+            </div>
+            <div class="studio-header-right">
+                <span>👥 <strong id="studio-viewers-count">0</strong></span>
+                <span>⏱ <strong id="studio-broadcast-timer">00:00:00</strong></span>
+                <button class="btn-exit" onclick="window.location.href='/ru/panel,dashboard'">Выйти</button>
+            </div>
+        </div>
+
+        <!-- BETA WARNING BANNER -->
+        <div class="studio-beta-warning" style="background-color: rgba(240, 173, 78, 0.12); border: 1px solid rgba(240, 173, 78, 0.3); border-left: 4px solid #f0ad4e; padding: 12px 20px; font-size: 13px; color: #ffcc66; display: flex; align-items: center; gap: 12px; margin: 15px 15px 0 15px; border-radius: 4px; line-height: 1.4;">
+            <span style="font-size: 18px; user-select: none;">⚠️</span>
+            <div>
+                <strong>Эфирная студия находится в режиме бета-тестирования.</strong> Наблюдаются проблемы с трансляцией веб-камеры, обрывы, дикие задержки. Рекомендуется воспользоваться <a href="/ru/panel,settings,broadcast" style="color: inherit; text-decoration: underline; font-weight: bold;">RTMP-трансляцией</a>.
+            </div>
+        </div>
+
+        <!-- Main Workspace Grid -->
+        <div class="studio-workspace">
+            <!-- Left Sidebar -->
+            <div class="studio-sidebar">
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" id="tab-sources-btn" onclick="switchSidebarTab('sources')">Источники</button>
+                    <button class="sidebar-tab" id="tab-archive-btn" onclick="switchSidebarTab('archive')">Медиа-архив</button>
+                </div>
+                
+                <div class="sidebar-content-area">
+                    <!-- Sources Pane -->
+                    <div class="sidebar-pane" id="pane-sources">
+                        <div class="source-item">
+                            <label class="source-label">Видеокамера:</label>
+                            <select class="source-select" id="videoSourceSelect" onchange="startCameraStream()"></select>
+                        </div>
+                        <div class="source-item">
+                            <label class="source-label">Микрофон:</label>
+                            <select class="source-select" id="audioSourceSelect" onchange="startCameraStream()"></select>
+                        </div>
+                        <video class="local-video-preview" id="localWebcamVideo" muted autoplay playsinline></video>
+                    </div>
+
+                    <!-- Archive Pane -->
+                    <div class="sidebar-pane" id="pane-archive" style="display: none;">
+                        <div class="archive-list">
+                            <% if (locals.records && locals.records.length > 0) { %>
+                                <% locals.records.forEach(rec => { %>
+                                    <div class="archive-item" onclick="loadArchiveVideo('<%= rec.hls_url %>', <%= rec.id %>, this)">
+                                        <span class="archive-item-title"><%= escapeHtml(rec.title) %></span>
+                                        <span class="archive-item-duration"><%= formatDuration(rec.duration) %></span>
+                                    </div>
+                                <% }) %>
+                            <% } else { %>
+                                <div style="font-size:11px;color:#888;text-align:center;padding:20px;">Медиа-архив пуст</div>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Monitors Column -->
+            <div class="studio-right-panel">
+                <div class="window-tabs-bar">
+                    <div class="window-tabs" id="window-tabs-container"></div>
+                    <button class="btn-add-window" id="btn-add-window-el" onclick="addNewWindow()">+</button>
+                </div>
+                <div class="monitors-row">
+                    <!-- Preview Monitor -->
+                    <div class="monitor-box">
+                        <div class="monitor-title">Предпросмотр</div>
+                        <div class="monitor-canvas-container">
+                            <canvas class="monitor-canvas" id="previewCanvas" width="1280" height="720"></canvas>
+                        </div>
+                        
+                        <!-- List of active overlays on preview -->
+                        <div class="applied-elements-list" id="preview-overlays-list">
+                            <div style="color: #777; text-align: center; margin-top: 15px; font-size: 10px;">Нет активных элементов на предпросмотре</div>
+                        </div>
+
+                        <button class="btn-live-transition" id="btn-switch-to-air" onclick="transitionPreviewToOnAir()">
+                            В ЭФИР ➔
+                        </button>
+                    </div>
+
+                    <!-- On-Air Monitor -->
+                    <div class="monitor-box">
+                        <div class="monitor-title">Эфирный монитор</div>
+                        <div class="monitor-canvas-container">
+                            <canvas class="monitor-canvas" id="onAirCanvas" width="1280" height="720"></canvas>
+                        </div>
+                        
+                        <div class="onair-status-bar" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <div class="onair-status-indicator" id="onair-dot"></div>
+                                <div id="onair-status-text" style="font-weight: bold; color: #888;">✈️ Автопилот</div>
+                            </div>
+                            <div id="studio_record_indicator" style="display: none; align-items: center; gap: 5px; background: rgba(220,53,69,0.85); color: #fff; font-size: 11px; font-weight: bold; font-family: Tahoma, sans-serif; padding: 2px 6px; border-radius: 3px; z-index: 12;">
+                                <span style="display: inline-block; width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: rec-blink 1s infinite alternate;"></span>
+                                REC <span id="studio_record_timer">00:00</span>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 15px; width: 100%;">
+                            <button class="btn-start-broadcast" id="btn-toggle-broadcast" onclick="toggleBroadcast()" style="margin-top: 0; flex: 1;">
+                                Начать трансляцию
+                            </button>
+                            <% if (locals.panelRole === 'owner') { %>
+                            <button class="btn-record-studio" id="btn-record-stream" onclick="toggleRecordStream()" style="flex: 1; display: none;">
+                                ⏺️ Начать запись
+                            </button>
+                            <% } %>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls Box -->
+        <div class="studio-controls">
+            <div class="control-tabs">
+                <button class="control-tab active" id="tab-bumper-btn" onclick="switchControlTab('bumper')">Отбивка</button>
+                <button class="control-tab" id="tab-intro-btn" onclick="switchControlTab('intro')">Заставка</button>
+                <button class="control-tab" id="tab-ticker-btn" onclick="switchControlTab('ticker')">Бегущая строка</button>
+                <button class="control-tab" id="tab-chat-btn" onclick="switchControlTab('chat')">Чат</button>
+            </div>
+
+            <div class="control-content">
+                <!-- Bumper panel -->
+                <div class="control-panel-pane active" id="panel-bumper">
+                    <div class="flex-row-wrap">
+                        <div class="flex-col">
+                            <label class="source-label">Текст 1 (Название трека/Тема):</label>
+                            <input type="text" class="ctrl-input" id="bumperText1" value="" placeholder="Например: Название песни / Тема эфира...">
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Цвет 1:</label>
+                            <input type="text" class="ctrl-color" id="bumperColor1" value="#ffffff" readonly>
+                        </div>
+                        
+                        <div class="flex-col">
+                            <label class="source-label">Текст 2 (Подстрочник):</label>
+                            <input type="text" class="ctrl-input" id="bumperText2" value="" placeholder="Введите подстрочник...">
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Цвет 2:</label>
+                            <input type="text" class="ctrl-color" id="bumperColor2" value="#6fdeee" readonly>
+                        </div>
+                    </div>
+                    <div class="flex-row-wrap" style="margin-top: 15px;">
+                        <div class="flex-col" style="max-width: 300px;">
+                            <label class="source-label">Стиль отбивки:</label>
+                            <select class="source-select" id="bumperStyle">
+                                <option value="standard" selected>Стандартная отбивка</option>
+                                <option value="slide">Скользящая плашка</option>
+                                <option value="shine">Мерцающая плашка</option>
+                                <option value="glass">Неоновое стекло</option>
+                            </select>
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Фон 1:</label>
+                            <input type="text" class="ctrl-color" id="bumperBgColor1" value="#ff3b30" readonly>
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Фон 2:</label>
+                            <input type="text" class="ctrl-color" id="bumperBgColor2" value="#007af5" readonly>
+                        </div>
+                        
+                        <div style="flex-grow: 1;"></div>
+                        
+                        <button class="eye-toggle-btn" id="bumper-preview-eye" onclick="toggleBumperPreview()" title="Предпросмотр на экране">👁</button>
+                        <button class="btn-apply-overlay" style="margin-top: 0; background: #c9302c;" onclick="applyBumperToAir()">В эфир</button>
+                        <button class="btn-apply-overlay" style="margin-top: 0; background: #555; margin-left: 10px;" onclick="removeBumperFromAir()">Снять</button>
+                    </div>
+                </div>
+
+                <!-- Intro panel -->
+                <div class="control-panel-pane" id="panel-intro">
+                    <div class="flex-row-wrap">
+                        <div class="flex-col">
+                            <label class="source-label">Текст 1 (Большой):</label>
+                            <input type="text" class="ctrl-input" id="introText1" value="" placeholder="Введите главный текст...">
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Цвет 1:</label>
+                            <input type="text" class="ctrl-color" id="introColor1" value="#ffffff" readonly>
+                        </div>
+                        
+                        <div class="flex-col">
+                            <label class="source-label">Текст 2 (Маленький):</label>
+                            <input type="text" class="ctrl-input" id="introText2" value="" placeholder="Введите дополнительный текст...">
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Цвет 2:</label>
+                            <input type="text" class="ctrl-color" id="introColor2" value="#6fdeee" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-row-wrap" style="margin-top: 15px;">
+                        <div class="flex-col" style="max-width: 300px;">
+                            <label class="source-label">Стиль заставки:</label>
+                            <select class="source-select" id="introStyle">
+                                <option value="gradient-pulse" selected>Градиентные волны</option>
+                                <option value="cosmic-glow">Космический туман</option>
+                                <option value="retro-wave">Ретроволна (Сетка)</option>
+                                <option value="minimal">Простой градиент</option>
+                            </select>
+                        </div>
+                        
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Фон Градиент 1:</label>
+                            <input type="text" class="ctrl-color" id="introBgColor1" value="#1f1c2c" readonly>
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Фон Градиент 2:</label>
+                            <input type="text" class="ctrl-color" id="introBgColor2" value="#928dab" readonly>
+                        </div>
+                        
+                        <div style="flex-grow: 1;"></div>
+                        
+                        <button class="eye-toggle-btn" id="intro-preview-eye" onclick="toggleIntroPreview()" title="Предпросмотр на экране">👁</button>
+                        <button class="btn-apply-overlay" style="margin-top: 0;" onclick="applyIntroToAir()">В эфир</button>
+                        <button class="btn-apply-overlay" style="margin-top: 0; background: #555; margin-left: 10px;" onclick="removeIntroFromAir()">Снять</button>
+                    </div>
+                </div>
+
+                <!-- Ticker panel -->
+                <div class="control-panel-pane" id="panel-ticker">
+                    <div class="flex-row-wrap">
+                        <div class="flex-col">
+                            <label class="source-label">Текст бегущей строки:</label>
+                            <input type="text" class="ctrl-input" id="tickerText" value="" placeholder="Введите текст бегущей строки (например: Новости канала / Важное объявление)...">
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: 180px;">
+                            <label class="source-label">Стиль строки:</label>
+                            <select class="source-select" id="tickerStyle">
+                                <option value="standard" selected>Стандартная строка</option>
+                                <option value="gradient-fade">С затуханием краев</option>
+                                <option value="pulse-color">Пульсирующий цвет</option>
+                            </select>
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: 100px; max-width: 100px;">
+                            <label class="source-label">Скорость:</label>
+                            <select class="source-select" id="tickerSpeed">
+                                <option value="1">Медленно</option>
+                                <option value="2" selected>Средне</option>
+                                <option value="4">Быстро</option>
+                            </select>
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Цвет текста:</label>
+                            <input type="text" class="ctrl-color" id="tickerColor" value="#ffffff" readonly>
+                        </div>
+                        <div class="flex-col" style="flex-grow: 0; min-width: auto;">
+                            <label class="source-label">Цвет фона:</label>
+                            <input type="text" class="ctrl-color" id="tickerBgColor" value="#007af5" readonly>
+                        </div>
+                    </div>
+                    <div class="flex-row" style="margin-top: 15px; justify-content: flex-end;">
+                        <button class="eye-toggle-btn" id="ticker-preview-eye" onclick="toggleTickerPreview()" title="Предпросмотр на экране">👁</button>
+                        <button class="btn-apply-overlay" style="margin-top: 0;" onclick="applyTickerToAir()">В эфир</button>
+                        <button class="btn-apply-overlay" style="margin-top: 0; background: #555; margin-left: 10px;" onclick="removeTickerFromAir()">Снять</button>
+                    </div>
+                </div>
+
+                <!-- Chat Panel -->
+                <div class="control-panel-pane" id="panel-chat" style="padding: 0; min-height: 350px; height: 350px; box-sizing: border-box; background: #000;">
+                    <iframe src="/widget/chat/<%= locals.panelChannel.shortname %>" style="width: 100%; height: 100%; border: none; display: block;" scrolling="no"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden video tag to play Media Archive records inside Canvas -->
+    <video id="archiveVideoPlayer" style="display:none;" crossorigin="anonymous" playsinline muted></video>
+    <!-- Hidden video tag to play active Autopilot/RTMP HLS stream on On-Air Canvas -->
+    <video id="autopilotVideoPlayer" style="display:none;" crossorigin="anonymous" playsinline muted></video>
+
+    <!-- Script assets -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="<%= CDN_BASE_URL %>/js/toast.js"></script>
+    <script>
+        // Server variables exposed to client script
+        window.CHANNEL_ID = "<%= locals.panelChannel.id %>";
+        window.CHANNEL_SHORTNAME = "<%= locals.panelChannel.shortname %>";
+        window.STREAM_KEY = "<%= locals.streamKey %>";
+        window.RTMP_STREAM_URL = "<%= process.env.RTMP_STREAM_URL || 'https://kctv.etoyatv.top/live' %>";
+        window.CURRENT_USER = {
+            id: "<%= locals.user ? locals.user.id : '' %>",
+            username: "<%= locals.user ? locals.user.username : 'Гость' %>",
+            role: "owner",
+            chat_color: "<%= locals.user ? (locals.user.chat_color || '') : '' %>"
+        };
+    </script>
+    <script src="/js/studio.js?v=<%= Date.now() %>"></script>
+
+    <!-- Global Color Picker Popover (Matches Chat Color Picker) -->
+    <div id="studio-color-palette"
+      style="display: none; position: absolute; background: #222; border: 1px solid #444; padding: 8px; width: 195px; flex-direction: row; gap: 8px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box; border-radius: 4px;">
+      <canvas class="studio-color-spectrum" width="150" height="80" style="cursor: crosshair; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+      <canvas class="studio-color-slider" width="16" height="80" style="cursor: row-resize; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Плеер <%= channel.name %> | ЭтоЯTV</title>
+  <link href="<%= CDN_BASE_URL %>/css/css_0.css?v=1.0.4" rel="stylesheet" type="text/css">
+  <link href="<%= CDN_BASE_URL %>/css/css_1.css?v=1.0.1" rel="stylesheet" type="text/css">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+      font-family: Tahoma, sans-serif;
+      text-align: left !important;
+      min-width: 0 !important;
+    }
+    #container_swf {
+      width: 100% !important;
+      height: 100% !important;
+      border-right: none !important;
+    }
+    .player-actions {
+      display: none !important;
+    }
+  </style>
+  <style>
+    #etoyatv-offline-overlay {
+      <% if (channel.player_bg_color) { %>
+        background-color: <%= channel.player_bg_color %> !important;
+      <% } %>
+      <% if (channel.player_bg_url) { %>
+        background-image: url('<%= CDN_BASE_URL %><%= channel.player_bg_url %>') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+      <% } else { %>
+        background-image: none !important;
+      <% } %>
+    }
+    <% if (channel.player_menu_color) { %>
+      #container_swf .player-menu-bg,
+      #container_swf .player-actions button,
+      #container_swf .player-actions a,
+      #container_swf .volume-slider-wrapper {
+        background: <%= channel.player_menu_color %> !important;
+      }
+    <% } %>
+    <% if (channel.player_link_color) { %>
+      #container_swf .player-ui a,
+      #container_swf .player-ui button,
+      #container_swf .player-ui span,
+      #container_swf #viewers-count-player {
+        color: <%= channel.player_link_color %> !important;
+      }
+    <% } %>
+  </style>
+</head>
+<body>
+
+<div id="container_swf" style="position: relative; background: #000;">
+  <video id="etoyatv-video" width="100%" height="100%"
+    style="width: 100%; height: 100%; background: #000; object-fit: contain; cursor: pointer;"
+    disablePictureInPicture disableRemotePlayback></video>
+
+  <!-- Transition Canvas -->
+  <canvas id="etoyatv-transition-canvas"
+    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.5s ease-out; object-fit: contain;"></canvas>
+
+  <!-- Overlays Canvas -->
+  <canvas id="etoyatv-overlays-canvas" width="1280" height="720"
+    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; object-fit: contain; display: none;"></canvas>
+
+  <!-- Loading Spinner -->
+  <div id="etoyatv-spinner"
+    style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;">
+    <svg width="24" height="24" viewBox="0 0 24 24"
+      style="animation: etoyatv-spin 1s steps(8, end) infinite;">
+      <circle cx="12" cy="2" r="2.5" fill="rgba(255,255,255,1)" />
+      <circle cx="19.07" cy="4.93" r="2" fill="rgba(255,255,255,0.8)" />
+      <circle cx="22" cy="12" r="1.5" fill="rgba(255,255,255,0.6)" />
+      <circle cx="19.07" cy="19.07" r="1.5" fill="rgba(255,255,255,0.4)" />
+      <circle cx="12" cy="22" r="1.5" fill="rgba(255,255,255,0.2)" />
+      <circle cx="4.93" cy="19.07" r="1.5" fill="rgba(255,255,255,0.1)" />
+      <circle cx="2" cy="12" r="1.5" fill="rgba(255,255,255,0.1)" />
+      <circle cx="4.93" cy="4.93" r="1.5" fill="rgba(255,255,255,0.1)" />
+    </svg>
+  </div>
+  <style>
+    @keyframes etoyatv-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+
+  <!-- Offline Overlay -->
+  <div id="etoyatv-offline-overlay"
+    style="display: <%= (channel.player_bg_url || channel.player_bg_color) ? 'flex' : 'none' %>; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
+    <% if (!channel.player_bg_url) { %>
+      Нет трансляции
+    <% } %>
+  </div>
+
+  <!-- 18+ Overlay -->
+  <% if (channel.is_18_plus) { %>
+    <div id="etoyatv-18plus-overlay"
+      style="display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-family: Tahoma, sans-serif; z-index: 20;">
+      <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">Внимание! Контент 18+</div>
+      <div style="font-size: 16px; margin-bottom: 25px;">Подтвердите, что вам уже исполнилось 18 лет.</div>
+      <button onclick="confirm18Plus()"
+        style="padding: 10px 20px; background: #3b9cd9; color: #fff; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;">Мне есть 18 лет</button>
+    </div>
+    <script>
+      function confirm18Plus() {
+        localStorage.setItem('etoyatv_global_18plus', 'true');
+        document.getElementById('etoyatv-18plus-overlay').style.display = 'none';
+        const video = document.getElementById('etoyatv-video');
+        if (video) video.play().catch(e => console.error('Play error after 18+ confirmation:', e));
+      }
+      if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+        document.getElementById('etoyatv-18plus-overlay').style.display = 'flex';
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+          const video = document.getElementById('etoyatv-video');
+          if (video) video.pause();
+        }
+      });
+    </script>
+  <% } %>
+
+  <!-- Logo and Title -->
+  <!-- Always visible Live Label (fades out on hover) -->
+  <div id="player_live_idle" style="position: absolute; top: 10px; left: 10px; z-index: 10; transition: opacity 0.3s; pointer-events: none; opacity: 0;">
+    <div class="live_label" id="player_live_label"
+      style="display: none; width: 32px; height: 17px; background: url(<%= CDN_BASE_URL %>/images/css_img_2_sprite1.png) no-repeat -124px -254px;">
+    </div>
+  </div>
+
+  <!-- Logo and Title (shows on hover) -->
+  <div class="player-ui"
+    style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+    <a href="/<%= channel.shortname %>" target="_blank" style="display: block;">
+      <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="Logo"
+        style="width: 50px; height: 50px; background: #fff; border: 1px solid #444; box-sizing: border-box; object-fit: cover; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+    </a>
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
+      <a href="/<%= channel.shortname %>" target="_blank"
+        style="background: rgba(0,0,0,0.6); color: #00FFFF; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap;">
+        <%= channel.name %>
+        <% if (channel.is_verified) { %>
+          <span class="verified_icon" title="Подтвержденный канал" style="margin-left: 5px; display: inline-block;"></span>
+        <% } %>
+      </a>
+    </div>
+  </div>
+
+  <!-- Bottom Left Controls -->
+  <div class="player-ui player-menu-bg"
+    style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s;">
+    <button id="btn-play-pause" title="Play/Pause"
+      style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none; display: inline-flex; align-items: center; justify-content: center; padding: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button>
+  </div>
+
+  <!-- Bottom Right Controls -->
+  <div class="player-ui player-menu-bg"
+    style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+    <div
+      style="position: relative; display: flex; align-items: center; justify-content: center;"
+      class="volume-container"
+      onmouseenter="this.querySelector('.volume-slider-wrapper').style.display='block'"
+      onmouseleave="this.querySelector('.volume-slider-wrapper').style.display='none'">
+      <button id="btn-volume"
+        style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; padding: 0 5px; position: relative; z-index: 5;">🔊</button>
+      <div class="volume-slider-wrapper"
+        style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
+        <div
+          style="position: absolute; bottom: -25px; left: 0; width: 100%; height: 25px; background: transparent;">
+        </div>
+        <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1"
+          style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; color: #fff; font-size: 11px;">
+      👥 <span id="viewers-count-player" style="margin-left: 3px;">1</span>
+    </div>
+    <button id="btn-fullscreen"
+      style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none;">⛶</button>
+    <a href="/" target="_blank"
+      style="font-weight: bold; color: #fff; font-size: 12px; text-decoration: none;">ЭтоЯTV</a>
+  </div>
+</div>
+
+<!-- Mock chat elements to prevent player.js from crashing due to nulls -->
+<div style="display: none;">
+  <div id="chat_text_field"></div>
+  <input type="text" id="chat-input">
+  <button id="btn-chat-menu"></button>
+  <div id="chat-menu"></div>
+  <div id="chat-users-list"></div>
+  <span id="chat-viewers-count"></span>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+<%
+  let currentUserStr = 'null';
+  if (typeof user !== 'undefined' && user) {
+    let finalRole = user.role;
+    if (user.role !== 'admin' && typeof channelRole !== 'undefined' && channelRole !== 'guest') {
+      finalRole = channelRole;
+    }
+    if (user.mask_mode === 'user_mask' || user.mask_mode === 'invisible') {
+      finalRole = 'registered';
+    }
+    if (user.id === channel.user_id) {
+      finalRole = 'owner';
+    }
+    currentUserStr = JSON.stringify(Object.assign({}, user, { role: finalRole }));
+  }
+%>
+<div id="yatv-app-data" data-user="<%= currentUserStr %>" style="display:none;"></div>
+<script>
+  window.CHANNEL_ID = <%= channel.id %>;
+  const __appData = document.getElementById('yatv-app-data');
+  const __userAttr = __appData ? __appData.getAttribute('data-user') : 'null';
+  window.CURRENT_USER = (__userAttr && __userAttr !== 'null') ? JSON.parse(__userAttr) : null;
+  window.CHANNEL_OWNER_ID = <%= channel.user_id %>;
+  window.CHAT_ENABLED = <%= channel.chat_enabled ? 'true' : 'false' %>;
+  window.IS_MODERATOR = <%= typeof isModerator !== 'undefined' && isModerator ? 'true' : 'false' %>;
+  window.USER_TIMEZONE = '<%= typeof userTimezone !== 'undefined' ? userTimezone : 'Europe/Moscow' %>';
+</script>
+<script src="<%= CDN_BASE_URL %>/js/player.js?v=<%= Date.now() %>"></script>
+
+</body>
+</html>

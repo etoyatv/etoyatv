@@ -137,6 +137,14 @@ async function initDb() {
     try { await connection.query(`ALTER TABLE channels ADD COLUMN pinned_message_id INT NULL`); } catch (e) { }
     try { await connection.query(`ALTER TABLE channels ADD COLUMN is_verified BOOLEAN DEFAULT FALSE`); } catch (e) { }
     try { await connection.query(`ALTER TABLE channels ADD COLUMN is_premium BOOLEAN DEFAULT FALSE`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN player_bg_url VARCHAR(255) DEFAULT NULL`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN player_bg_color VARCHAR(50) DEFAULT NULL`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN player_bg_fit VARCHAR(50) DEFAULT 'stretch'`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN bg_fit VARCHAR(50) DEFAULT 'stretch'`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN player_link_color VARCHAR(50) DEFAULT NULL`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN is_personal BOOLEAN DEFAULT TRUE`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channel_team ADD COLUMN is_coowner BOOLEAN DEFAULT FALSE`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channel_team ADD COLUMN order_index INT DEFAULT 0`); } catch (e) { }
     try { await connection.query(`ALTER TABLE records ADD COLUMN is_18_plus BOOLEAN DEFAULT FALSE`); } catch (e) { }
     try { await connection.query(`ALTER TABLE users ADD COLUMN report_banned_until DATETIME DEFAULT NULL`); } catch (e) { }
     try { await connection.query(`ALTER TABLE users ADD COLUMN banned_by INT DEFAULT NULL`); } catch (e) { }
@@ -218,6 +226,8 @@ async function initDb() {
         is_reporter BOOLEAN DEFAULT FALSE,
         is_moderator BOOLEAN DEFAULT FALSE,
         is_editor BOOLEAN DEFAULT FALSE,
+        is_coowner BOOLEAN DEFAULT FALSE,
+        order_index INT DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -250,6 +260,20 @@ async function initDb() {
       )
     `);
     await connection.query(`
+      CREATE TABLE IF NOT EXISTS pending_channel_transfers (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        channel_id INT NOT NULL,
+        old_owner_id INT NOT NULL,
+        new_owner_id INT NOT NULL,
+        token VARCHAR(255) NOT NULL,
+        email_confirmed BOOLEAN DEFAULT FALSE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
+        FOREIGN KEY (old_owner_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (new_owner_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    await connection.query(`
       CREATE TABLE IF NOT EXISTS channel_comments (
         id INT AUTO_INCREMENT PRIMARY KEY,
         channel_id INT NOT NULL,
@@ -258,6 +282,18 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (channel_id) REFERENCES channels(id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    `);
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS profile_comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        profile_user_id INT NOT NULL,
+        author_id INT NOT NULL,
+        text TEXT NOT NULL,
+        is_hidden BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (profile_user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
       )
     `);
     await connection.query(`
@@ -554,11 +590,17 @@ async function initDb() {
       "logo_url VARCHAR(255) DEFAULT '/images/logo_cort.png'",
       "banner_url VARCHAR(255) NULL",
       "bg_url VARCHAR(255) NULL",
+      "is_personal BOOLEAN DEFAULT TRUE",
+      "bg_fit VARCHAR(50) DEFAULT 'stretch'",
       "bg_repeat VARCHAR(50) DEFAULT 'no-repeat'",
       "bg_color VARCHAR(50) DEFAULT '#000000'",
       "text_color VARCHAR(50) DEFAULT '#ffffff'",
       "player_color VARCHAR(50) DEFAULT '#00a0e3'",
       "player_logo VARCHAR(255) NULL",
+      "player_bg_url VARCHAR(255) DEFAULT NULL",
+      "player_bg_color VARCHAR(50) DEFAULT NULL",
+      "player_menu_color VARCHAR(50) DEFAULT NULL",
+      "player_link_color VARCHAR(50) DEFAULT NULL",
       "chat_enabled TINYINT DEFAULT 1",
       "guests_allowed TINYINT DEFAULT 1",
       "deleted_at TIMESTAMP NULL",
@@ -648,7 +690,7 @@ async function initDb() {
       }
     }
 
-    const tablesWithHidden = ['channel_comments', 'record_comments', 'channel_news'];
+    const tablesWithHidden = ['channel_comments', 'record_comments', 'channel_news', 'profile_comments'];
     for (const table of tablesWithHidden) {
       try {
         await connection.query(`ALTER TABLE ${table} ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE`);

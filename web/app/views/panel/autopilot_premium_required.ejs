@@ -1,0 +1,22 @@
+<%- include('../panel_layout', { activeMenu: 'autopilot', activeSubmenu: '', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; Автопилот', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/ru/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #333;">Автопилот</span>
+    </div>
+</div>
+
+<div style="padding: 20px; text-align: center; max-width: 600px; margin: 40px auto;">
+    <div style="font-size: 64px; margin-bottom: 20px;">🔒</div>
+    <h2 style="color: #fff; margin-bottom: 15px; font-size: 24px;">Функция доступна только для Premium-каналов</h2>
+    <p style="color: #8c989e; margin-bottom: 30px; font-size: 14px; line-height: 1.6;">
+        Автопилот позволяет транслировать видео из вашего альбома в циклическом режиме 24/7. Для получения доступа к автопилоту и эфирной студии, вашему телеканалу <strong>"${channel.name}"</strong> требуется активный Premium-статус.
+    </p>
+    <div style="background-color: #252b30; border: 1px solid #3b9cd9; padding: 20px; border-radius: 4px; color: #fff;">
+        <p style="margin: 0 0 15px 0; font-size: 14px; color: #6fdeee; font-weight: bold;">Как получить Premium статус?</p>
+        <span style="color: #fff; font-size: 13px;">Обратитесь к администрации платформы для активации Premium подписки для вашего канала.</span>
+    </div>
+</div>
+
+` }) %>

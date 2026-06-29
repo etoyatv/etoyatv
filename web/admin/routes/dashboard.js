@@ -186,7 +186,8 @@ router.post('/settings', async (req, res) => {
     if (formType === 'main_settings') {
       const switchSettings = [
         'site_disabled', 'rtmp_disabled', 'banner_enabled',
-        'registration_disabled', 'invite_system_enabled'
+        'registration_disabled', 'invite_system_enabled',
+        'allow_features_for_everyone'
       ];
       const textSettings = [
         'site_disabled_message', 'banner_text_short', 'banner_text_full', 'forbidden_words'
@@ -501,6 +502,7 @@ router.post('/users/:id/delete', async (req, res) => {
 
     if (action_type === 'restore') {
       await connection.query('UPDATE users SET deleted_at = NULL, delete_reason = NULL, deleted_by_admin = 0 WHERE id = ?', [req.params.id]);
+      await connection.query('UPDATE channels SET status = "active", deleted_at = NULL, rtmp_disabled = 0 WHERE user_id = ? AND deleted_at IS NOT NULL', [req.params.id]);
       const [uRows] = await connection.query('SELECT username FROM users WHERE id = ?', [req.params.id]);
       const targetUsername = uRows.length > 0 ? uRows[0].username : 'Unknown';
       connection.release();

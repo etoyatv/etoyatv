@@ -4822,7 +4822,8 @@ a:hover.bugreport {
   width: 95px;
   height: 330px;
   cursor: pointer;
-  background: url(../images/css_img_98_channels-hor-arrow.png) no-repeat right top;
+  background: url(https://web.archive.org/web/20120511075039im_/http://img.yatv.ru/images/mainpage/channels-hor-arrow.png) no-repeat right top;
+  z-index: 10;
 }
 
 .jcarousel-skin-channelslogged .jcarousel-next:hover {}
@@ -4844,7 +4845,8 @@ a:hover.bugreport {
   width: 95px;
   height: 330px;
   cursor: pointer;
-  background: transparent url(../images/css_img_98_channels-hor-arrow.png) no-repeat left top;
+  background: url(https://web.archive.org/web/20120511075039im_/http://img.yatv.ru/images/mainpage/channels-hor-arrow.png) no-repeat left top;
+  z-index: 10;
 }
 
 .jcarousel-skin-channelslogged .jcarousel-prev:hover {}
@@ -6883,9 +6885,40 @@ a.jScrollActiveArrowButton:hover {}
   background: url("../images/css_img_19_block-head-icons.png") no-repeat -32px 0;
 }
 
+.heart-btn:not(.active):not(:hover) {
+  filter: brightness(0) invert(0.85) !important;
+}
+
 .heart-btn.active,
 .heart-btn:hover {
   background: url("../images/css_img_19_block-head-icons.png") no-repeat -32px -16px !important;
+  filter: none !important;
+}
+
+.likes-badge {
+  background: rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 4px !important;
+  padding: 0 6px !important;
+  height: 18px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s !important;
+}
+
+.likes-badge:hover {
+  background: rgba(0, 0, 0, 0.65) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.1) !important;
+}
+
+.likes-badge.channel-badge {
+  width: 52px !important;
+  border-radius: 0 0 4px 4px !important;
+  border-top: none !important;
 }
 
 .verified_icon {

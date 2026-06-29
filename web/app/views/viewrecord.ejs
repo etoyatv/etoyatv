@@ -148,10 +148,10 @@
             <button id="btn-vol" style="background: transparent; border: none; color: #fff; cursor: pointer; outline: none; padding: 0; display: flex; align-items: center; height: 100%;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
             </button>
-            <div class="volume-slider-wrapper" style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(50,50,50,0.95); border-radius: 4px; display: none; height: 90px; width: 30px; padding-bottom: 10px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 -2px 5px rgba(0,0,0,0.5);">
+            <div class="volume-slider-wrapper" style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(50,50,50,0.95); border-radius: 4px; display: none; height: 90px; width: 30px; margin-bottom: 5px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 -2px 5px rgba(0,0,0,0.5);">
                 <!-- Invisible bridge to prevent hover loss -->
                 <div style="position: absolute; bottom: -10px; left: 0; width: 100%; height: 15px; background: transparent;"></div>
-                <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" style="position: absolute; top: 40px; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
+                <input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
             </div>
         </div>
 
@@ -283,12 +283,6 @@
                 }
                 video.volume = currentVol;
                 video.muted = currentVol == 0;
-                
-                if (!video.muted && video.paused) {
-                    video.play().catch(err => {});
-                    iconPlay.style.display = 'none';
-                    iconPause.style.display = 'block';
-                }
 
                 volSlider.value = currentVol;
                 localStorage.setItem('yatv_volume', currentVol);
@@ -379,12 +373,6 @@
                     }
                     video.volume = vol;
                     video.muted = vol == 0;
-                    
-                    if (!video.muted && video.paused) {
-                        video.play().catch(err => {});
-                        iconPlay.style.display = 'none';
-                        iconPause.style.display = 'block';
-                    }
 
                     volSlider.value = vol;
                     localStorage.setItem('yatv_volume', vol);
@@ -406,12 +394,6 @@
             volSlider.addEventListener('input', (e) => {
                 video.volume = e.target.value;
                 video.muted = video.volume == 0;
-
-                if (!video.muted && video.paused) {
-                    video.play().catch(err => {});
-                    iconPlay.style.display = 'none';
-                    iconPause.style.display = 'block';
-                }
 
                 localStorage.setItem('yatv_volume', video.volume);
                 localStorage.setItem('yatv_muted', video.muted);
@@ -437,12 +419,6 @@
                 } else {
                     video.volume = video.dataset.vol || 1;
                     volSlider.value = video.volume;
-                }
-                
-                if (!isMuted && video.paused) {
-                    video.play().catch(err => {});
-                    iconPlay.style.display = 'none';
-                    iconPause.style.display = 'block';
                 }
                 
                 localStorage.setItem('yatv_volume', video.volume);
@@ -572,7 +548,7 @@
                                                             </div>
                                 <div style="position: absolute; right: 0; top: 0;">
                                   <% if (locals.user) { %>
-                                  <div style="background: #111; padding: 0 6px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                  <div class="likes-badge">
                                     <span id="record_fans_count_<%= rec.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;"><%= rec.fans_count || 0 %></span>
                                     <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;" style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>" id="record_fan_icon_<%= rec.id %>" style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
                                   </div>

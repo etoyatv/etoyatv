@@ -4,7 +4,7 @@
 <head>
 
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>Телевидение | ЭтоЯTV - Я есть телевидение!</title>
+  <title><%= typeof pageTitle !== 'undefined' && pageTitle ? pageTitle : 'Телевидение | ЭтоЯTV - Я есть телевидение!' %></title>
   <link rel="icon" type="image/svg+xml" href="/images/favicon.svg">
 
   <meta http-equiv="expires" content="Wed, 29 Yan 2008 00:20:00 GMT">
@@ -12,7 +12,7 @@
     content="ЭтоЯTV - это сервис персонального телевидения, организации пользовательских трансляций, прямого эфира. ТВ программа, прямые эфиры, трансляции с веб-камер, записи видео для общения, знакомства, развлечения и ведения бизнеса. Организовывайте прямые трансляции как для своих друзей, коллег и партнеров, так и для более широкого круга зрителей.">
   <meta name="keywords"
     content="Yatv, ятв, Яtv, znd, нфем, Прямая трансляция, прямой эфир, трансляции, прямые трансляции, онлайн трансляции, смотреть видео, смотреть онлайн, тв, tv, онлайн тв, телеканал, телеканалы, тв онлайн, смотреть тв, телепрограмма, тв программа, видео онлайн, знакомства, live tv, ятв, online tv, трансляции с вебкамеры, запись с вебкамеры, видео, любительское видео, видеоприколы, видео бесплатно, интернет тв, video">
-  <link href="<%= CDN_BASE_URL %>/css/css_0.css?v=1.0.3" rel="stylesheet" type="text/css">
+  <link href="<%= CDN_BASE_URL %>/css/css_0.css?v=1.0.4" rel="stylesheet" type="text/css">
 
   <style type="text/css">
     .theme_default {
@@ -253,7 +253,10 @@
       <div style="width: 980px; margin: 0 auto; padding: 0 10px;">
         <div style="float: left;">
           <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(user.username) %>"
-            style="color: #6fdeee; margin-right: 15px; text-decoration: none;">&#128100; <%= user.username %></a>
+            style="color: #6fdeee; margin-right: 15px; text-decoration: none;">&#128100; <%= user.username %>
+            <% if (typeof pendingIncomingFriendsCount !== 'undefined' && pendingIncomingFriendsCount > 0) { %><span style="color:#39b54a; font-weight:bold;">(+<%= pendingIncomingFriendsCount %>)</span><% } %>
+            <% if (typeof pendingOutgoingFriendsCount !== 'undefined' && pendingOutgoingFriendsCount > 0) { %><span style="color:#ffcc00; font-weight:bold;">(исх: <%= pendingOutgoingFriendsCount %>)</span><% } %>
+          </a>
           <% if (user.staff_role && user.mask_mode !== 'user_mask') { %>
             <a href="<%= ADMIN_URL %>" style="color: #ff4d4d; margin-right: 15px; font-weight: bold; text-decoration: none;">Одминпанель</a>
           <% } %>
@@ -262,12 +265,14 @@
           <a href="/ru/messages/" style="color: #6fdeee; text-decoration: none;">Сообщения <% if (typeof unreadMessagesCount !== 'undefined' && unreadMessagesCount > 0) { %><span style="color:#39b54a; font-weight:bold;">(<%= unreadMessagesCount %>)</span><% } %></a>
         </div>
         <div style="float: right;">
-          <% if (typeof userChannel !== 'undefined' && userChannel) { %>
-            <a href="/<%= userChannel.shortname %>" style="color: #6fdeee; text-decoration: none; <%= (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) ? 'margin-right: 15px;' : '' %>">Мой канал</a>
-          <% } else { %>
-            <a href="/channels/create" style="color: #6fdeee; text-decoration: none; <%= (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) ? 'margin-right: 15px;' : '' %>">Создать телеканал</a>
+          <% if (typeof showMyChannelsLink !== 'undefined' && showMyChannelsLink) { %>
+            <a href="/ru/panel,select?to=channel" style="color: #6fdeee; text-decoration: none; margin-right: 15px;"><%= typeof myChannelsLinkText !== 'undefined' ? myChannelsLinkText : 'Мои каналы' %></a>
+          <% } %>
+          <% if (typeof showCreateChannelLink !== 'undefined' && showCreateChannelLink) { %>
+            <a href="/channels/create" style="color: #6fdeee; text-decoration: none; margin-right: 15px;">Создать телеканал</a>
           <% } %>
           <% if (typeof hasPanelAccess !== 'undefined' && hasPanelAccess) { %>
+            <a href="/ru/tv,studio" style="color: #6fdeee; text-decoration: none; margin-right: 15px;">Эфирная студия</a>
             <a href="/ru/panel,dashboard" style="color: #6fdeee; text-decoration: none;">Панель управления</a>
           <% } %>
         </div>

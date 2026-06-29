@@ -74,7 +74,7 @@
                                                                 </div>
                                 <div style="position: absolute; right: 0; top: 0;">
                                   <% if (locals.user) { %>
-                                  <div style="background: #111; padding: 0 6px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                  <div class="likes-badge">
                                     <span id="record_fans_count_<%= rec.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;"><%= rec.fans_count || 0 %></span>
                                     <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;" style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>" id="record_fan_icon_<%= rec.id %>" style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
                                   </div>

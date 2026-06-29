@@ -42,8 +42,7 @@ router.get('/', async (req, res) => {
         FROM channels c 
         JOIN users u ON c.user_id = u.id 
         WHERE c.status = 'active' AND c.access_level != 'private' AND (c.is_live = 1 OR c.autopilot_enabled = 1)
-        ORDER BY c.viewers DESC 
-        LIMIT 10
+        ORDER BY c.is_live DESC, c.is_verified DESC, c.is_premium DESC, c.autopilot_enabled DESC, c.viewers DESC
       `);
       popularChannels = popRows;
     } catch (e) { console.error('Failed to fetch popular channels', e); }

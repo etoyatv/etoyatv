@@ -347,6 +347,7 @@ body {
 .status-active { color: #4ade80; }
 .status-banned { color: #f87171; }
 .status-deleted { color: #9ca3af; }
+.status-unconfirmed { color: #fbbf24; }
 
 .u-card-actions {
   display: flex;

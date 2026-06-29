@@ -115,7 +115,7 @@
               <% } %>
               <% if (!isModOnly) { %>
               <button type="button" class="btn-black-border" onclick="document.getElementById('deleteForm').submit()">
-                <%= channel.status === 'deleted' ? 'Отменить удаление' : 'Удалить полностью' %>
+                <%= (channel.status === 'deleted' || channel.deleted_at !== null) ? 'Отменить удаление' : 'Удалить полностью' %>
               </button>
               <% } %>
             </div>
@@ -192,6 +192,11 @@
           <label class="checkbox-group">
             <input type="checkbox" name="is_verified" value="1" <%= channel.is_verified ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
             Подтвержденный статус (зеленая галочка рядом с именем)
+          </label>
+
+          <label class="checkbox-group">
+            <input type="checkbox" name="is_personal" value="1" <%= channel.is_personal ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
+            Личный канал (если выключено, канал является кооперативным)
           </label>
         </div>
 
@@ -368,6 +373,24 @@
         document.getElementById('teamModal').classList.remove('active');
         document.getElementById('banModal').classList.remove('active');
       }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const premiumCheckbox = document.querySelector('input[name="is_premium"]');
+        if (premiumCheckbox) {
+          premiumCheckbox.addEventListener('change', function() {
+            const cdnQuotaInput = document.getElementById('cdnQuotaInput');
+            const cdnQuotaText = document.getElementById('cdnQuotaText');
+            if (this.checked) {
+              cdnQuotaInput.value = '10';
+              cdnQuotaText.innerHTML = '<%= usageGB %> ГБ (Авто: Лимит 10 ГБ)';
+            } else {
+              cdnQuotaInput.value = '2';
+              cdnQuotaText.innerHTML = '<%= usageGB %> ГБ (Авто: Лимит 2 ГБ)';
+            }
+          });
+        }
+      });
+
 
       let autocompleteTimeout = null;
       function fetchAutocomplete(query, dropdownId, inputId) {

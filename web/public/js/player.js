@@ -1,5 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
   const socket = io();
+  const svgPlay = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+  const svgPause = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const autoplayParam = urlParams.get('autoplay');
+  let enableAutoplay = autoplayParam !== '0' && autoplayParam !== 'false';
 
   // Elements
   const video = document.getElementById('etoyatv-video');
@@ -36,7 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
     savedColor = window.CURRENT_USER.chat_color;
     localStorage.setItem('etoyatv_chat_color', savedColor);
   }
-
   if (savedColor) {
     if (chatColorPicker) {
       chatColorPicker.value = savedColor;
@@ -46,17 +51,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // --- Active Chat Users Colors & Reply Verification ---
+  const chatUserColors = {};
+
+  function registerUserColor(username, color) {
+    if (!username) return;
+    chatUserColors[username.toLowerCase()] = color || '#3b9cd9';
+  }
+
+  function initUserColorsMap() {
+    document.querySelectorAll('.chat-username').forEach(el => {
+      const username = el.getAttribute('data-username');
+      const color = el.getAttribute('data-color') || el.style.color;
+      registerUserColor(username, color);
+    });
+  }
+
+  // Initialize colors from existing elements on load
+  initUserColorsMap();
+
   // --- Socket.io Setup ---
-  socket.emit('join_channel', {
-    channelId: window.CHANNEL_ID,
-    user: window.CURRENT_USER,
-    guestName: guestName,
-    color: document.getElementById('chat-color-picker')?.value || '#3b9cd9'
+  socket.on('connect', () => {
+    console.log('[SOCKET] Player connected, sending join_channel...');
+    socket.emit('join_channel', {
+      channelId: window.CHANNEL_ID,
+      user: window.CURRENT_USER,
+      guestName: guestName,
+      color: document.getElementById('chat-color-picker')?.value || '#3b9cd9'
+    });
   });
 
   socket.on('update_users', ({ count, users }) => {
     if (viewersCount) viewersCount.textContent = count;
-    if (chatViewersCount) chatViewersCount.textContent = count;
+    if (chatViewersCount) {
+      chatViewersCount.textContent = count;
+      const prefix = document.getElementById('chat-viewers-prefix');
+      if (prefix) prefix.style.display = 'inline';
+    }
     const viewersCountPlayer = document.getElementById('viewers-count-player');
     if (viewersCountPlayer) viewersCountPlayer.textContent = count;
 
@@ -81,6 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       users.forEach(u => {
+        registerUserColor(u.username, u.color);
+
         const div = document.createElement('div');
         div.style.marginTop = '5px';
         div.style.color = u.color || '#fff';
@@ -89,15 +122,18 @@ document.addEventListener('DOMContentLoaded', () => {
         div.style.alignItems = 'center';
         div.style.gap = '3px';
 
-        let icon = '👤';
-        if (u.role === 'owner') icon = '👑';
-        else if (u.role === 'alien') icon = '👽';
-        else if (u.role === 'admin') icon = '👽';
-        else if (u.role === 'mod' || u.role === 'moderator') icon = '🛡️';
-        else if (u.role === 'registered' || u.role === 'editor' || u.role === 'reporter') icon = '👤';
+        let icon = '<img src="/images/chat/user.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        if (u.role === 'owner') icon = '<img src="/images/chat/owner.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        else if (u.role === 'alien') icon = '<img src="/images/chat/admin.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        else if (u.role === 'admin') icon = '<img src="/images/chat/admin.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        else if (u.role === 'mod' || u.role === 'moderator') icon = '<img src="/images/chat/moderator.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        else if (u.role === 'registered' || u.role === 'editor' || u.role === 'reporter') icon = '<img src="/images/chat/user.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        else if (u.role === 'guest') {
+          icon = '<img src="/images/chat/guest.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
+        }
 
         if (u.isBanned) {
-          icon = '🚫';
+          icon = '<img src="/images/chat/banned.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;">';
         }
 
         const textStyle = u.isBanned ? 'text-decoration: line-through; color: #888;' : '';
@@ -107,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.className = 'chat-username';
         div.setAttribute('data-username', u.username);
         div.setAttribute('data-role', u.role);
+        div.setAttribute('data-color', userColor);
         div.setAttribute('data-banned', u.isBanned ? 'true' : 'false');
         div.style.cssText = `margin: 2px 0; color: ${userColor}; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 3px;`;
 
@@ -144,9 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // chat_toggled handler moved below
-
   socket.on('new_message', (msg) => {
+    registerUserColor(msg.username || msg.guest_name, msg.color);
+
     const div = document.createElement('div');
     div.className = 'chat-message-row';
     div.style.font = '11px Verdana, Geneva, sans-serif';
@@ -154,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
     div.style.margin = '1px';
     div.style.wordWrap = 'break-word';
     div.style.overflowWrap = 'break-word';
-    div.style.wordBreak = 'break-all';
     div.style.whiteSpace = 'pre-wrap';
 
     let roleColor = msg.color || '#3b9cd9'; // Use custom color if present, else fallback
@@ -171,7 +207,8 @@ document.addEventListener('DOMContentLoaded', () => {
       timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
     }
 
-    const escapedUser = escapeHTML(msg.username);
+    const senderNick = msg.username || msg.guest_name || 'Гость';
+    const escapedUser = escapeHTML(senderNick);
     const escapedRole = escapeHTML(msg.role || 'guest');
 
     let pinButtonHtml = '';
@@ -179,7 +216,31 @@ document.addEventListener('DOMContentLoaded', () => {
       pinButtonHtml = ` <span class="btn-pin-message" data-msg-id="${msg.id}" title="Закрепить">📌</span>`;
     }
 
-    div.innerHTML = `<span style="color: #666;">${timeStr}</span> <span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span>:</span> ${escapeHTML(msg.message)}${pinButtonHtml}`;
+    let rawMsg = msg.message || '';
+    let isReply = false;
+    let replyTo = '';
+    let restOfMsg = rawMsg;
+
+    const replyMatch = rawMsg.match(/^([a-zA-Z0-9_\-\u0400-\u04FF\.]{2,25}),\s*(.*)$/);
+    if (replyMatch) {
+      const potentialRecipient = replyMatch[1];
+      if (chatUserColors[potentialRecipient.toLowerCase()] && potentialRecipient.toLowerCase() !== senderNick.toLowerCase()) {
+        isReply = true;
+        replyTo = potentialRecipient;
+        restOfMsg = replyMatch[2];
+      }
+    }
+
+    let nameHtml = '';
+    if (isReply) {
+      const recipientColor = chatUserColors[replyTo.toLowerCase()] || '#3b9cd9';
+      const escapedRecipient = escapeHTML(replyTo);
+      nameHtml = `<span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-color="${roleColor}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span></span><span style="color: #fff;">&gt;</span><span style="color: ${recipientColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedRecipient}" data-color="${recipientColor}" style="cursor: pointer;">${escapedRecipient}</span>,</span>`;
+    } else {
+      nameHtml = `<span style="color: ${roleColor}; font-weight: bold;"><span class="chat-username" data-username="${escapedUser}" data-color="${roleColor}" data-role="${escapedRole}" style="cursor: pointer;">${escapedUser}</span>:</span>`;
+    }
+
+    div.innerHTML = `<span style="color: #666;">${timeStr}</span> ${nameHtml} ${escapeHTML(isReply ? restOfMsg : rawMsg)}${pinButtonHtml}`;
 
     if (chatMessages) {
       chatMessages.appendChild(div);
@@ -261,9 +322,286 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatColorPalette = document.getElementById('chat-color-palette');
 
   if (chatColorBtn && chatColorPalette) {
+    const spectrumCanvas = chatColorPalette.querySelector('.chat-color-spectrum');
+    const sliderCanvas = chatColorPalette.querySelector('.chat-color-slider');
+
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      let h, s, v = max;
+      const d = max - min;
+      s = max === 0 ? 0 : d / max;
+      if (max === min) {
+        h = 0;
+      } else {
+        switch (max) {
+          case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+          case g: h = (b - r) / d + 2; break;
+          case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+      }
+      return [h, s, v];
+    }
+
+    function hsvToRgb(h, s, v) {
+      let r, g, b;
+      const i = Math.floor(h * 6);
+      const f = h * 6 - i;
+      const p = v * (1 - s);
+      const q = v * (1 - f * s);
+      const t = v * (1 - (1 - f) * s);
+      switch (i % 6) {
+        case 0: r = v; g = t; b = p; break;
+        case 1: r = q; g = v; b = p; break;
+        case 2: r = p; g = v; b = t; break;
+        case 3: r = p; g = q; b = v; break;
+        case 4: r = t; g = p; b = v; break;
+        case 5: r = v; g = p; b = q; break;
+      }
+      return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+    }
+
+    function rgbToHex(r, g, b) {
+      const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+      return '#' + toHex(r) + toHex(g) + toHex(b);
+    }
+
+    function makeColorReadable(hex) {
+      if (!hex || typeof hex !== 'string') return '#3b9cd9';
+      let cleanHex = hex.replace('#', '');
+      if (cleanHex.length === 3) {
+        cleanHex = cleanHex[0] + cleanHex[0] + cleanHex[1] + cleanHex[1] + cleanHex[2] + cleanHex[2];
+      }
+      if (cleanHex.length !== 6) return '#3b9cd9';
+      let r = parseInt(cleanHex.substring(0, 2), 16);
+      let g = parseInt(cleanHex.substring(2, 4), 16);
+      let b = parseInt(cleanHex.substring(4, 6), 16);
+      if (isNaN(r) || isNaN(g) || isNaN(b)) return '#3b9cd9';
+      if (r === 0 && g === 0 && b === 0) {
+        r = 100; g = 100; b = 100;
+      }
+      let brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+      let iterations = 0;
+      while (brightness < 70 && iterations < 15) {
+        r = Math.round(r + (255 - r) * 0.2);
+        g = Math.round(g + (255 - g) * 0.2);
+        b = Math.round(b + (255 - b) * 0.2);
+        brightness = 0.299 * r + 0.587 * g + 0.114 * b;
+        iterations++;
+      }
+      const toHex = (c) => {
+        const hex = c.toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+      };
+      return '#' + toHex(r) + toHex(g) + toHex(b);
+    }
+
+    function drawSpectrum(canvas, hSelected, sSelected) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const hueGrad = ctx.createLinearGradient(0, 0, w, 0);
+      hueGrad.addColorStop(0, '#ff0000');
+      hueGrad.addColorStop(0.17, '#ffff00');
+      hueGrad.addColorStop(0.33, '#00ff00');
+      hueGrad.addColorStop(0.5, '#00ffff');
+      hueGrad.addColorStop(0.67, '#0000ff');
+      hueGrad.addColorStop(0.83, '#ff00ff');
+      hueGrad.addColorStop(1, '#ff0000');
+      ctx.fillStyle = hueGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const satGrad = ctx.createLinearGradient(0, 0, 0, h);
+      satGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      satGrad.addColorStop(1, 'rgba(255, 255, 255, 1)');
+      ctx.fillStyle = satGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const cx = hSelected * w;
+      const cy = (1 - sSelected) * h;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy); ctx.lineTo(cx + 5, cy);
+      ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy + 5);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(cx - 5, cy); ctx.lineTo(cx - 2, cy);
+      ctx.moveTo(cx + 2, cy); ctx.lineTo(cx + 5, cy);
+      ctx.moveTo(cx, cy - 5); ctx.lineTo(cx, cy - 2);
+      ctx.moveTo(cx, cy + 2); ctx.lineTo(cx, cy + 5);
+      ctx.stroke();
+    }
+
+    function drawSlider(canvas, hSelected, sSelected, vSelected) {
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const rgbBase = hsvToRgb(hSelected, sSelected, 1);
+      const baseColor = `rgb(${rgbBase[0]}, ${rgbBase[1]}, ${rgbBase[2]})`;
+      const valGrad = ctx.createLinearGradient(0, 0, 0, h);
+      valGrad.addColorStop(0, baseColor);
+      valGrad.addColorStop(1, '#000000');
+      ctx.fillStyle = valGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      const cy = (1 - vSelected) * h;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, cy - 1, w, 2);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-1, cy - 2, w + 2, 4);
+    }
+
+    let hueVal = 0, satVal = 1, valVal = 1;
+
+    function updateFromHex(hex) {
+      if (!hex.startsWith('#')) hex = '#' + hex;
+      const r = parseInt(hex.slice(1, 3), 16) || 0;
+      const g = parseInt(hex.slice(3, 5), 16) || 0;
+      const b = parseInt(hex.slice(5, 7), 16) || 0;
+      const hsv = rgbToHsv(r, g, b);
+      hueVal = hsv[0];
+      satVal = hsv[1];
+      valVal = hsv[2];
+    }
+
+    function render() {
+      if (spectrumCanvas && sliderCanvas) {
+        drawSpectrum(spectrumCanvas, hueVal, satVal);
+        drawSlider(sliderCanvas, hueVal, satVal, valVal);
+      }
+    }
+
+    function triggerChange() {
+      const rgb = hsvToRgb(hueVal, satVal, valVal);
+      let hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+      hex = makeColorReadable(hex);
+      if (chatColorPicker) chatColorPicker.value = hex;
+      chatColorBtn.style.backgroundColor = hex;
+      localStorage.setItem('etoyatv_chat_color', hex);
+      socket.emit('update_chat_color', { color: hex });
+    }
+
+    let isDraggingSpectrum = false;
+    let isDraggingSlider = false;
+
+    function handleSpectrumMove(e) {
+      if (!spectrumCanvas) return;
+      const rect = spectrumCanvas.getBoundingClientRect();
+      let x = e.clientX - rect.left;
+      let y = e.clientY - rect.top;
+      x = Math.max(0, Math.min(x, rect.width));
+      y = Math.max(0, Math.min(y, rect.height));
+      hueVal = x / rect.width;
+      satVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    function handleSliderMove(e) {
+      if (!sliderCanvas) return;
+      const rect = sliderCanvas.getBoundingClientRect();
+      let y = e.clientY - rect.top;
+      y = Math.max(0, Math.min(y, rect.height));
+      valVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    if (spectrumCanvas) {
+      spectrumCanvas.addEventListener('mousedown', (e) => {
+        isDraggingSpectrum = true;
+        handleSpectrumMove(e);
+      });
+    }
+
+    if (sliderCanvas) {
+      sliderCanvas.addEventListener('mousedown', (e) => {
+        isDraggingSlider = true;
+        handleSliderMove(e);
+      });
+    }
+
+    document.addEventListener('mousemove', (e) => {
+      if (isDraggingSpectrum) handleSpectrumMove(e);
+      if (isDraggingSlider) handleSliderMove(e);
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDraggingSpectrum = false;
+      isDraggingSlider = false;
+    });
+
+    // Touch support
+    function handleSpectrumTouch(e) {
+      if (e.touches.length === 0 || !spectrumCanvas) return;
+      const touch = e.touches[0];
+      const rect = spectrumCanvas.getBoundingClientRect();
+      let x = touch.clientX - rect.left;
+      let y = touch.clientY - rect.top;
+      x = Math.max(0, Math.min(x, rect.width));
+      y = Math.max(0, Math.min(y, rect.height));
+      hueVal = x / rect.width;
+      satVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    function handleSliderTouch(e) {
+      if (e.touches.length === 0 || !sliderCanvas) return;
+      const touch = e.touches[0];
+      const rect = sliderCanvas.getBoundingClientRect();
+      let y = touch.clientY - rect.top;
+      y = Math.max(0, Math.min(y, rect.height));
+      valVal = 1 - (y / rect.height);
+      render();
+      triggerChange();
+    }
+
+    if (spectrumCanvas) {
+      spectrumCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDraggingSpectrum = true;
+        handleSpectrumTouch(e);
+      });
+      spectrumCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (isDraggingSpectrum) handleSpectrumTouch(e);
+      });
+    }
+
+    if (sliderCanvas) {
+      sliderCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isDraggingSlider = true;
+        handleSliderTouch(e);
+      });
+      sliderCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (isDraggingSlider) handleSliderTouch(e);
+      });
+    }
+
     chatColorBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       chatColorPalette.style.display = chatColorPalette.style.display === 'none' ? 'flex' : 'none';
+      if (chatColorPalette.style.display === 'flex') {
+        const chatMenu = document.getElementById('chat-menu');
+        if (chatMenu) chatMenu.style.display = 'none';
+        if (chatColorPicker && chatColorPicker.value) {
+          updateFromHex(chatColorPicker.value);
+        }
+        render();
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -272,17 +610,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    const swatches = document.querySelectorAll('.color-swatch');
-    swatches.forEach(swatch => {
-      swatch.addEventListener('click', () => {
-        let c = swatch.getAttribute('data-color');
-        chatColorPicker.value = c;
-        chatColorBtn.style.backgroundColor = c;
-        chatColorPalette.style.display = 'none';
-        localStorage.setItem('etoyatv_chat_color', c);
-        socket.emit('update_chat_color', { color: c });
-      });
-    });
+    // Initialize values
+    if (chatColorPicker && chatColorPicker.value) {
+      updateFromHex(chatColorPicker.value);
+    }
+    render();
   }
 
   function sendChatMessage() {
@@ -315,6 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Click video to play/pause
   if (video) {
     video.addEventListener('click', () => {
+      enableAutoplay = true; // User interacted
       if (video && video.paused) {
         video.play().catch(e => { }); // Prime for user gesture
         if (window.CHANNEL_ID && typeof fetchAutopilotStatus === 'function') {
@@ -326,11 +659,12 @@ document.addEventListener('DOMContentLoaded', () => {
         video.pause();
       }
     });
-    video.addEventListener('play', () => btnPlayPause.textContent = '⏸');
-    video.addEventListener('pause', () => btnPlayPause.textContent = '⏵');
+    video.addEventListener('play', () => btnPlayPause.innerHTML = svgPause);
+    video.addEventListener('pause', () => btnPlayPause.innerHTML = svgPlay);
   }
 
   btnPlayPause.addEventListener('click', () => {
+    enableAutoplay = true; // User interacted
     if (video && video.paused) {
       video.play().catch(e => { }); // Prime for user gesture
       if (window.CHANNEL_ID && typeof fetchAutopilotStatus === 'function') {
@@ -338,10 +672,10 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         video.play();
       }
-      btnPlayPause.textContent = '⏸';
+      btnPlayPause.innerHTML = svgPause;
     } else if (video) {
       video.pause();
-      btnPlayPause.textContent = '⏵';
+      btnPlayPause.innerHTML = svgPlay;
     }
   });
 
@@ -369,9 +703,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (video) { 
         video.volume = vol; 
         video.muted = muted; 
-        if (!muted && video.paused) {
-          video.play().catch(err => {});
-        }
       }
       if (btnVolume) btnVolume.textContent = muted ? '🔇' : '🔊';
       localStorage.setItem('etoyatv_volume', vol);
@@ -390,9 +721,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (video) {
         video.muted = isMuted;
         video.volume = isMuted ? 0 : vol;
-        if (!isMuted && video.paused) {
-          video.play().catch(err => {});
-        }
       }
 
       btnVolume.textContent = isMuted ? '🔇' : '🔊';
@@ -424,10 +752,6 @@ document.addEventListener('DOMContentLoaded', () => {
       video.volume = vol;
       video.muted = vol === 0;
 
-      if (!video.muted && video.paused) {
-        video.play().catch(err => {});
-      }
-
       if (btnVolume) btnVolume.textContent = video.muted ? '🔇' : '🔊';
       if (volumeSlider) volumeSlider.value = vol;
 
@@ -449,20 +773,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Auto-hide player controls
   const playerContainer = document.getElementById('container_swf');
-  const uiElements = playerContainer.querySelectorAll('.player-ui');
-  let hideTimeout;
-
-  function showControls() {
-    uiElements.forEach(el => el.style.opacity = '1');
-    clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => {
-      if (video && !video.paused) { // only hide if playing
-        uiElements.forEach(el => el.style.opacity = '0');
-      }
-    }, 3000);
-  }
-
   if (playerContainer) {
+    const uiElements = playerContainer.querySelectorAll('.player-ui');
+    let hideTimeout;
+
+    function showControls() {
+      uiElements.forEach(el => el.style.opacity = '1');
+      const liveIdle = document.getElementById('player_live_idle');
+      if (liveIdle) liveIdle.style.opacity = '0';
+      clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        if (video && !video.paused) { // only hide if playing
+          uiElements.forEach(el => el.style.opacity = '0');
+          if (liveIdle) liveIdle.style.opacity = '1';
+        }
+      }, 3000);
+    }
+
     playerContainer.addEventListener('wheel', (e) => {
       e.preventDefault();
       if (!video) return;
@@ -477,10 +804,6 @@ document.addEventListener('DOMContentLoaded', () => {
       video.volume = vol;
       video.muted = vol === 0;
 
-      if (!video.muted && video.paused) {
-        video.play().catch(err => {});
-      }
-
       if (btnVolume) btnVolume.textContent = video.muted ? '🔇' : '🔊';
       if (volumeSlider) volumeSlider.value = vol;
 
@@ -491,26 +814,35 @@ document.addEventListener('DOMContentLoaded', () => {
     playerContainer.addEventListener('mousemove', showControls);
     playerContainer.addEventListener('mouseenter', showControls);
     playerContainer.addEventListener('mouseleave', () => {
-      if (video && !video.paused) uiElements.forEach(el => el.style.opacity = '0');
-    });
-  }
-
-  if (video) {
-    video.addEventListener('play', showControls);
-    video.addEventListener('pause', () => {
-      uiElements.forEach(el => el.style.opacity = '1');
       clearTimeout(hideTimeout);
+      if (video && !video.paused) {
+        uiElements.forEach(el => el.style.opacity = '0');
+        const liveIdle = document.getElementById('player_live_idle');
+        if (liveIdle) liveIdle.style.opacity = '1';
+      }
     });
-  }
 
-  // Show initially
-  showControls();
+    if (video) {
+      video.addEventListener('play', showControls);
+      video.addEventListener('pause', () => {
+        uiElements.forEach(el => el.style.opacity = '1');
+        clearTimeout(hideTimeout);
+      });
+    }
+
+    // Show initially
+    showControls();
+  }
 
   // Toggle Action Menu
   if (btnChatMenu && chatMenu) {
     btnChatMenu.addEventListener('click', (e) => {
       e.stopPropagation();
       chatMenu.style.display = chatMenu.style.display === 'none' ? 'block' : 'none';
+      if (chatMenu.style.display === 'block') {
+        const chatColorPalette = document.getElementById('chat-color-palette');
+        if (chatColorPalette) chatColorPalette.style.display = 'none';
+      }
     });
 
     document.addEventListener('click', (e) => {
@@ -766,7 +1098,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      if (!force && !isInitial && video && video.paused) {
+      if (!force && !isInitial && video && video.paused && !video.ended) {
         // User has manually paused. Do not interrupt with a new video.
         // Keep polling so that when they press play, it snaps to live.
         let nextPoll = 30000;
@@ -884,7 +1216,7 @@ document.addEventListener('DOMContentLoaded', () => {
           hlsInstance.loadSource(data.rtmp_url);
           hlsInstance.attachMedia(video);
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            video.play().catch(e => console.log('Autoplay prevented:', e));
+            if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
           });
           hlsInstance.on(Hls.Events.ERROR, function (event, errData) {
             if (errData.fatal) {
@@ -905,7 +1237,7 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
           video.src = data.rtmp_url;
-          video.play().catch(e => console.log('Autoplay prevented:', e));
+          if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
         }
       } else {
         currentlyPlayingLive = false;
@@ -942,15 +1274,15 @@ document.addEventListener('DOMContentLoaded', () => {
           hlsInstance.loadSource(v.hls_url);
           hlsInstance.attachMedia(video);
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, function () {
-            video.play().catch(e => console.log('Autoplay prevented:', e));
+            if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
           });
         } else if (v.video_url) {
           video.src = v.video_url + '#t=' + offset;
-          video.play().catch(e => console.log('Autoplay prevented:', e));
+          if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
         } else {
           if (v.hls_url && video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = v.hls_url + '#t=' + offset;
-            video.play().catch(e => console.log('Autoplay prevented:', e));
+            if (enableAutoplay) video.play().catch(e => console.log('Autoplay prevented:', e));
           }
         }
       }
@@ -972,6 +1304,13 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.CHANNEL_ID) {
     fetchAutopilotStatus();
 
+    if (video) {
+      video.addEventListener('ended', () => {
+        console.log('[Player] Video ended naturally, advancing to next autopilot video...');
+        fetchAutopilotStatus(true);
+      });
+    }
+
     socket.on('autopilot_update', () => {
       fetchAutopilotStatus();
     });
@@ -983,6 +1322,326 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.on('stream_ended', () => {
       fetchAutopilotStatus();
     });
+
+    // --- Overlays Rendering ---
+    const overlaysCanvas = document.getElementById('etoyatv-overlays-canvas');
+    if (overlaysCanvas) {
+      if (window.etoyatvOverlaysLoopRunning) {
+        return;
+      }
+      window.etoyatvOverlaysLoopRunning = true;
+
+      const overlaysCtx = overlaysCanvas.getContext('2d');
+      let overlaysState = {
+        source: 'webcam',
+        bumper: { active: false },
+        intro: { active: false },
+        ticker: { active: false }
+      };
+      let tickerOffset = 1280;
+
+      socket.on('player_update_overlays', (data) => {
+        overlaysState = data || overlaysState;
+        if (overlaysState.ticker && overlaysState.ticker.active) {
+          tickerOffset = 1280;
+        }
+        if (overlaysState.bumper?.active || overlaysState.ticker?.active || overlaysState.source === 'intro') {
+          overlaysCanvas.style.display = 'block';
+        } else {
+          overlaysCanvas.style.display = 'none';
+          overlaysCtx.clearRect(0, 0, overlaysCanvas.width, overlaysCanvas.height);
+        }
+      });
+
+      function drawPlayerOverlays() {
+        requestAnimationFrame(drawPlayerOverlays);
+
+        const hasActiveOverlays = overlaysState.bumper?.active || overlaysState.ticker?.active || overlaysState.source === 'intro';
+        if (!hasActiveOverlays) {
+          return;
+        }
+
+        // Dynamic resolution mapping for crisp high-DPI rendering
+        const rect = overlaysCanvas.getBoundingClientRect();
+        const displayWidth = rect.width || 1280;
+        const displayHeight = rect.height || 720;
+        const dpr = window.devicePixelRatio || 1;
+        const targetWidth = Math.round(displayWidth * dpr);
+        const targetHeight = Math.round(displayHeight * dpr);
+
+        if (overlaysCanvas.width !== targetWidth || overlaysCanvas.height !== targetHeight) {
+          overlaysCanvas.width = targetWidth;
+          overlaysCanvas.height = targetHeight;
+        }
+
+        const ctx = overlaysCtx;
+        const time = Date.now() / 1000;
+
+        ctx.clearRect(0, 0, overlaysCanvas.width, overlaysCanvas.height);
+
+        // Map drawing coordinate system to virtual 1280x720 space
+        ctx.save();
+        ctx.scale(overlaysCanvas.width / 1280, overlaysCanvas.height / 720);
+
+        if (overlaysState.source === 'intro' && overlaysState.intro?.active) {
+          drawPlayerAnimatedIntro(ctx, overlaysState.intro, time);
+        }
+
+        if (overlaysState.bumper?.active) {
+          drawPlayerBumperOverlay(ctx, overlaysState.bumper, time);
+        }
+
+        if (overlaysState.ticker?.active) {
+          drawPlayerTickerOverlay(ctx, overlaysState.ticker, time);
+        }
+
+        ctx.restore();
+      }
+
+      function drawPlayerAnimatedIntro(ctx, intro, time) {
+        const width = 1280;
+        const height = 720;
+
+        if (intro.style === 'gradient-pulse') {
+          const angleShift = time * 0.4;
+          const x1 = width / 2 + Math.cos(angleShift) * width / 2;
+          const y1 = height / 2 + Math.sin(angleShift) * height / 2;
+          const x2 = width / 2 - Math.cos(angleShift) * width / 2;
+          const y2 = height / 2 - Math.sin(angleShift) * height / 2;
+          
+          const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+          grad.addColorStop(0, intro.bgColor1 || '#1f1c2c');
+          grad.addColorStop(1, intro.bgColor2 || '#928dab');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+          
+        } else if (intro.style === 'cosmic-glow') {
+          ctx.fillStyle = '#0f0c1b';
+          ctx.fillRect(0, 0, width, height);
+          
+          ctx.save();
+          ctx.globalCompositeOperation = 'screen';
+          for (let i = 0; i < 6; i++) {
+              const px = (width / 2) + Math.cos(time * 0.35 + i) * (width * 0.35);
+              const py = (height / 2) + Math.sin(time * 0.45 + i * 2) * (height * 0.32);
+              const size = 180 + Math.sin(time * 0.6 + i) * 60;
+              
+              const bubbleGrad = ctx.createRadialGradient(px, py, 0, px, py, size);
+              bubbleGrad.addColorStop(0, (intro.bgColor1 || '#1f1c2c') + '66');
+              bubbleGrad.addColorStop(0.5, (intro.bgColor2 || '#928dab') + '22');
+              bubbleGrad.addColorStop(1, 'transparent');
+              
+              ctx.fillStyle = bubbleGrad;
+              ctx.beginPath();
+              ctx.arc(px, py, size, 0, Math.PI * 2);
+              ctx.fill();
+          }
+          ctx.restore();
+          
+        } else if (intro.style === 'retro-wave') {
+          const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+          skyGrad.addColorStop(0, '#0c021f');
+          skyGrad.addColorStop(0.5, intro.bgColor1 || '#1f1c2c');
+          skyGrad.addColorStop(1, intro.bgColor2 || '#928dab');
+          ctx.fillStyle = skyGrad;
+          ctx.fillRect(0, 0, width, height);
+          
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 0, 127, 0.25)';
+          ctx.lineWidth = 2;
+          const horizon = height * 0.58;
+          
+          const gridSpeed = (time * 60) % 30;
+          for (let y = horizon; y < height; y += 15) {
+              const dy = y + gridSpeed * ((y - horizon) / (height - horizon));
+              ctx.beginPath();
+              ctx.moveTo(0, dy);
+              ctx.lineTo(width, dy);
+              ctx.stroke();
+          }
+          for (let x = -width; x < width * 2; x += 80) {
+              ctx.beginPath();
+              ctx.moveTo(width / 2, horizon);
+              ctx.lineTo(x, height);
+              ctx.stroke();
+          }
+          ctx.restore();
+          
+        } else {
+          const grad = ctx.createLinearGradient(0, 0, width, height);
+          grad.addColorStop(0, intro.bgColor1 || '#1f1c2c');
+          grad.addColorStop(1, intro.bgColor2 || '#928dab');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, 0, width, height);
+        }
+
+        const floatY = Math.sin(time * 2.5) * 8;
+        
+        ctx.save();
+        ctx.fillStyle = intro.color1 || '#ffffff';
+        ctx.font = 'bold 54px Tahoma, Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = intro.color1 || '#ffffff';
+        ctx.shadowBlur = 15;
+        ctx.fillText(intro.text1 || '', width / 2, height / 2 - 35 + floatY);
+        ctx.restore();
+        
+        ctx.save();
+        ctx.fillStyle = intro.color2 || '#6fdeee';
+        ctx.font = 'bold 22px Tahoma, Arial';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = intro.color2 || '#6fdeee';
+        ctx.shadowBlur = 5;
+        ctx.fillText(intro.text2 || '', width / 2, height / 2 + 35);
+        ctx.restore();
+      }
+
+      function drawPlayerBumperOverlay(ctx, bumper, time) {
+        const h = 80;
+        const y = 550;
+        
+        let progress = 1;
+        if (bumper.activatedAt) {
+            const elapsed = (Date.now() - bumper.activatedAt) / 1000;
+            progress = Math.min(1, elapsed / 0.4);
+            progress = 1 - Math.pow(1 - progress, 3);
+        }
+        
+        const x = -500 + (500 + 50) * progress;
+        
+        ctx.save();
+        
+        if (bumper.style === 'glass') {
+            ctx.fillStyle = 'rgba(20, 20, 20, 0.75)';
+            ctx.strokeStyle = bumper.bgColor1 || '#ff3b30';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = bumper.bgColor1 || '#ff3b30';
+            ctx.shadowBlur = 10;
+            
+            ctx.beginPath();
+            if (typeof ctx.roundRect === 'function') {
+                ctx.roundRect(x, y, 480, h, 8);
+            } else {
+                ctx.rect(x, y, 480, h);
+            }
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+            
+        } else if (bumper.style === 'shine') {
+            drawPlayerClassicRibbons(ctx, x, y, h, bumper.bgColor1 || '#ff3b30', bumper.bgColor2 || '#007af5');
+            
+            const cycle = (time * 0.7) % 1;
+            const sweepX = x + cycle * 520 - 50;
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + 500, y);
+            ctx.lineTo(x + 470, y + h);
+            ctx.lineTo(x, y + h);
+            ctx.closePath();
+            ctx.clip();
+            
+            const shineGrad = ctx.createLinearGradient(sweepX - 40, y, sweepX + 40, y);
+            shineGrad.addColorStop(0, 'transparent');
+            shineGrad.addColorStop(0.5, 'rgba(255, 255, 255, 0.45)');
+            shineGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = shineGrad;
+            ctx.fillRect(x, y, 480, h);
+            ctx.restore();
+            
+        } else {
+            drawPlayerClassicRibbons(ctx, x, y, h, bumper.bgColor1 || '#ff3b30', bumper.bgColor2 || '#007af5');
+        }
+
+        ctx.fillStyle = bumper.color1 || '#ffffff';
+        ctx.font = 'bold 22px Arial, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(bumper.text1 || '', x + 25, y + 14);
+        
+        ctx.fillStyle = bumper.color2 || '#6fdeee';
+        ctx.font = '14px Arial, sans-serif';
+        ctx.fillText(bumper.text2 || '', x + 25, y + 46);
+        
+        ctx.restore();
+      }
+
+      function drawPlayerClassicRibbons(ctx, x, y, h, bg1, bg2) {
+        ctx.fillStyle = bg1;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 500, y);
+        ctx.lineTo(x + 470, y + h);
+        ctx.lineTo(x, y + h);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.fillStyle = bg2;
+        ctx.beginPath();
+        ctx.moveTo(x + 5, y + 5);
+        ctx.lineTo(x + 490, y + 5);
+        ctx.lineTo(x + 465, y + h - 5);
+        ctx.lineTo(x + 5, y + h - 5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawPlayerTickerOverlay(ctx, ticker, time) {
+        const h = 40;
+        const y = 680;
+        const speed = parseInt(ticker.speed || 2);
+        
+        ctx.save();
+        
+        ctx.fillStyle = ticker.bgColor || '#007af5';
+        ctx.fillRect(0, y, 1280, h);
+        
+        ctx.font = 'bold 16px Arial, sans-serif';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        
+        if (ticker.style === 'pulse-color') {
+            const hue = (time * 120) % 360;
+            ctx.fillStyle = `hsl(${hue}, 100%, 75%)`;
+        } else {
+            ctx.fillStyle = ticker.color || '#ffffff';
+        }
+        
+        const textStr = ticker.text || '';
+        const textWidth = ctx.measureText(textStr).width;
+        
+        // Scroll speed calculation based on elapsed time to be frame-rate independent
+        const activatedAt = ticker.activatedAt || 0;
+        const elapsed = (Date.now() - activatedAt) / 1000;
+        const pixelsPerSecond = speed * 60; 
+        const totalDistance = 1280 + textWidth;
+        const currentDistance = (elapsed * pixelsPerSecond) % totalDistance;
+        const offset = 1280 - currentDistance;
+        
+        ctx.fillText(textStr, offset, y + h / 2);
+        
+        if (ticker.style === 'gradient-fade') {
+            const leftFade = ctx.createLinearGradient(0, y, 80, y);
+            leftFade.addColorStop(0, ticker.bgColor || '#007af5');
+            leftFade.addColorStop(1, 'transparent');
+            ctx.fillStyle = leftFade;
+            ctx.fillRect(0, y, 80, h);
+            
+            const rightFade = ctx.createLinearGradient(1200, y, 1280, y);
+            rightFade.addColorStop(0, 'transparent');
+            rightFade.addColorStop(1, ticker.bgColor || '#007af5');
+            ctx.fillStyle = rightFade;
+            ctx.fillRect(1200, y, 80, h);
+        }
+        
+        ctx.restore();
+      }
+
+      drawPlayerOverlays();
+    }
   }
 });
 

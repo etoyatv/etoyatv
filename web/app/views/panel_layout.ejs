@@ -5,10 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Панель управления телеканалом | ЭтоЯTV</title>
     <link rel="icon" type="image/svg+xml" href="<%= CDN_BASE_URL %>/images/favicon.svg">
-    <link rel="stylesheet" href="<%= CDN_BASE_URL %>/css/panel.css">
+    <link rel="stylesheet" href="<%= CDN_BASE_URL %>/css/panel.css?v=1.0.1">
     <script src="<%= CDN_BASE_URL %>/js/toast.js"></script>
+    <style>
+        .mobile-header {
+            display: none;
+        }
+    </style>
 </head>
 <body>
+
+<div class="mobile-header">
+    <button class="menu-toggle" id="menuToggleBtn">☰</button>
+    <a href="/">
+        <img src="<%= CDN_BASE_URL %>/images/logo.svg" height="40" alt="ЭтоЯTV" style="vertical-align: middle;">
+    </a>
+</div>
 
 <div class="panel-container">
 
@@ -26,7 +38,7 @@
                 <% if (locals.panelChannel) { %>
                     <a href="/<%= locals.panelChannel.shortname %>" class="channel-highlight" title="Роль: <%= locals.panelRole %>"><%= locals.panelChannel.name %></a> 
                     <% if (locals.availableChannels && locals.availableChannels.length > 1) { %>
-                        <a href="/ru/panel,select" style="font-size: 10px; color: #aaa;">[сменить]</a>
+                        <a href="/ru/panel,select" style="font-size: 14px; color: #00a0e3; margin-left: 5px; font-weight: bold;">[сменить]</a>
                     <% } %>
                 <% } else { %>
                     <span class="channel-highlight">Без названия</span>
@@ -38,6 +50,7 @@
         <div class="sidebar-actions">
             <% if (locals.panelChannel && locals.panelChannel.status !== 'banned') { %>
             <button class="btn-action" onclick="window.location.href='/ru/panel,settings,broadcast'">Начать трансляцию</button>
+            <button class="btn-action" onclick="window.location.href='/ru/tv,studio?channel_id=<%= locals.panelChannel.id %>'">Эфирная студия</button>
             <button class="btn-action" onclick="window.location.href='/ru/panel,records,upload'">Загрузить видео</button>
             <% } %>
             
@@ -59,17 +72,17 @@
 
         <ul class="sidebar-menu">
             <% if (locals.panelChannel && locals.panelChannel.status !== 'banned') { %>
-              <% if (['owner', 'editor', 'reporter'].includes(locals.panelRole)) { %>
+              <% if (['owner', 'coowner', 'editor', 'reporter'].includes(locals.panelRole)) { %>
               <li class="<%= activeMenu === 'settings' ? 'active expanded' : '' %>">
                   <a href="/ru/panel,settings,channel"><span class="icon icon-settings"></span> Настройки</a>
                   <% if (activeMenu === 'settings') { %>
                       <ul class="submenu">
                           <li class="<%= activeSubmenu === 'channel' ? 'active' : '' %>"><a href="/ru/panel,settings,channel">Телеканал</a></li>
                           <li class="<%= activeSubmenu === 'broadcast' ? 'active' : '' %>"><a href="/ru/panel,settings,broadcast">Трансляция</a></li>
-                          <% if (locals.panelRole === 'owner' || locals.panelRole === 'editor') { %>
+                          <% if (['owner', 'coowner', 'editor'].includes(locals.panelRole)) { %>
                           <li class="<%= activeSubmenu === 'design' ? 'active' : '' %>"><a href="/ru/panel,settings,design">Дизайн</a></li>
                           <% } %>
-                          <% if (locals.panelRole === 'owner') { %>
+                          <% if (['owner', 'coowner'].includes(locals.panelRole)) { %>
                           <li class="<%= activeSubmenu === 'access' ? 'active' : '' %>"><a href="/ru/panel,settings,access">Доступ</a></li>
                           <li class="<%= activeSubmenu === 'team' ? 'active' : '' %>"><a href="/ru/panel,settings,team">Команда</a></li>
                           <% } %>
@@ -77,6 +90,7 @@
                   <% } %>
               </li>
               <% } %>
+
 
               <li class="<%= activeMenu === 'records' ? 'active expanded' : '' %>">
                   <a href="/ru/panel,records"><span class="icon icon-media"></span> Медиа-архив</a>
@@ -89,7 +103,7 @@
                   <% } %>
               </li>
               
-              <% if (locals.panelRole === 'owner' || locals.panelRole === 'editor') { %>
+              <% if (['owner', 'coowner', 'editor'].includes(locals.panelRole)) { %>
               <li class="<%= activeMenu === 'autopilot' ? 'active' : '' %>">
                   <a href="/ru/panel,autopilot"><span class="icon icon-autopilot"></span> Автопилот</a>
               </li>
@@ -102,7 +116,7 @@
                   <a href="/ru/panel,news"><span class="icon icon-news"></span> Новости</a>
               </li>
 
-              <% if (locals.panelRole === 'owner' || locals.panelRole === 'editor') { %>
+              <% if (['owner', 'coowner', 'editor'].includes(locals.panelRole)) { %>
               <li class="<%= activeMenu === 'stat' ? 'active expanded' : '' %>">
                   <a href="/ru/panel,stat,viewers"><span class="icon icon-stat"></span> Статистика</a>
                   <% if (activeMenu === 'stat') { %>
@@ -116,10 +130,6 @@
               <% } %>
             <% } %>
         </ul>
-
-        <div class="sidebar-footer">
-            Цветовая схема: <span class="color-box white"></span><span class="color-box blue active"></span>
-        </div>
     </div>
 
     <!-- Main Content Area -->
@@ -145,7 +155,27 @@
     </div>
 </div>
 
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <%- include('partials/confirm_modal') %>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var menuToggle = document.getElementById("menuToggleBtn");
+    var sidebar = document.querySelector(".sidebar");
+    var overlay = document.getElementById("sidebarOverlay");
+
+    if (menuToggle && sidebar && overlay) {
+        menuToggle.addEventListener("click", function() {
+            sidebar.classList.toggle("open");
+            overlay.classList.toggle("active");
+        });
+        overlay.addEventListener("click", function() {
+            sidebar.classList.remove("open");
+            overlay.classList.remove("active");
+        });
+    }
+});
+</script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     var alerts = document.querySelectorAll(".panel-alert");

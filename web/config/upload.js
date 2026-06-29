@@ -18,7 +18,10 @@ const imageFilter = (req, file, cb) => {
 };
 
 const videoFilter = (req, file, cb) => {
-  if (file.mimetype === 'video/mp4') {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const allowedExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.webm', '.wmv', '.m4v', '.ts', '.mpeg', '.mpg'];
+  
+  if (file.mimetype.startsWith('video/') || file.mimetype === 'application/x-flash-video' || allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
     cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'Invalid video type'));

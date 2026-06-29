@@ -3,20 +3,30 @@
   <% if (channel.bg_color || channel.bg_url || channel.text_color) { %>
     <style>
       body {
-        <% if (channel.bg_color) {
-          %>background-color: <%=channel.bg_color %> !important;
-          <%
-        }
-
-        %><% if (channel.bg_url) {
-          %>background-image: url('<%= CDN_BASE_URL %><%= channel.bg_url %>') !important;
-          background-size: cover !important;
-          <%
-        }
-
-        %>background-repeat: <%=channel.bg_repeat || 'no-repeat' %> !important;
+        <% if (channel.bg_color) { %>
+          background-color: <%= channel.bg_color %> !important;
+        <% } %>
+        <% if (channel.bg_url) { %>
+          background-image: url('<%= CDN_BASE_URL %><%= channel.bg_url %>') !important;
+          <% if (channel.bg_fit === 'tile') { %>
+            background-size: auto !important;
+            background-position: left top !important;
+            background-repeat: repeat !important;
+          <% } else if (channel.bg_fit === 'center') { %>
+            background-size: auto !important;
+            background-position: center top !important;
+            background-repeat: no-repeat !important;
+          <% } else if (channel.bg_fit === 'fit_width') { %>
+            background-size: 100% auto !important;
+            background-position: center top !important;
+            background-repeat: no-repeat !important;
+          <% } else { %>
+            background-size: cover !important;
+            background-position: center top !important;
+            background-repeat: no-repeat !important;
+          <% } %>
+        <% } %>
         background-attachment: fixed !important;
-        background-position: center top !important;
       }
 
       <% if (channel.text_color) {
@@ -106,6 +116,39 @@
                       </div>
                     </div>
                     <div class="block-content">
+                      <!-- Scoped player overrides -->
+                      <style>
+                        #etoyatv-offline-overlay {
+                          <% if (channel.player_bg_color) { %>
+                            background-color: <%= channel.player_bg_color %> !important;
+                          <% } %>
+                          <% if (channel.player_bg_url) { %>
+                            background-image: url('<%= CDN_BASE_URL %><%= channel.player_bg_url %>') !important;
+                            background-size: cover !important;
+                            background-position: center !important;
+                            background-repeat: no-repeat !important;
+                          <% } else { %>
+                            background-image: none !important;
+                          <% } %>
+                        }
+                        <% if (channel.player_menu_color) { %>
+                          #container_swf .player-menu-bg,
+                          #container_swf .player-actions button,
+                          #container_swf .player-actions a,
+                          #container_swf .volume-slider-wrapper {
+                            background: <%= channel.player_menu_color %> !important;
+                          }
+                        <% } %>
+                        <% if (channel.player_link_color) { %>
+                          #container_swf .player-ui a,
+                          #container_swf .player-ui button,
+                          #container_swf .player-ui span,
+                          #container_swf #viewers-count-player {
+                            color: <%= channel.player_link_color %> !important;
+                          }
+                        <% } %>
+                      </style>
+
                       <div class="playerchat"
                         style="display: flex; width: 978px; height: 331px; background: #000; font-family: Tahoma, sans-serif;">
 
@@ -115,12 +158,15 @@
 
                           <video id="etoyatv-video" width="100%" height="100%"
                             style="background: #000; object-fit: contain; cursor: pointer;"
-                            poster="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png'  %>"
                             disablePictureInPicture disableRemotePlayback></video>
 
                           <!-- Transition Canvas -->
                           <canvas id="etoyatv-transition-canvas"
                             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.5s ease-out; object-fit: contain;"></canvas>
+
+                           <!-- Overlays Canvas -->
+                           <canvas id="etoyatv-overlays-canvas" width="1280" height="720"
+                             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; object-fit: contain; display: none;"></canvas>
 
                           <!-- Loading Spinner -->
                           <div id="etoyatv-spinner"
@@ -147,8 +193,10 @@
 
                           <!-- Offline Overlay -->
                           <div id="etoyatv-offline-overlay"
-                            style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
-                            Нет трансляции
+                            style="display: <%= (channel.player_bg_url || channel.player_bg_color) ? 'flex' : 'none' %>; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
+                            <% if (!channel.player_bg_url) { %>
+                              Нет трансляции
+                            <% } %>
                           </div>
 
                           <!-- 18+ Overlay -->
@@ -189,12 +237,19 @@
                               <!-- Include HLS.js -->
                               <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
+                              <!-- Always visible Live Label (fades out on hover) -->
+                              <div id="player_live_idle" style="position: absolute; top: 10px; left: 10px; z-index: 10; transition: opacity 0.3s; pointer-events: none; opacity: 0;">
+                                <div class="live_label" id="player_live_label"
+                                  style="display: none; width: 32px; height: 17px; background: url(<%= CDN_BASE_URL %>/images/css_img_2_sprite1.png) no-repeat -124px -254px;">
+                                </div>
+                              </div>
+
                               <!-- Logo and Title -->
                               <div class="player-ui"
                                 style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
                                 <a href="/<%= channel.shortname %>" style="display: block;">
                                   <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="Logo"
-                                    style="width: 50px; height: 50px; background: #fff; border: 1px solid #444; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                    style="width: 50px; height: 50px; background: #fff; border: 1px solid #444; box-sizing: border-box; object-fit: cover; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
                                 </a>
                                 <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
                                   <a href="/<%= channel.shortname %>"
@@ -204,9 +259,6 @@
                                       <span class="verified_icon" title="Подтвержденный канал" style="margin-left: 5px; display: inline-block;"></span>
                                     <% } %>
                                   </a>
-                                  <div class="live_label" id="player_live_label"
-                                    style="display: none; position: relative; width: 32px; height: 17px; background: url(/images/css_img_2_sprite1.png) no-repeat -124px -254px; top: 0; left: 0;">
-                                  </div>
                                 </div>
                               </div>
 
@@ -222,14 +274,14 @@
                               </div>
 
                               <!-- Bottom Left Controls -->
-                              <div class="player-ui"
+                              <div class="player-ui player-menu-bg"
                                 style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s;">
-                                <button id="btn-play-pause" title="Play/Pause"
-                                  style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none;">⏻</button>
+                                 <button id="btn-play-pause" title="Play/Pause"
+                                   style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none; display: inline-flex; align-items: center; justify-content: center; padding: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button>
                               </div>
 
                               <!-- Bottom Right Controls -->
-                              <div class="player-ui"
+                              <div class="player-ui player-menu-bg"
                                 style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
                                 <div
                                   style="position: relative; display: flex; align-items: center; justify-content: center;"
@@ -239,9 +291,9 @@
                                   <button id="btn-volume"
                                     style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; padding: 0 5px; position: relative; z-index: 5;">🔊</button>
                                   <div class="volume-slider-wrapper"
-                                    style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
+                                    style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
                                     <div
-                                      style="position: absolute; bottom: -20px; left: 0; width: 100%; height: 20px; background: transparent;">
+                                      style="position: absolute; bottom: -25px; left: 0; width: 100%; height: 25px; background: transparent;">
                                     </div>
                                     <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1"
                                       style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
@@ -270,16 +322,45 @@
                                 position: relative;
                               }
                               .chat-message-row .btn-pin-message {
-                                visibility: hidden;
+                                display: none;
                                 cursor: pointer;
                                 margin-left: 5px;
                                 opacity: 0.7;
                               }
                               .chat-message-row:hover .btn-pin-message {
-                                visibility: visible;
+                                display: inline;
                               }
                               .chat-message-row .btn-pin-message:hover {
                                 opacity: 1;
+                              }
+                              /* Custom scrollbar for WebKit (Chrome, Safari, Edge) */
+                              #chat_text_field::-webkit-scrollbar,
+                              #chat_users::-webkit-scrollbar,
+                              #chat_pinned_box::-webkit-scrollbar {
+                                width: 6px;
+                              }
+                              #chat_text_field::-webkit-scrollbar-track,
+                              #chat_users::-webkit-scrollbar-track,
+                              #chat_pinned_box::-webkit-scrollbar-track {
+                                background: #000;
+                              }
+                              #chat_text_field::-webkit-scrollbar-thumb,
+                              #chat_users::-webkit-scrollbar-thumb,
+                              #chat_pinned_box::-webkit-scrollbar-thumb {
+                                background: #444;
+                                border-radius: 3px;
+                              }
+                              #chat_text_field::-webkit-scrollbar-thumb:hover,
+                              #chat_users::-webkit-scrollbar-thumb:hover,
+                              #chat_pinned_box::-webkit-scrollbar-thumb:hover {
+                                background: #666;
+                              }
+                              /* Standard scrollbar for Firefox */
+                              #chat_text_field,
+                              #chat_users,
+                              #chat_pinned_box {
+                                scrollbar-width: thin;
+                                scrollbar-color: #444 #000;
                               }
                             </style>
                             <div style="width: 270px; height: 100%; position: relative; display: flex; flex-direction: column;">
@@ -299,19 +380,30 @@
                               <div id="chat_text_field"
                                 style="width: 100%; flex: 1; overflow-y: auto; padding: 5px; box-sizing: border-box; display: <%= channel.chat_enabled ? 'flex' : 'none' %>; flex-direction: column; gap: 2px;">
                                 <% if (typeof chatMessages !=='undefined' && chatMessages.length > 0) { %>
+                                  <% 
+                                    const userColors = {};
+                                    const validNicks = new Set();
+                                    chatMessages.forEach(m => {
+                                      const nick = m.username || m.guest_name;
+                                      if (nick) {
+                                        const lower = nick.toLowerCase();
+                                        validNicks.add(lower);
+                                        userColors[lower] = m.color || '#3b9cd9';
+                                      }
+                                    });
+                                    if (channel && channel.username) {
+                                      const ownerLower = channel.username.toLowerCase();
+                                      validNicks.add(ownerLower);
+                                      userColors[ownerLower] = '#3b9cd9';
+                                    }
+                                    if (typeof user !== 'undefined' && user) {
+                                      const userLower = user.username.toLowerCase();
+                                      validNicks.add(userLower);
+                                      userColors[userLower] = user.chat_color || '#3b9cd9';
+                                    }
+                                  %>
                                   <% chatMessages.forEach(msg=> { %>
-                                    <div class="chat-message-row"
-                                      style="font: 11px Verdana, Geneva, sans-serif; color: #fff; margin: 1px; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">
-                                        <span style="color: #666;"><%= formatDate(msg.created_at, userTimezone, 'HH:mm') %></span>
-                                        <span style="color: <%= msg.color || '#3b9cd9' %>; font-weight: bold;">
-                                          <% const displayNick = msg.username || msg.guest_name; %>
-                                          <span class="chat-username" data-username="<%= displayNick %>" data-role="<%= msg.role %>" style="cursor: pointer;"><%= displayNick %></span>:
-                                        </span>
-                                      <%= msg.message %>
-                                      <% if (typeof isModerator !== 'undefined' && isModerator) { %>
-                                        <span class="btn-pin-message" data-msg-id="<%= msg.id %>" title="Закрепить">📌</span>
-                                      <% } %>
-                                    </div>
+                                    <div class="chat-message-row" style="font: 11px Verdana, Geneva, sans-serif; color: #fff; margin: 1px; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;"><span style="color: #666;"><%= formatDate(msg.created_at, userTimezone, 'HH:mm') %></span> <% const displayNick = msg.username || msg.guest_name; let rawMsg = msg.message || ''; let isReply = false; let replyTo = ''; let restOfMsg = rawMsg; const replyMatch = rawMsg.match(/^([a-zA-Z0-9_\-\u0400-\u04FF\.]{2,25}),\s*(.*)$/); if (replyMatch && displayNick) { const potentialRecipient = replyMatch[1]; if (validNicks.has(potentialRecipient.toLowerCase()) && potentialRecipient.toLowerCase() !== displayNick.toLowerCase()) { isReply = true; replyTo = potentialRecipient; restOfMsg = replyMatch[2]; } } if (isReply) { const recipientColor = userColors[replyTo.toLowerCase()] || '#3b9cd9'; %><span style="color: <%= msg.color || '#3b9cd9' %>; font-weight: bold;"><span class="chat-username" data-username="<%= displayNick %>" data-color="<%= msg.color || '#3b9cd9' %>" data-role="<%= msg.role %>" style="cursor: pointer;"><%= displayNick %></span></span><span style="color: #fff;">&gt;</span><span style="color: <%= recipientColor %>; font-weight: bold;"><span class="chat-username" data-username="<%= replyTo %>" data-color="<%= recipientColor %>" style="cursor: pointer;"><%= replyTo %></span>,</span> <%= restOfMsg %><% } else { %><span style="color: <%= msg.color || '#3b9cd9' %>; font-weight: bold;"><span class="chat-username" data-username="<%= displayNick %>" data-color="<%= msg.color || '#3b9cd9' %>" data-role="<%= msg.role %>" style="cursor: pointer;"><%= displayNick %></span>:</span> <%= rawMsg %><% } %><% if (typeof isModerator !== 'undefined' && isModerator) { %><span class="btn-pin-message" data-msg-id="<%= msg.id %>" title="Закрепить">📌</span><% } %></div>
                                     <% }) %>
                                       <% } %>
                               </div>
@@ -324,8 +416,8 @@
                             <!-- Users List (130px) -->
                             <div id="chat_users"
                               style="width: 130px; height: 100%; overflow-y: auto; padding: 5px; box-sizing: border-box; border-left: 1px solid <%= channel.bg_color || '#326CBA' %>; font: 11px Verdana, Geneva, sans-serif; color: #F2FFF9;">
-                              <div style="padding-bottom: 5px; color: #aaa;">В чате: <span
-                                  id="chat-viewers-count">0</span></div>
+                              <div style="padding-bottom: 5px; color: #aaa;"><span id="chat-viewers-prefix" style="display: none;">В чате: </span><span
+                                  id="chat-viewers-count">Загрузка...</span></div>
                               <div id="chat-users-list">
                                 <!-- Users will be injected here via JS -->
                                 <% if (typeof user !=='undefined' && user) { %>
@@ -335,16 +427,16 @@
                                     if (user.mask_mode === 'user_mask' && myRole !== 'owner') myRole = 'registered';
                                   %>
                                     <div class="chat-username" data-username="<%= user.username %>"
-                                      data-role="<%= myRole %>"
+                                      data-role="<%= myRole %>" data-color="<%= user.chat_color || '#fff' %>"
                                       style="margin-top: 5px; color: <%= user.chat_color || '#fff' %>; font-weight: bold; display: flex; align-items: center; gap: 3px; cursor: pointer;">
-                                      <% if (myRole==='owner' ) { %>👑<% } else if (myRole==='admin' ) { %>👽<% } else if (myRole==='moderator' ) { %>🛡️<% } else { %>👤<% } %>
+                                      <% if (myRole==='owner' ) { %><img src="/images/chat/owner.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else if (myRole==='admin' ) { %><img src="/images/chat/admin.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else if (myRole==='moderator' ) { %><img src="/images/chat/moderator.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else { %><img src="/images/chat/user.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } %>
                                               <span>
                                                 <%= user.username %>
                                               </span>
                                     </div>
                                     <% } %>
                                     <% } else { %>
-                                      <div class="chat-username" data-username="Гость" data-role="guest"
+                                      <div class="chat-username" data-username="Гость" data-role="guest" data-color="#fff"
                                         style="margin-top: 5px; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 3px; cursor: pointer;">
                                         👤 <span>Гость</span></div>
                                       <% } %>
@@ -384,15 +476,9 @@
                                       value="<%= isUserLoggedIn ? (user.chat_color || '#3b9cd9') : '#3b9cd9' %>">
 
                                     <div id="chat-color-palette"
-                                      style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 5px; width: 100px; flex-wrap: wrap; gap: 3px; z-index: 50;">
-                                      <% const colors=['#ffffff', '#ff0000' , '#00ff00' , '#0000ff' , '#ffff00'
-                                        , '#00ffff' , '#ff00ff' , '#3b9cd9' , '#ffa500' , '#800080' , '#008000'
-                                        , '#ffc0cb' ]; %>
-                                        <% colors.forEach(c=> { %>
-                                          <div class="color-swatch" data-color="<%= c %>"
-                                            style="width: 20px; height: 20px; background-color: <%= c %>; cursor: pointer; border: 1px solid #000;">
-                                          </div>
-                                          <% }) %>
+                                      style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 8px; width: 195px; flex-direction: row; gap: 8px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box;">
+                                      <canvas class="chat-color-spectrum" width="150" height="80" style="cursor: crosshair; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+                                      <canvas class="chat-color-slider" width="16" height="80" style="cursor: row-resize; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
                                     </div>
                                   </div>
 
@@ -546,8 +632,7 @@
                                     </div>
                                     <div style="position: absolute; right: 0; top: 0;">
                                       <% if (locals.user) { %>
-                                        <div
-                                          style="background: #111; padding: 0 6px; height: 18px; border-radius: 3px; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                                        <div class="likes-badge">
                                           <span id="record_fans_count_<%= rec.id %>"
                                             style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;">
                                             <%= rec.fans_count || 0 %>
@@ -897,7 +982,77 @@
                       </div>
                       <div class="block-content">
                         <div class="channel_description">
-                          <div class="channel_link" style="margin-top: 10px;">
+                          <form class="embed_settings" onsubmit="return false;" style="padding-bottom: 0;">
+                            <!-- Player Section -->
+                            <div style="font-weight: bold; margin-bottom: 10px; color: #fff; font-size: 13px;">Встраивание плеера:</div>
+                            <div id="selectbox">
+                              <div class="clear_both">
+                                <div class="label" style="color: #c0c0b2;">Формат:</div>
+                                <select id="player_format" name="player_format" class="input-select jselect">
+                                  <option selected="selected" value="0">16:9</option>
+                                  <option value="1">4:3</option>
+                                </select>
+                                <div class="select-outer input-select jselect" id="jselect-player_format">
+                                  <div class="select-inner">
+                                    <p>16:9</p>
+                                    <div class="options" style="left: -9999px;">
+                                      <ul>
+                                        <li class="item_0 selected" data-value="0">16:9</li>
+                                        <li class="item_1" data-value="1">4:3</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div class="clear_both" style="padding-top:10px;">
+                                <div class="label" style="color: #c0c0b2;">Размер:</div>
+                                <select id="player_size" name="player_size" class="input-select jselect">
+                                  <option value="0">512x288</option>
+                                  <option selected="selected" value="1">640x360</option>
+                                  <option value="2">768x432</option>
+                                </select>
+                                <div class="select-outer input-select jselect" id="jselect-player_size">
+                                  <div class="select-inner flyout">
+                                    <p>640x360</p>
+                                    <div class="options" style="left: -9999px;">
+                                      <ul>
+                                        <li class="item_0" data-value="0">512x288</li>
+                                        <li class="item_1 selected" data-value="1">640x360</li>
+                                        <li class="item_2" data-value="2">768x432</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div class="clear_both" style="padding-top:10px;">
+                              <div class="input-checkbox-wraper" id="player_autoplay-wraper">
+                                <input type="checkbox" class="input-checkbox" id="player_autoplay" name="player_autoplay" value="1" checked="checked">
+                                <label for="player_autoplay" class="checked" style="color: #c0c0b2;">Автовоспроизведение</label>
+                              </div>
+                            </div>
+                            
+                            <div class="clear_both"></div>
+                            
+                            <div class="channel_embed" style="padding-top: 10px;">
+                              <div class="label" style="color: #c0c0b2;">HTML-код плеера:</div>
+                              <input type="text" name="embedcode" id="embedcode" onfocus="$(this).select();" value="" class="input-text"
+                                style="width: 310px; background: #333; color: #fff; border: 1px solid #555; padding: 4px; text-align: left;">
+                            </div>
+
+                            <!-- Chat Section -->
+                            <div style="font-weight: bold; margin-top: 20px; margin-bottom: 10px; color: #fff; font-size: 13px;">Встраивание чата:</div>
+                            <div class="channel_embed" style="padding-top: 0;">
+                              <div class="label" style="color: #c0c0b2;">HTML-код чата:</div>
+                              <input type="text" name="chat_embedcode" id="chat_embedcode" onfocus="$(this).select();" value="" class="input-text"
+                                style="width: 310px; background: #333; color: #fff; border: 1px solid #555; padding: 4px; text-align: left;">
+                            </div>
+                            <div class="clear_both"></div>
+                          </form>
+                          
+                          <div class="channel_link" style="margin-top: 15px;">
                             <div class="label" style="color: #c0c0b2;">Прямая ссылка на телеканал:</div>
                             <input type="text" name="channelurl" id="channelurl" onfocus="$(this).select();"
                               value="https://etoyatv.top/<%= channel.shortname %>" class="input-text"
@@ -906,6 +1061,139 @@
                         </div>
                         <div class="clear_both"></div>
                       </div>
+
+                      <script type="text/javascript">
+                        $(document).ready(function() {
+                          var sizes = {
+                            0: [ {w: 512, h: 288}, {w: 640, h: 360}, {w: 768, h: 432} ], // 16:9
+                            1: [ {w: 384, h: 288}, {w: 480, h: 360}, {w: 576, h: 432} ]  // 4:3
+                          };
+
+                          var shortname = "<%= channel.shortname %>";
+                          var protocol = window.location.protocol;
+                          var hostname = window.location.host;
+
+                          // Set initial channel URL correctly based on active host
+                          $('#channelurl').val(protocol + '//' + hostname + '/' + shortname);
+
+                          // Set initial chat embed code
+                          var chatSrc = protocol + '//' + hostname + '/widget/chat/' + shortname;
+                          $('#chat_embedcode').val('<iframe src="' + chatSrc + '" width="400" height="331" frameborder="0" scrolling="no"></iframe>');
+
+                          function updateSizes() {
+                            var pFormat = parseInt($('#player_format').val());
+                            var available = sizes[pFormat];
+
+                            var select = $('#player_size');
+                            select.empty();
+
+                            var ul = $('#jselect-player_size .options ul');
+                            ul.empty();
+
+                            var selectedIdx = 1; // Default to middle size
+                            
+                            available.forEach(function(size, idx) {
+                              var text = size.w + 'x' + size.h;
+                              
+                              // Native option
+                              var opt = $('<option>').val(idx).text(text);
+                              if (idx === selectedIdx) {
+                                opt.attr('selected', 'selected');
+                              }
+                              select.append(opt);
+
+                              // Custom list item
+                              var li = $('<li>')
+                                .addClass('item_' + idx)
+                                .attr('data-value', idx)
+                                .text(text);
+                              if (idx === selectedIdx) {
+                                li.addClass('selected');
+                              }
+                              ul.append(li);
+                            });
+
+                            var defaultText = available[selectedIdx].w + 'x' + available[selectedIdx].h;
+                            $('#jselect-player_size p').text(defaultText);
+                            select.val(selectedIdx);
+
+                            updateEmbedCode();
+                          }
+
+                          function updateEmbedCode() {
+                            var pFormat = parseInt($('#player_format').val());
+                            var sizeIdx = parseInt($('#player_size').val());
+                            var autoplay = $('#player_autoplay').is(':checked') ? 1 : 0;
+
+                            var sizeObj = sizes[pFormat][sizeIdx];
+                            if (!sizeObj) return;
+                            
+                            var src = protocol + '//' + hostname + '/widget/player/' + shortname + '?autoplay=' + autoplay;
+                            var iframeCode = '<iframe src="' + src + '" width="' + sizeObj.w + '" height="' + sizeObj.h + '" frameborder="0" allowfullscreen></iframe>';
+                            $('#embedcode').val(iframeCode);
+                          }
+
+                          // Bind change on native select elements
+                          $('#player_format').on('change', function() {
+                            updateSizes();
+                          });
+
+                          $('#player_size').on('change', function() {
+                            updateEmbedCode();
+                          });
+
+                          $('#player_autoplay').on('change', function() {
+                            var label = $('label[for="player_autoplay"]');
+                            if (this.checked) {
+                              label.addClass('checked');
+                            } else {
+                              label.removeClass('checked');
+                            }
+                            updateEmbedCode();
+                          });
+
+                          // Custom styled dropdown toggle click
+                          $(document).on('click', '.select-inner p', function(e) {
+                            e.stopPropagation();
+                            var currentOptions = $(this).siblings('.options');
+                            var isClosed = currentOptions.css('left') === '-9999px';
+                            $('.select-inner .options').css('left', '-9999px'); // Close all first
+                            if (isClosed) {
+                              currentOptions.css('left', '-1px');
+                            }
+                          });
+
+                          // Custom styled dropdown items selection
+                          $(document).on('click', '.select-inner .options li', function(e) {
+                            e.stopPropagation();
+                            var li = $(this);
+                            var text = li.text();
+                            var val = parseInt(li.attr('data-value'));
+                            var container = li.closest('.select-outer');
+                            var selectId = container.attr('id').replace('jselect-', '');
+                            var nativeSelect = $('#' + selectId);
+
+                            // Update paragraph text
+                            container.find('p').text(text);
+                            
+                            // Set active class
+                            li.addClass('selected').siblings().removeClass('selected');
+
+                            // Close options list
+                            li.closest('.options').css('left', '-9999px');
+
+                            // Update native select and trigger change
+                            nativeSelect.val(val).trigger('change');
+                          });
+
+                          $(document).on('click', function() {
+                            $('.select-inner .options').css('left', '-9999px');
+                          });
+
+                          // Initial sizing trigger
+                          updateSizes();
+                        });
+                      </script>
                       <div class="clear_both"></div>
                     </div>
                     <div class="clear_both"></div>

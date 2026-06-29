@@ -38,7 +38,47 @@
     </form>
   </div>
 <% } else { %>
-  <form action="/channels/create" method="post">
+  <form action="/channels/create" method="post" id="channel-create-form">
+    <div style="margin-bottom: 20px; background: #2a2a2a; padding: 15px; border-radius: 4px; border: 1px solid #3d464d;">
+      <label style="color: #c0c0b2; display: block; margin-bottom: 10px; font-weight: bold;">Выберите тип канала:</label>
+      
+      <div style="margin-bottom: 10px; display: flex; align-items: center;">
+        <input type="radio" name="channel_type" value="personal" id="type-personal" style="margin-right: 10px;" 
+               <%= personalCount >= 1 ? 'disabled' : 'checked' %>>
+        <label for="type-personal" style="color: #fff; cursor: pointer;">
+          Личный канал 
+          <span style="font-weight: bold; color: <%= personalCount >= 1 ? '#ff4d4d' : '#39b54a' %>;">
+            (<%= personalCount %>/1)
+          </span>
+        </label>
+        <span class="info-tooltip-trigger" style="margin-left: 8px; color: #6fdeee; cursor: help; border-bottom: 1px dashed #6fdeee;" 
+              title="Личный канал - это телеканал, привязанный к вашему профилю">ⓘ</span>
+      </div>
+
+      <div style="margin-bottom: 15px; display: flex; align-items: center;">
+        <input type="radio" name="channel_type" value="cooperative" id="type-cooperative" style="margin-right: 10px;"
+               <%= cooperativeCount >= 3 ? 'disabled' : '' %>
+               <%= (personalCount >= 1 && cooperativeCount < 3) ? 'checked' : '' %>>
+        <label for="type-cooperative" style="color: #fff; cursor: pointer;">
+          Кооперативный канал 
+          <span style="font-weight: bold; color: <%= cooperativeCount >= 3 ? '#ff4d4d' : '#39b54a' %>;">
+            (<%= cooperativeCount %>/3)
+          </span>
+        </label>
+        <span class="info-tooltip-trigger" style="margin-left: 8px; color: #6fdeee; cursor: help; border-bottom: 1px dashed #6fdeee;" 
+              title="Кооперативный канал - вы можете назначить совладельцев и собрать команду">ⓘ</span>
+      </div>
+
+      <div id="team-input-group" style="margin-top: 15px; display: <%= (personalCount >= 1 && cooperativeCount < 3) ? 'block' : 'none' %>; position: relative;">
+        <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Назначить команду:</label>
+        <input type="text" name="team_username" id="team-username-input" class="form-control" placeholder="введите имя пользователя" autocomplete="off"
+               style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
+        <div id="team-users-list" style="display: none; position: absolute; top: 100%; left: 0; width: 100%; background: #fff; border: 1px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+        <div id="team-tags-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
+        <div id="team-hidden-inputs"></div>
+      </div>
+    </div>
+
     <div style="margin-bottom: 15px;">
       <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Имя канала:</label>
       <input type="text" name="name" required maxlength="77" style="width: 100%; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
@@ -51,13 +91,147 @@
       <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Короткое имя (ссылка):</label>
       <div style="display: flex; align-items: center;">
         <span style="color: #777; margin-right: 5px;">etoyatv.top/</span>
-        <input type="text" name="shortname" required pattern="[a-zA-Z0-9_-]+" title="Только латинские буквы, цифры, дефис и подчеркивание" style="flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
+        <input type="text" name="shortname" required pattern="[a-zA-Z0-9_-]+" title="Только латинские буквы, цифры, дефис and подчеркивание" style="flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
       </div>
     </div>
+
+    <div style="margin-bottom: 25px; background: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20; line-height: 1.5; font-size: 12px; color: #c0c0b2;">
+      <b style="color: #fff; display: block; margin-bottom: 8px;">Что выбрать?</b>
+      <p style="margin: 0 0 10px 0;">Если вы планируете играть и общаться с друзьями или просто хотите назвать канал в честь себя, мы рекомендуем выбрать «Личный канал».</p>
+      <p style="margin: 0 0 10px 0;">Если вы планируете реализовывать эфирные проекты или вести совместную творческую деятельность, лучше выбрать «Кооперативный канал».</p>
+      <p style="margin: 0;"><b>Ключевые отличия:</b> Личный канал отмечен в вашем профиле и принадлежит вам. Кооперативный канал может иметь несколько совладельцев.</p>
+    </div>
+
     <div>
-      <button type="submit" style="background: #333; border: 1px solid #555; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Создать телеканал</button>
+      <button type="submit" id="submit-btn" style="background: #333; border: 1px solid #555; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;"
+              <%= (personalCount >= 1 && cooperativeCount >= 3) ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : '' %>>
+        Создать телеканал
+      </button>
     </div>
   </form>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const radioPersonal = document.getElementById('type-personal');
+      const radioCooperative = document.getElementById('type-cooperative');
+      const teamGroup = document.getElementById('team-input-group');
+      const teamInput = document.getElementById('team-username-input');
+      const list = document.getElementById('team-users-list');
+      const tagsContainer = document.getElementById('team-tags-container');
+      const hiddenInputsContainer = document.getElementById('team-hidden-inputs');
+      let selectedUsers = [];
+      let debounceTimeout;
+
+      function renderTeamTags() {
+        if (!tagsContainer || !hiddenInputsContainer) return;
+        tagsContainer.innerHTML = '';
+        hiddenInputsContainer.innerHTML = '';
+        
+        selectedUsers.forEach(username => {
+          const tag = document.createElement('div');
+          tag.style.display = 'inline-flex';
+          tag.style.alignItems = 'center';
+          tag.style.background = '#2a2a2a';
+          tag.style.border = '1px solid #444';
+          tag.style.borderRadius = '3px';
+          tag.style.padding = '4px 8px';
+          tag.style.color = '#fff';
+          tag.style.fontSize = '12px';
+          tag.style.gap = '8px';
+          
+          tag.innerHTML = `
+            <span>${username}</span>
+            <span class="remove-tag" style="cursor: pointer; color: #ff6b6b; font-weight: bold; font-size: 14px;">&times;</span>
+          `;
+          
+          tag.querySelector('.remove-tag').addEventListener('click', () => {
+            selectedUsers = selectedUsers.filter(u => u !== username);
+            renderTeamTags();
+          });
+          
+          tagsContainer.appendChild(tag);
+          
+          const hiddenInput = document.createElement('input');
+          hiddenInput.type = 'hidden';
+          hiddenInput.name = 'team_usernames';
+          hiddenInput.value = username;
+          hiddenInputsContainer.appendChild(hiddenInput);
+        });
+      }
+
+      function toggleTeamInput() {
+        if (radioCooperative && radioCooperative.checked) {
+          teamGroup.style.display = 'block';
+          teamInput.required = false;
+        } else {
+          teamGroup.style.display = 'none';
+          teamInput.value = '';
+          selectedUsers = [];
+          renderTeamTags();
+          if (list) list.style.display = 'none';
+        }
+      }
+
+      if (radioPersonal) radioPersonal.addEventListener('change', toggleTeamInput);
+      if (radioCooperative) radioCooperative.addEventListener('change', toggleTeamInput);
+
+      if (teamInput && list) {
+        teamInput.addEventListener('input', (e) => {
+          clearTimeout(debounceTimeout);
+          debounceTimeout = setTimeout(async () => {
+            const q = e.target.value.trim();
+            if (q.length < 1) {
+              list.style.display = 'none';
+              return;
+            }
+            try {
+              const res = await fetch('/api/users/search?q=' + encodeURIComponent(q));
+              const data = await res.json();
+              list.innerHTML = '';
+              if (data.length > 0) {
+                const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
+                data.forEach(user => {
+                  const item = document.createElement('div');
+                  item.style.padding = '8px 10px';
+                  item.style.cursor = 'pointer';
+                  item.style.borderBottom = '1px solid #eee';
+                  item.style.color = '#333';
+                  item.style.display = 'flex';
+                  item.style.alignItems = 'center';
+                  const safeAvatar = user.avatar ? escapeHTML(user.avatar) : '/images/default-avatar.png';
+                  const safeUsername = escapeHTML(user.username);
+                  item.innerHTML = '<img src="' + safeAvatar + '" style="width: 20px; height: 20px; border-radius: 50%; margin-right: 10px;"> ' + safeUsername;
+                  
+                  item.addEventListener('mouseover', () => item.style.backgroundColor = '#f0f0f0');
+                  item.addEventListener('mouseout', () => item.style.backgroundColor = 'transparent');
+                  item.addEventListener('click', () => {
+                    if (!selectedUsers.includes(user.username)) {
+                      selectedUsers.push(user.username);
+                      renderTeamTags();
+                    }
+                    teamInput.value = '';
+                    list.style.display = 'none';
+                  });
+                  list.appendChild(item);
+                });
+                list.style.display = 'block';
+              } else {
+                list.style.display = 'none';
+              }
+            } catch(err) {
+              list.style.display = 'none';
+            }
+          }, 300);
+        });
+
+        document.addEventListener('click', (e) => {
+          if (e.target !== teamInput && e.target !== list && !list.contains(e.target)) {
+            list.style.display = 'none';
+          }
+        });
+      }
+    });
+  </script>
 <% } %>
 
 </div>
