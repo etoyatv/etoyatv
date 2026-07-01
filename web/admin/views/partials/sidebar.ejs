@@ -44,6 +44,19 @@
         <% } %>
       </form>
     </div>
+  <% } else if (typeof currentPath !== 'undefined' && currentPath.startsWith('/announces')) { %>
+    <div class="sidebar-group">
+      <a href="/announces" class="sidebar-link <%= (typeof search === 'undefined' || !search) ? 'active' : '' %>">Все анонсы</a>
+      <a href="#" class="sidebar-link <%= (typeof search !== 'undefined' && search) ? 'active' : '' %>" onclick="document.getElementById('searchForm').style.display='block'; return false;">Поиск анонсов</a>
+      
+      <form id="searchForm" class="news-search-form" action="/announces" method="GET" style="display: <%= (typeof search !== 'undefined' && search) ? 'block' : 'none' %>; margin-top: 10px;">
+        <input type="text" name="search" class="news-search-input" placeholder="Поиск..." value="<%= typeof search !== 'undefined' ? search : '' %>" style="width: 100%; background: #111; border: 1px solid #333; color: #fff; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-family: 'Inter', sans-serif;">
+        <button type="submit" class="news-search-btn" style="width: 100%; background: #00c6ff; color: #000; border: none; padding: 10px; border-radius: 6px; font-weight: bold; cursor: pointer;">Найти</button>
+        <% if (typeof search !== 'undefined' && search) { %>
+          <a href="/announces" style="display: block; text-align: center; color: #888; font-size: 12px; margin-top: 5px; text-decoration: none;">Сбросить</a>
+        <% } %>
+      </form>
+    </div>
   <% } else if (typeof currentPath !== 'undefined' && currentPath.startsWith('/channels')) { %>
     <div class="sidebar-group">
       <a href="/channels" class="sidebar-link <%= ((typeof q === 'undefined' || !q) && currentPath === '/channels') ? 'active' : '' %>">Все каналы</a>

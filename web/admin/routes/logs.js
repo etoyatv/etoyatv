@@ -22,26 +22,41 @@ router.get('/logs', async (req, res) => {
       category = 'user';
     }
 
+    const isSuper = req.user && req.user.is_superadmin;
+
     let query = `
-      SELECT * FROM system_logs WHERE 1=1
+      SELECT l.* FROM system_logs l
+      LEFT JOIN users u ON l.username = u.username
+      LEFT JOIN staff s ON u.id = s.user_id
+      WHERE 1=1
     `;
-    let countQuery = `SELECT COUNT(*) as total FROM system_logs WHERE 1=1`;
+    let countQuery = `
+      SELECT COUNT(*) as total FROM system_logs l
+      LEFT JOIN users u ON l.username = u.username
+      LEFT JOIN staff s ON u.id = s.user_id
+      WHERE 1=1
+    `;
     let params = [];
 
+    if (!isSuper) {
+      query += ` AND (s.is_superadmin IS NULL OR s.is_superadmin = 0)`;
+      countQuery += ` AND (s.is_superadmin IS NULL OR s.is_superadmin = 0)`;
+    }
+
     if (isModOnly) {
-      query += ` AND log_type != 'admin'`;
-      countQuery += ` AND log_type != 'admin'`;
+      query += ` AND l.log_type != 'admin'`;
+      countQuery += ` AND l.log_type != 'admin'`;
     }
 
     if (search) {
-      query += ` AND (username LIKE ? OR action_text LIKE ? OR ip_address LIKE ?)`;
-      countQuery += ` AND (username LIKE ? OR action_text LIKE ? OR ip_address LIKE ?)`;
+      query += ` AND (l.username LIKE ? OR l.action_text LIKE ? OR l.ip_address LIKE ?)`;
+      countQuery += ` AND (l.username LIKE ? OR l.action_text LIKE ? OR l.ip_address LIKE ?)`;
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     
     if (category) {
-      query += ` AND log_type = ?`;
-      countQuery += ` AND log_type = ?`;
+      query += ` AND l.log_type = ?`;
+      countQuery += ` AND l.log_type = ?`;
       params.push(category);
     }
     

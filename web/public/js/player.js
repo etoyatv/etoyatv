@@ -76,6 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     socket.emit('join_channel', {
       channelId: window.CHANNEL_ID,
       user: window.CURRENT_USER,
+      userToken: window.CURRENT_USER_TOKEN,
       guestName: guestName,
       color: document.getElementById('chat-color-picker')?.value || '#3b9cd9'
     });
@@ -316,6 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('guest_name_changed', (data) => {
     guestName = data.name;
     localStorage.setItem('etoyatv_guest_name', guestName);
+  });
+
+  socket.on('guest_name_error', (data) => {
+    alert(data.error || 'Ошибка смены никнейма');
   });
 
   // --- Chat Input & Color ---
@@ -939,8 +944,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (inMessages) {
         const chatInput = document.getElementById('chat-input');
         if (chatInput && !chatInput.disabled) {
-          chatInput.value += `${contextMenuTargetUser}, `;
-          chatInput.focus();
+          if (chatInput.value.trim() === '') {
+            chatInput.value += `${contextMenuTargetUser}, `;
+            chatInput.focus();
+          }
         }
         return; // Do not show context menu when clicking in chat history
       }

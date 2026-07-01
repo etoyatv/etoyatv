@@ -190,7 +190,7 @@ router.post('/settings', async (req, res) => {
         'allow_features_for_everyone'
       ];
       const textSettings = [
-        'site_disabled_message', 'banner_text_short', 'banner_text_full', 'forbidden_words'
+        'site_disabled_message', 'banner_text_short', 'banner_text_full', 'forbidden_words', 'news_source'
       ];
 
       for (const key of switchSettings) {
@@ -313,14 +313,32 @@ router.get('/users', async (req, res) => {
     const { pool } = require('../config/db');
     const connection = await pool.getConnection();
 
+    const isSuper = req.user && req.user.is_superadmin;
+
+    let totalQuery = 'SELECT COUNT(u.id) as total FROM users u';
+    let deletedQuery = 'SELECT COUNT(u.id) as deleted FROM users u WHERE u.deleted_at IS NOT NULL';
+    let bannedQuery = 'SELECT COUNT(u.id) as banned FROM users u WHERE u.is_banned = 1';
+    let usersQuery = `
+      SELECT u.id, u.username, u.email, u.avatar, u.is_verified, u.deleted_at, u.role, u.is_banned, s.role as staff_role, s.is_superadmin
+      FROM users u
+      LEFT JOIN staff s ON u.id = s.user_id
+    `;
+
+    if (!isSuper) {
+      totalQuery = 'SELECT COUNT(u.id) as total FROM users u LEFT JOIN staff s ON u.id = s.user_id WHERE s.is_superadmin IS NULL OR s.is_superadmin = 0';
+      deletedQuery = 'SELECT COUNT(u.id) as deleted FROM users u LEFT JOIN staff s ON u.id = s.user_id WHERE u.deleted_at IS NOT NULL AND (s.is_superadmin IS NULL OR s.is_superadmin = 0)';
+      bannedQuery = 'SELECT COUNT(u.id) as banned FROM users u LEFT JOIN staff s ON u.id = s.user_id WHERE u.is_banned = 1 AND (s.is_superadmin IS NULL OR s.is_superadmin = 0)';
+      usersQuery += ' WHERE s.is_superadmin IS NULL OR s.is_superadmin = 0';
+    }
+
     // Stats
-    const [[{ total }]] = await connection.query('SELECT COUNT(*) as total FROM users');
-    const [[{ deleted }]] = await connection.query('SELECT COUNT(*) as deleted FROM users WHERE deleted_at IS NOT NULL');
+    const [[{ total }]] = await connection.query(totalQuery);
+    const [[{ deleted }]] = await connection.query(deletedQuery);
     
     // Check if is_banned exists, otherwise return 0 to avoid errors if db hasn't migrated yet
     let banned = 0;
     try {
-      const [[b]] = await connection.query('SELECT COUNT(*) as banned FROM users WHERE is_banned = 1');
+      const [[b]] = await connection.query(bannedQuery);
       banned = b.banned;
     } catch(e) { }
 
@@ -329,13 +347,8 @@ router.get('/users', async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const offset = (page - 1) * limit;
 
-    const [users] = await connection.query(`
-      SELECT u.id, u.username, u.email, u.avatar, u.is_verified, u.deleted_at, u.role, u.is_banned, s.role as staff_role, s.is_superadmin
-      FROM users u
-      LEFT JOIN staff s ON u.id = s.user_id
-      ORDER BY u.id DESC 
-      LIMIT ? OFFSET ?
-    `, [limit, offset]);
+    usersQuery += ' ORDER BY u.id DESC LIMIT ? OFFSET ?';
+    const [users] = await connection.query(usersQuery, [limit, offset]);
 
     connection.release();
 
@@ -373,7 +386,12 @@ router.get('/users/search', async (req, res) => {
     const offset = (page - 1) * limit;
 
     if (query) {
-      let countSql = 'SELECT COUNT(*) as total FROM users u';
+      const isSuper = req.user && req.user.is_superadmin;
+      let countSql = 'SELECT COUNT(u.id) as total FROM users u';
+      if (!isSuper) {
+        countSql += ' LEFT JOIN staff s ON u.id = s.user_id';
+      }
+
       let sql = `
         SELECT u.id, u.username, u.email, u.avatar, u.is_verified, u.deleted_at, u.role, u.is_banned, s.role as staff_role, s.is_superadmin
         FROM users u
@@ -381,19 +399,24 @@ router.get('/users/search', async (req, res) => {
       `;
       let params = [];
       
+      let whereClause = '';
       if (type === 'id') {
-        sql += ' WHERE u.id = ?';
-        countSql += ' WHERE u.id = ?';
+        whereClause = 'u.id = ?';
         params.push(query);
       } else if (type === 'email') {
-        sql += ' WHERE u.email LIKE ?';
-        countSql += ' WHERE u.email LIKE ?';
+        whereClause = 'u.email LIKE ?';
         params.push('%' + query + '%');
       } else {
-        sql += ' WHERE u.username LIKE ?';
-        countSql += ' WHERE u.username LIKE ?';
+        whereClause = 'u.username LIKE ?';
         params.push('%' + query + '%');
       }
+      
+      if (!isSuper) {
+        whereClause += ' AND (s.is_superadmin IS NULL OR s.is_superadmin = 0)';
+      }
+      
+      sql += ' WHERE ' + whereClause;
+      countSql += ' WHERE ' + whereClause;
       
       const [[{ total: count }]] = await connection.query(countSql, params);
       total = count;
@@ -429,6 +452,11 @@ router.get('/users/search', async (req, res) => {
 // Ban/Unban user
 router.post('/users/:id/ban', async (req, res) => {
   try {
+    const adminId = req.session.user ? req.session.user.id : null;
+    if (adminId && req.params.id == adminId) {
+      return res.status(400).render('error', { status: 400, title: 'Ошибка', message: 'Вы не можете заблокировать самого себя.' });
+    }
+
     const { pool } = require('../config/db');
     const connection = await pool.getConnection();
 
@@ -437,7 +465,6 @@ router.post('/users/:id/ban', async (req, res) => {
       return res.status(403).render('error', { status: 403, title: 'Отказано в доступе', message: 'У вас нет прав для выполнения этого действия.' });
     }
     
-    const adminId = req.session.user ? req.session.user.id : null;
     const { ban_type, banned_until, reason, show_reason, ban_ip, ip_ban_type } = req.body;
 
     if (reason && reason.length > 200) {
@@ -522,6 +549,37 @@ router.post('/users/:id/delete', async (req, res) => {
       req.session.success_msg = 'Пользователь успешно удален';
       res.redirect('back');
     }
+  } catch (err) {
+    console.error(err);
+    res.status(500).render('error', { status: 500, title: 'Ошибка сервера', message: 'Произошла непредвиденная ошибка на сервере.' });
+  }
+});
+
+router.post('/users/:id/confirm', async (req, res) => {
+  try {
+    const { pool } = require('../config/db');
+    const connection = await pool.getConnection();
+
+    if (!(await checkAccess(req, connection, req.params.id))) {
+      connection.release();
+      return res.status(403).render('error', { status: 403, title: 'Отказано в доступе', message: 'У вас нет прав для выполнения этого действия.' });
+    }
+
+    const [uRows] = await connection.query('SELECT username FROM users WHERE id = ?', [req.params.id]);
+    if (uRows.length === 0) {
+      connection.release();
+      return res.status(404).render('error', { status: 404, title: 'Не найдено', message: 'Пользователь не найден.' });
+    }
+    const targetUsername = uRows[0].username;
+
+    await connection.query('UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?', [req.params.id]);
+    connection.release();
+
+    const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+    logAction('admin', req.session.user.username, `Подтвердил email/аккаунт пользователя "${targetUsername}" (ID: ${req.params.id})`, userIp);
+
+    req.session.success_msg = 'Пользователь успешно подтвержден';
+    res.redirect('back');
   } catch (err) {
     console.error(err);
     res.status(500).render('error', { status: 500, title: 'Ошибка сервера', message: 'Произошла непредвиденная ошибка на сервере.' });
@@ -743,7 +801,13 @@ router.post('/users/:id/edit', (req, res, next) => {
       }
     }
 
+    let currentEmail = '';
     if (email) {
+      const [currentUserRows] = await connection.query('SELECT email FROM users WHERE id = ?', [userId]);
+      if (currentUserRows.length > 0) {
+        currentEmail = currentUserRows[0].email;
+      }
+
       const [existingEmail] = await connection.query('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId]);
       if (existingEmail.length > 0) {
         connection.release();
@@ -759,7 +823,11 @@ router.post('/users/:id/edit', (req, res, next) => {
     let params = [];
 
     if (username) { updates.push('username = ?'); params.push(username.trim()); }
-    if (email) { updates.push('email = ?'); params.push(email); }
+    if (email && email.trim() !== currentEmail) {
+      updates.push('email = ?');
+      params.push(email.trim());
+      updates.push('last_email_change = NOW()');
+    }
     if (discord !== undefined) { updates.push('discord = ?'); params.push(discord); }
     if (telegram !== undefined) { updates.push('telegram = ?'); params.push(telegram); }
     if (about !== undefined) { updates.push('about = ?'); params.push(about); }
@@ -842,12 +910,14 @@ router.post('/settings/personal', async (req, res) => {
     const { pool } = require('../config/db');
     const isEnabled = req.body.blur_18_plus === '1' ? 1 : 0;
     const maskMode = req.body.mask_mode || 'disabled';
+    const hideAdminTools = req.body.hide_admin_tools === '1' ? 1 : 0;
     
-    // Save blur & mask modes
-    await pool.query('UPDATE staff SET blur_18_plus = ?, mask_mode = ? WHERE user_id = ?', [isEnabled, maskMode, req.session.user.id]);
+    // Save blur, mask modes & hide admin tools setting
+    await pool.query('UPDATE staff SET blur_18_plus = ?, mask_mode = ?, hide_admin_tools = ? WHERE user_id = ?', [isEnabled, maskMode, hideAdminTools, req.session.user.id]);
     
     if (req.session.user) {
         req.session.user.mask_mode = maskMode;
+        req.session.user.hide_admin_tools = hideAdminTools;
     }
 
     // Save notification settings

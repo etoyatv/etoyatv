@@ -1,5 +1,8 @@
-const { uploadRecord, uploadDesign } = require('../config/upload');
+const multer = require('multer');
+const { uploadRecord, uploadDesign, recordsStorage, videoFilter } = require('../config/upload');
 const { pool } = require('../config/db');
+const fs = require('fs');
+const path = require('path');
 
 const panelMiddleware = async (req, res, next) => {
   if (!req.session.user) {
@@ -128,12 +131,22 @@ const panelMiddleware = async (req, res, next) => {
 };
 
 const recordUploadMiddleware = (req, res, next) => {
-  uploadRecord.single('record_file')(req, res, function(err) {
+  const channel = res.locals.panelChannel;
+  const isPremiumOrVerified = channel && (channel.is_premium === 1 || channel.is_verified === 1 || channel.is_premium === true || channel.is_verified === true);
+  const limitSize = isPremiumOrVerified ? 2 * 1024 * 1024 * 1024 : 256 * 1024 * 1024; // 2GB vs 256MB
+
+  const dynamicUploadRecord = multer({
+    storage: recordsStorage,
+    fileFilter: videoFilter,
+    limits: { fileSize: limitSize }
+  });
+
+  dynamicUploadRecord.single('record_file')(req, res, function(err) {
     if (err) {
       console.error('Upload Error:', err);
       let errMsg = 'Ошибка загрузки файла: ' + (err.message || err);
       if (err.code === 'LIMIT_FILE_SIZE') {
-        errMsg = 'Размер видео слишком велик.';
+        errMsg = `Размер видео слишком велик. Лимит: ${isPremiumOrVerified ? '2 ГБ' : '256 МБ'}.`;
       }
       if (err.code === 'LIMIT_UNEXPECTED_FILE') {
         errMsg = 'Недопустимый формат видеофайла.';
@@ -148,16 +161,94 @@ const recordUploadMiddleware = (req, res, next) => {
 };
 
 const designUploadMiddleware = (req, res, next) => {
-  uploadDesign.fields([{ name: 'logo', maxCount: 1 }, { name: 'banner', maxCount: 1 }, { name: 'background', maxCount: 1 }, { name: 'player_background', maxCount: 1 }])(req, res, function(err) {
+  uploadDesign.fields([{ name: 'logo', maxCount: 1 }, { name: 'banner', maxCount: 1 }, { name: 'background', maxCount: 1 }, { name: 'player_background', maxCount: 1 }])(req, res, async function(err) {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Размер файла превышает лимит 4 МБ.'));
       }
       if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-        return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Разрешена загрузка только изображений (jpeg, png, gif, webp).'));
+        return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Разрешена загрузка только изображений (jpeg, png, gif, webp, apng).'));
       }
       return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Ошибка загрузки файла.'));
     }
+
+    // Square check for GIF logo if uploaded
+    if (req.files && req.files['logo'] && req.files['logo'].length > 0) {
+      const logoFile = req.files['logo'][0];
+      if (fs.existsSync(logoFile.path)) {
+        const isGif = logoFile.mimetype === 'image/gif' || path.extname(logoFile.originalname).toLowerCase() === '.gif';
+        if (isGif) {
+          try {
+            const sharp = require('sharp');
+            const metadata = await sharp(logoFile.path).metadata();
+            if (metadata.width !== metadata.height) {
+              if (req.files) {
+                for (const fieldname in req.files) {
+                  req.files[fieldname].forEach(f => {
+                    if (fs.existsSync(f.path)) {
+                      fs.unlinkSync(f.path);
+                    }
+                  });
+                }
+              }
+              return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Для GIF-логотипа канала разрешено только квадратное соотношение сторон (например, 100x100, 200x200).'));
+            }
+          } catch (sharpErr) {
+            console.error('Failed to parse GIF metadata for logo:', sharpErr);
+            if (req.files) {
+              for (const fieldname in req.files) {
+                req.files[fieldname].forEach(f => {
+                  if (fs.existsSync(f.path)) {
+                    fs.unlinkSync(f.path);
+                  }
+                });
+              }
+            }
+            return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Не удалось обработать изображение. Возможно, файл поврежден.'));
+          }
+        }
+      }
+    }
+
+    // Validation for GIF and APNG (Premium / Verified channels only)
+    const channel = res.locals.panelChannel;
+    const isPremiumOrVerified = channel && (channel.is_premium === 1 || channel.is_verified === 1 || channel.is_premium === true || channel.is_verified === true);
+
+    if (!isPremiumOrVerified) {
+      let containsAnimation = false;
+      if (req.files) {
+        for (const fieldname in req.files) {
+          const files = req.files[fieldname];
+          for (const file of files) {
+            if (fs.existsSync(file.path)) {
+              const buffer = fs.readFileSync(file.path);
+              const isGif = file.mimetype === 'image/gif' || path.extname(file.originalname).toLowerCase() === '.gif' || buffer.toString('ascii', 0, 4) === 'GIF8';
+              const isApng = file.mimetype === 'image/apng' || path.extname(file.originalname).toLowerCase() === '.apng' || buffer.indexOf('acTL') > -1;
+              if (isGif || isApng) {
+                containsAnimation = true;
+                break;
+              }
+            }
+          }
+          if (containsAnimation) break;
+        }
+      }
+
+      if (containsAnimation) {
+        // Delete all uploaded files to avoid garbage
+        if (req.files) {
+          for (const fieldname in req.files) {
+            req.files[fieldname].forEach(f => {
+              if (fs.existsSync(f.path)) {
+                fs.unlinkSync(f.path);
+              }
+            });
+          }
+        }
+        return res.redirect('/ru/panel,settings,design?error=' + encodeURIComponent('Анимации (APNG, GIF) в дизайне доступны только для премиум или подтвержденных каналов.'));
+      }
+    }
+
     next();
   });
 };

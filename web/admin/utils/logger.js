@@ -10,9 +10,16 @@ const { sendAdminNotification } = require('../../utils/telegram');
  */
 async function logAction(logType, username, actionText, ipAddress) {
   try {
+    let cleanIp = ipAddress || '127.0.0.1';
+    if (cleanIp && cleanIp.startsWith('::ffff:')) {
+      cleanIp = cleanIp.substring(7);
+    }
+    if (cleanIp === '::1') {
+      cleanIp = '127.0.0.1';
+    }
     await pool.query(
       'INSERT INTO system_logs (log_type, username, action_text, ip_address) VALUES (?, ?, ?, ?)',
-      [logType, username || 'Неизвестный', actionText, ipAddress || '127.0.0.1']
+      [logType, username || 'Неизвестный', actionText, cleanIp]
     );
 
     // Telegram Notifications interceptor

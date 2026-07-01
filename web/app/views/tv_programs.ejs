@@ -22,7 +22,7 @@
 </div>
 <div class="block-content">
 <div id="channels_list">
-<div class="records_list" style="padding: 10px;">
+<div class="records_list" style="padding: 0;">
 <% if (items.length === 0) { %>
     <div style="padding: 20px; text-align: center; color: #888;">Анонсы или прямые трансляции не найдены.</div>
 <% } else { %>
@@ -33,6 +33,7 @@
     <% const channelName = isLive ? item.name : item.channel_name; %>
     <% const logoUrl = isLive ? item.logo_url : item.channel_logo; %>
     <% const is18Plus = isLive ? item.is_18_plus : item.is_18_plus; %>
+    <% const logoFit = isLive ? item.logo_fit : item.channel_logo_fit; %>
     
     <% if (isLive) { %>
       <!-- Live Broadcast Layout -->
@@ -67,13 +68,13 @@
     <% } else { %>
       <!-- Announcement Layout -->
       <div class="item <%= idx === items.length - 1 ? 'last item_end' : '' %>" style="padding: 10px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
-        <div style="float: left; width: 45px; text-align: center; margin-right: 10px; padding-top: 5px;">
+        <div class="date" style="float: left; width: 70px; text-align: center; margin-right: 10px;">
           <% const d = new Date(item.start_time); %>
-          <div style="font-size: 14px; color: #fff;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
-          <div style="font-size: 11px; color: #8c989e;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
+          <div class="time" style="font-size: 16px; font-weight: bold; color: #c0c0b2; line-height: 1.2;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
+          <div class="day" style="font-size: 11px; color: #777; margin-top: 4px; line-height: 1.2;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
         </div>
         <div class="logo" style="float: left; width: 60px; height: 60px; padding: 1px; background: url('<%= CDN_BASE_URL %>/images/css_img_38_border.bg.png') repeat; margin-right: 10px;">
-          <img src="<%= CDN_BASE_URL %><%= logoUrl || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: cover; display: block; <%= is18Plus ? 'filter: blur(4px);' : '' %>">
+          <img src="<%= CDN_BASE_URL %><%= logoUrl || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: <%= logoFit === 'contain' ? 'contain' : 'cover' %>; <%= logoFit === 'contain' ? 'background: #000;' : '' %> display: block; <%= is18Plus ? 'filter: blur(4px);' : '' %>">
         </div>
         <div class="info" style="overflow: hidden; padding-top: 5px;">
           <div class="title" style="margin-bottom: 5px;">
@@ -85,13 +86,24 @@
           <div class="description" style="font-size: 11px; color: #555; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">
             <%= item.description || 'Описание передачи не заполнено' %>
           </div>
-          <% if (locals.user) { %>
-          <div style="margin-top: 5px;">
-            <a href="#" onclick="event.preventDefault(); toggleBookmark(<%= item.id %>, this);" style="font-size: 11px; color: #00a0e3; text-decoration: none;">
-              <%= (typeof item.is_bookmarked !== 'undefined' && item.is_bookmarked) ? 'Удалить из личного расписания' : 'Добавить в личное расписание' %>
-            </a>
+          <div class="likes-badge" style="position: absolute; right: 0; top: 10px;">
+            <span id="program_bookmarks_count_<%= item.id %>"
+              style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;">
+              <%= item.bookmarks_count || 0 %>
+            </span>
+            <% if (locals.user) { %>
+              <a href="#" onclick="toggleBookmark(<%= item.id %>); return false;"
+                style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                  class="block-head-icon-heart heart-btn <%= (typeof item.is_bookmarked !== 'undefined' && item.is_bookmarked) ? 'active' : '' %>"
+                  id="program_bookmark_icon_<%= item.id %>"
+                  style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+            <% } else { %>
+              <a href="/login"
+                style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                  class="block-head-icon-heart heart-btn"
+                  style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+            <% } %>
           </div>
-          <% } %>
         </div>
       </div>
     <% } %>
@@ -147,4 +159,33 @@
 <!-- << RIGHT COLUMN -->
 <div class="clear_both"></div>
 </div>
+
+<script>
+window.toggleBookmark = async function(programId) {
+  try {
+    const res = await fetch(`/api/programs/${programId}/bookmark`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const countEl = document.getElementById('program_bookmarks_count_' + programId);
+      const iconEl = document.getElementById('program_bookmark_icon_' + programId);
+      if (countEl) {
+        let cur = parseInt(countEl.innerText) || 0;
+        countEl.innerText = data.action === 'added' ? cur + 1 : Math.max(0, cur - 1);
+      }
+      if (iconEl) {
+        if (data.action === 'added') {
+          iconEl.classList.add('active');
+        } else {
+          iconEl.classList.remove('active');
+        }
+      }
+    } else {
+      alert(data.error || 'Ошибка');
+    }
+  } catch (e) {
+    alert('Ошибка сети');
+  }
+};
+</script>
+
 <%- include('partials/footer') %>

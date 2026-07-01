@@ -56,9 +56,15 @@
     socket.emit('join_channel', {
       channelId: window.CHANNEL_ID,
       user: window.CURRENT_USER,
+      userToken: window.CURRENT_USER_TOKEN,
       guestName: guestName,
       color: document.getElementById('chat-color-picker')?.value || '#3b9cd9'
     });
+  });
+
+  socket.on('guest_name_changed', (data) => {
+    guestName = data.name;
+    localStorage.setItem('etoyatv_guest_name', guestName);
   });
 
   socket.on('update_users', ({ count, users }) => {
@@ -206,9 +212,11 @@
     // Click on username to mention
     const usernameEl = e.target.closest('.chat-username');
     if (usernameEl && chatInput && !chatInput.disabled) {
-      const user = usernameEl.getAttribute('data-username');
-      chatInput.value += `${user}, `;
-      chatInput.focus();
+      if (chatInput.value.trim() === '') {
+        const user = usernameEl.getAttribute('data-username');
+        chatInput.value += `${user}, `;
+        chatInput.focus();
+      }
     }
 
     // Pin message click delegation

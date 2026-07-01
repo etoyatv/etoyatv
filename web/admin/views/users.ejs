@@ -29,7 +29,7 @@
             
             <div class="u-card-info">
               <div class="u-card-title">
-                <strong><%= u.username %></strong> <span class="u-card-id">(id: <%= u.id %>)</span>
+                <strong><a href="<%= APP_URL %>/ru/account,userinfo/?username=<%= encodeURIComponent(u.username) %>" target="_blank" style="color: #3b9cd9; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= u.username %></a></strong> <span class="u-card-id">(id: <%= u.id %>)</span>
               </div>
               <div class="u-card-email">
                 Почта: <%= u.email ? u.email : '(удалено)' %>

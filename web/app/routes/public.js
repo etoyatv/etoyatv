@@ -42,31 +42,52 @@ router.get('/', async (req, res) => {
         FROM channels c 
         JOIN users u ON c.user_id = u.id 
         WHERE c.status = 'active' AND c.access_level != 'private' AND (c.is_live = 1 OR c.autopilot_enabled = 1)
-        ORDER BY c.is_live DESC, c.is_verified DESC, c.is_premium DESC, c.autopilot_enabled DESC, c.viewers DESC
+        ORDER BY c.is_live DESC, c.is_verified DESC, c.is_premium ASC, c.autopilot_enabled DESC, c.viewers DESC
       `);
       popularChannels = popRows;
     } catch (e) { console.error('Failed to fetch popular channels', e); }
 
 
     try {
-      const [serviceRows] = await connection.query("SELECT setting_value FROM system_settings WHERE setting_key = 'service_channel_id'");
-      if (serviceRows.length > 0 && serviceRows[0].setting_value) {
-        const serviceChannelId = parseInt(serviceRows[0].setting_value);
+      const [sourceRows] = await connection.query("SELECT setting_value FROM system_settings WHERE setting_key = 'news_source'");
+      const newsSource = sourceRows.length > 0 ? sourceRows[0].setting_value : 'service_channel';
+
+      if (newsSource === 'all_channels') {
         const [newsRows] = await connection.query(`
-          SELECT n.id, n.title, n.announce, n.created_at, c.shortname 
+          SELECT n.id, n.title, n.announce, n.created_at, c.shortname, c.name as channel_name 
           FROM channel_news n
           JOIN channels c ON n.channel_id = c.id
-          WHERE n.channel_id = ? AND n.is_hidden = 0 
+          WHERE n.is_hidden = 0 AND c.status = 'active'
           ORDER BY n.created_at DESC LIMIT 5
-        `, [serviceChannelId]);
+        `);
         latestNews = newsRows.map(n => ({ ...n, is_channel_news: true }));
-        const [newsCountRows] = await connection.query('SELECT COUNT(*) as count FROM channel_news WHERE channel_id = ? AND is_hidden = 0', [serviceChannelId]);
+        const [newsCountRows] = await connection.query(`
+          SELECT COUNT(*) as count 
+          FROM channel_news n
+          JOIN channels c ON n.channel_id = c.id
+          WHERE n.is_hidden = 0 AND c.status = 'active'
+        `);
         newsCount = newsCountRows[0].count;
       } else {
-        const [newsRows] = await connection.query('SELECT * FROM news ORDER BY created_at DESC LIMIT 5');
-        latestNews = newsRows;
-        const [newsCountRows] = await connection.query('SELECT COUNT(*) as count FROM news');
-        newsCount = newsCountRows[0].count;
+        const [serviceRows] = await connection.query("SELECT setting_value FROM system_settings WHERE setting_key = 'service_channel_id'");
+        if (serviceRows.length > 0 && serviceRows[0].setting_value) {
+          const serviceChannelId = parseInt(serviceRows[0].setting_value);
+          const [newsRows] = await connection.query(`
+            SELECT n.id, n.title, n.announce, n.created_at, c.shortname, c.name as channel_name 
+            FROM channel_news n
+            JOIN channels c ON n.channel_id = c.id
+            WHERE n.channel_id = ? AND n.is_hidden = 0 
+            ORDER BY n.created_at DESC LIMIT 5
+          `, [serviceChannelId]);
+          latestNews = newsRows.map(n => ({ ...n, is_channel_news: true }));
+          const [newsCountRows] = await connection.query('SELECT COUNT(*) as count FROM channel_news WHERE channel_id = ? AND is_hidden = 0', [serviceChannelId]);
+          newsCount = newsCountRows[0].count;
+        } else {
+          const [newsRows] = await connection.query('SELECT * FROM news ORDER BY created_at DESC LIMIT 5');
+          latestNews = newsRows;
+          const [newsCountRows] = await connection.query('SELECT COUNT(*) as count FROM news');
+          newsCount = newsCountRows[0].count;
+        }
       }
     } catch (err) { console.error('Failed to fetch news', err); }
 
@@ -124,26 +145,52 @@ router.get('/ru/news', async (req, res) => {
       const hiddenCondition = canSeeHiddenNews ? '' : ' AND is_hidden = 0';
 
       [countRows] = await connection.query(`SELECT COUNT(*) as count FROM channel_news WHERE channel_id = ?${hiddenCondition}`, [itemId]);
-      [news] = await connection.query(`SELECT * FROM channel_news WHERE channel_id = ?${hiddenCondition} ORDER BY created_at DESC LIMIT ? OFFSET ?`, [itemId, perPage, offset]);
+      [news] = await connection.query(`
+        SELECT n.*, c.name as channel_name, c.shortname 
+        FROM channel_news n 
+        JOIN channels c ON n.channel_id = c.id
+        WHERE n.channel_id = ?${hiddenCondition} 
+        ORDER BY n.created_at DESC LIMIT ? OFFSET ?
+      `, [itemId, perPage, offset]);
 
       // Map properties so the news.ejs template handles them the same way
       news = news.map(n => ({ ...n, content: n.announce }));
     } else {
-      const [serviceRows] = await connection.query("SELECT setting_value FROM system_settings WHERE setting_key = 'service_channel_id'");
-      if (serviceRows.length > 0 && serviceRows[0].setting_value) {
-        const serviceChannelId = parseInt(serviceRows[0].setting_value);
-        [countRows] = await connection.query('SELECT COUNT(*) as count FROM channel_news WHERE channel_id = ? AND is_hidden = 0', [serviceChannelId]);
-        [news] = await connection.query(`
-          SELECT n.id, n.title, n.announce, n.created_at, c.shortname 
+      const [sourceRows] = await connection.query("SELECT setting_value FROM system_settings WHERE setting_key = 'news_source'");
+      const newsSource = sourceRows.length > 0 ? sourceRows[0].setting_value : 'service_channel';
+
+      if (newsSource === 'all_channels') {
+        [countRows] = await connection.query(`
+          SELECT COUNT(*) as count 
           FROM channel_news n
           JOIN channels c ON n.channel_id = c.id
-          WHERE n.channel_id = ? AND n.is_hidden = 0 
+          WHERE n.is_hidden = 0 AND c.status = 'active'
+        `);
+        [news] = await connection.query(`
+          SELECT n.id, n.title, n.announce, n.created_at, c.shortname, c.name as channel_name 
+          FROM channel_news n
+          JOIN channels c ON n.channel_id = c.id
+          WHERE n.is_hidden = 0 AND c.status = 'active'
           ORDER BY n.created_at DESC LIMIT ? OFFSET ?
-        `, [serviceChannelId, perPage, offset]);
+        `, [perPage, offset]);
         news = news.map(n => ({ ...n, is_channel_news: true }));
       } else {
-        [countRows] = await connection.query('SELECT COUNT(*) as count FROM news');
-        [news] = await connection.query('SELECT * FROM news ORDER BY created_at DESC LIMIT ? OFFSET ?', [perPage, offset]);
+        const [serviceRows] = await connection.query("SELECT setting_value FROM system_settings WHERE setting_key = 'service_channel_id'");
+        if (serviceRows.length > 0 && serviceRows[0].setting_value) {
+          const serviceChannelId = parseInt(serviceRows[0].setting_value);
+          [countRows] = await connection.query('SELECT COUNT(*) as count FROM channel_news WHERE channel_id = ? AND is_hidden = 0', [serviceChannelId]);
+          [news] = await connection.query(`
+            SELECT n.id, n.title, n.announce, n.created_at, c.shortname, c.name as channel_name 
+            FROM channel_news n
+            JOIN channels c ON n.channel_id = c.id
+            WHERE n.channel_id = ? AND n.is_hidden = 0 
+            ORDER BY n.created_at DESC LIMIT ? OFFSET ?
+          `, [serviceChannelId, perPage, offset]);
+          news = news.map(n => ({ ...n, is_channel_news: true }));
+        } else {
+          [countRows] = await connection.query('SELECT COUNT(*) as count FROM news');
+          [news] = await connection.query('SELECT * FROM news ORDER BY created_at DESC LIMIT ? OFFSET ?', [perPage, offset]);
+        }
       }
     }
 

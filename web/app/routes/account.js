@@ -30,9 +30,9 @@ router.get('/ru/account,programs', async (req, res) => {
       return res.status(404).send('User not found');
     }
     const profileUser = userRows[0];
-
     const [scheduleRows] = await connection.query(`
-      SELECT p.*, c.name as channel_name, c.shortname, c.logo_url 
+      SELECT p.*, c.name as channel_name, c.shortname, c.logo_url, c.logo_fit,
+             (SELECT COUNT(*) FROM personal_schedules ps2 WHERE ps2.program_id = p.id) as bookmarks_count
       FROM personal_schedules ps
       JOIN programs p ON ps.program_id = p.id
       JOIN channels c ON p.channel_id = c.id
@@ -85,6 +85,14 @@ router.get('/ru/account,userinfo/', async (req, res) => {
     }
 
     const profileUser = rows[0];
+    const [staffRows] = await connection.query('SELECT role, is_superadmin FROM staff WHERE user_id = ?', [profileUser.id]);
+    if (staffRows.length > 0) {
+      profileUser.staff_role = staffRows[0].role;
+      profileUser.is_superadmin = staffRows[0].is_superadmin;
+    } else {
+      profileUser.staff_role = null;
+      profileUser.is_superadmin = false;
+    }
     const isBanned = profileUser.is_banned === 1 && (!profileUser.banned_until || new Date(profileUser.banned_until) > new Date());
     
     if (profileUser.deleted_at || isBanned) {
@@ -181,9 +189,9 @@ router.get('/ru/account,userinfo/', async (req, res) => {
     `, [profileUser.id]);
     const favoriteRecordsTotal = favoriteRecordsCountRow[0].cnt;
 
-    // Fetch personal schedules (up to 3)
     const [personalSchedules] = await connection.query(`
-      SELECT p.*, c.name as channel_name, c.shortname, c.logo_url 
+      SELECT p.*, c.name as channel_name, c.shortname, c.logo_url, c.logo_fit,
+             (SELECT COUNT(*) FROM personal_schedules ps2 WHERE ps2.program_id = p.id) as bookmarks_count
       FROM personal_schedules ps
       JOIN programs p ON ps.program_id = p.id
       JOIN channels c ON p.channel_id = c.id
@@ -582,6 +590,27 @@ router.post('/settings/profile', requireAuth, (req, res) => {
       return res.send('<script>alert("Ошибка сервера при загрузке."); setTimeout(function(){ window.location.href="/ru/account,profile/#tab-profile"; }, 1500);</script>');
     }
 
+    // Square check for GIF avatar if uploaded
+    if (req.file) {
+      const isGif = req.file.mimetype === 'image/gif' || path.extname(req.file.originalname).toLowerCase() === '.gif';
+      if (isGif && fs.existsSync(req.file.path)) {
+        try {
+          const sharp = require('sharp');
+          const metadata = await sharp(req.file.path).metadata();
+          if (metadata.width !== metadata.height) {
+            fs.unlinkSync(req.file.path);
+            return res.send('<script>alert("Для GIF-аватарок разрешено только квадратное соотношение сторон (например, 100x100, 200x200)."); window.location.href="/ru/account,profile/#tab-profile";</script>');
+          }
+        } catch (sharpErr) {
+          console.error('Failed to parse GIF metadata for avatar:', sharpErr);
+          if (fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+          }
+          return res.send('<script>alert("Не удалось обработать изображение. Возможно, файл поврежден."); window.location.href="/ru/account,profile/#tab-profile";</script>');
+        }
+      }
+    }
+
     const { email, timezone, birthdate } = req.body;
     const currentEmail = req.session.user.email;
     const isEmailChanged = email && email.toLowerCase().trim() !== currentEmail.toLowerCase().trim();
@@ -701,7 +730,7 @@ router.post('/settings/verify-email', requireAuth, async (req, res) => {
   try {
     const connection = await pool.getConnection();
     const [oldUser] = await connection.query('SELECT email FROM users WHERE id = ?', [req.session.user.id]);
-    await connection.query('UPDATE users SET email = ? WHERE id = ?', [pending.new_email, req.session.user.id]);
+    await connection.query('UPDATE users SET email = ?, last_email_change = NOW() WHERE id = ?', [pending.new_email, req.session.user.id]);
     connection.release();
 
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;

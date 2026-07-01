@@ -142,7 +142,10 @@ router.post('/register', async (req, res) => {
         }
         connection.release();
         emailService.sendVerificationEmail(email, username, token);
-        return res.render('unverified_info', { pageTitle: 'Регистрация | ЭтоЯTV', email: email });
+        req.session.user = { id: user.id, username: username, email: email, role: user.role, timezone: user.timezone };
+        return req.session.save((err) => {
+          res.redirect('/unverified');
+        });
       }
     } else {
       const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
@@ -156,7 +159,10 @@ router.post('/register', async (req, res) => {
       connection.release();
       emailService.sendVerificationEmail(email, username, token);
       logAction('user', username, `Зарегистрировал новый аккаунт (Email: ${email})`, userIp);
-      return res.render('unverified_info', { pageTitle: 'Регистрация | ЭтоЯTV', email: email });
+      req.session.user = { id: insertRes.insertId, username: username, email: email, role: 'user', timezone: null };
+      return req.session.save((err) => {
+        res.redirect('/unverified');
+      });
     }
   } catch (err) {
     console.error(err);
@@ -213,10 +219,11 @@ router.post('/login', async (req, res) => {
         }
 
         if (rows[0].is_verified === 0) {
-          return res.render('login', {
-            pageTitle: 'Вход | ЭтоЯTV',
-            error: 'Ваша учетная запись не подтверждена. Письмо с подтверждением отправлено на ваш email.',
-            unverifiedUser: username
+          req.session.user = { id: rows[0].id, username: rows[0].username, email: rows[0].email, role: rows[0].role, timezone: rows[0].timezone };
+          const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+          logAction('user', rows[0].username, 'Вошел в свой аккаунт (без подтверждения почты)', userIp);
+          return req.session.save((err) => {
+            res.redirect('/unverified');
           });
         }
         
@@ -441,6 +448,9 @@ router.get('/register/verify', async (req, res) => {
     if (rows.length > 0) {
       await connection.query('UPDATE users SET is_verified = 1, verification_token = NULL, verification_expires = NULL WHERE id = ?', [rows[0].id]);
       connection.release();
+      if (req.session.user && req.session.user.id === rows[0].id) {
+        return res.redirect('/');
+      }
       res.render('login', { pageTitle: 'Вход | ЭтоЯTV', error: null, success: 'Аккаунт успешно подтвержден. Теперь вы можете войти.' });
     } else {
       connection.release();
@@ -448,6 +458,117 @@ router.get('/register/verify', async (req, res) => {
     }
   } catch (err) {
     console.error(err);
+    res.status(500).send('Ошибка сервера');
+  }
+});
+router.get('/unverified', requireAuth, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query('SELECT is_verified, email FROM users WHERE id = ?', [req.session.user.id]);
+    connection.release();
+    if (rows.length === 0) {
+      req.session.destroy();
+      return res.redirect('/login');
+    }
+    if (rows[0].is_verified === 1) {
+      return res.redirect('/');
+    }
+    const email = rows[0].email;
+    const error = req.query.error || null;
+    const success = req.query.success || null;
+    res.render('unverified', {
+      pageTitle: 'Подтверждение E-Mail | ЭтоЯTV',
+      email,
+      error,
+      success
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Ошибка сервера');
+  }
+});
+
+router.post('/unverified/resend', requireAuth, async (req, res) => {
+  const captchaToken = req.body['h-captcha-response'];
+  const isCaptchaValid = await verifyHCaptcha(captchaToken);
+  if (!isCaptchaValid) {
+    return res.redirect(`/unverified?error=${encodeURIComponent('Пожалуйста, подтвердите, что вы не робот.')}`);
+  }
+  try {
+    const connection = await pool.getConnection();
+    const [rows] = await connection.query('SELECT * FROM users WHERE id = ?', [req.session.user.id]);
+    if (rows.length > 0 && rows[0].is_verified === 0) {
+       const user = rows[0];
+       if (user.last_email_sent && (Date.now() - new Date(user.last_email_sent).getTime() < 60000)) {
+         connection.release();
+         return res.redirect(`/unverified?error=${encodeURIComponent('Письмо уже отправлено. Подождите 60 секунд.')}`);
+       }
+       let token = crypto.randomBytes(32).toString('hex');
+       let expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+       await connection.query('UPDATE users SET verification_token = ?, verification_expires = ?, last_email_sent = NOW() WHERE id = ?', [token, expires, user.id]);
+       connection.release();
+       emailService.sendVerificationEmail(user.email, user.username, token);
+       return res.redirect(`/unverified?success=${encodeURIComponent('Письмо успешно отправлено повторно.')}`);
+    } else {
+       connection.release();
+       return res.redirect('/');
+    }
+  } catch(e) {
+    console.error(e);
+    res.status(500).send('Ошибка сервера');
+  }
+});
+
+router.post('/unverified/change-email', requireAuth, async (req, res) => {
+  const captchaToken = req.body['h-captcha-response'];
+  const isCaptchaValid = await verifyHCaptcha(captchaToken);
+  if (!isCaptchaValid) {
+    return res.redirect(`/unverified?error=${encodeURIComponent('Пожалуйста, подтвердите, что вы не робот.')}`);
+  }
+  const { email } = req.body;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    return res.redirect(`/unverified?error=${encodeURIComponent('Некорректный E-Mail адрес.')}`);
+  }
+  try {
+    const connection = await pool.getConnection();
+    
+    // Check if user is verified or if email is identical
+    const [userRows] = await connection.query('SELECT email, is_verified FROM users WHERE id = ?', [req.session.user.id]);
+    if (userRows.length === 0) {
+      connection.release();
+      return res.redirect('/login');
+    }
+    if (userRows[0].is_verified === 1) {
+      connection.release();
+      return res.redirect('/');
+    }
+    if (userRows[0].email.toLowerCase() === email.toLowerCase()) {
+      connection.release();
+      return res.redirect(`/unverified?error=${encodeURIComponent('Этот E-Mail адрес уже установлен для вашей учетной записи.')}`);
+    }
+
+    // Check if the email is already taken by someone else
+    const [existing] = await connection.query('SELECT id FROM users WHERE email = ? AND id != ?', [email, req.session.user.id]);
+    if (existing.length > 0) {
+      connection.release();
+      return res.redirect(`/unverified?error=${encodeURIComponent('Этот E-Mail адрес уже занят.')}`);
+    }
+
+    let token = crypto.randomBytes(32).toString('hex');
+    let expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    await connection.query('UPDATE users SET email = ?, verification_token = ?, verification_expires = ?, last_email_sent = NOW() WHERE id = ?', [email, token, expires, req.session.user.id]);
+    
+    // Update email in session
+    req.session.user.email = email;
+    await req.session.save();
+    
+    connection.release();
+
+    emailService.sendVerificationEmail(email, req.session.user.username, token);
+    return res.redirect(`/unverified?success=${encodeURIComponent('E-Mail адрес изменен. Новое письмо с подтверждением отправлено.')}`);
+  } catch(e) {
+    console.error(e);
     res.status(500).send('Ошибка сервера');
   }
 });

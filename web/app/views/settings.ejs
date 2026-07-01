@@ -152,7 +152,7 @@
                   <img id="avatarPreviewImg" src="<%= CDN_BASE_URL %><%= profileUser.avatar || '/images/default_user_avatar.png'  %>" alt="Avatar">
                 </div>
                 <input type="file" name="avatar" id="avatarInput" accept="image/*" style="color: #fff;">
-                <div style="font-size: 11px; color: #777; margin-top: 5px;">Загружайте только JPG, PNG. Макс размер исходника до 4МБ.</div>
+                <div style="font-size: 11px; color: #777; margin-top: 5px;">Загружайте только JPG, PNG, GIF, WEBP, APNG. Макс размер исходника до 4МБ.</div>
               </div>
             </div>
             
@@ -363,12 +363,12 @@
     const file = e.target.files[0];
     if (!file) return;
     
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/apng'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.apng'];
     const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
     if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
-      alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp).");
+      alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp, apng).");
       this.value = '';
       return;
     }
@@ -381,16 +381,43 @@
 
     const reader = new FileReader();
     reader.onload = function(event) {
-      cropperImage.src = event.target.result;
-      cropperModal.style.display = 'flex';
-      
-      if (cropper) cropper.destroy();
-      cropper = new Cropper(cropperImage, {
-        aspectRatio: 1,
-        viewMode: 1
-      });
+      const arr = new Uint8Array(event.target.result);
+      let hasAcn = false;
+      for (let i = 0; i < arr.length - 4; i++) {
+        if (arr[i] === 0x61 && arr[i+1] === 0x63 && arr[i+2] === 0x54 && arr[i+3] === 0x4C) { // "acTL"
+          hasAcn = true;
+          break;
+        }
+      }
+
+      const isGif = file.type === 'image/gif' || extension === '.gif';
+      const isApng = file.type === 'image/apng' || extension === '.apng' || hasAcn;
+
+      if (isGif || isApng) {
+        // Bypass cropper, show preview directly
+        const dataReader = new FileReader();
+        dataReader.onload = function(e) {
+          const preview = document.getElementById('avatarPreviewImg');
+          if (preview) preview.src = e.target.result;
+        };
+        dataReader.readAsDataURL(file);
+      } else {
+        // Open cropper modal
+        const dataReader = new FileReader();
+        dataReader.onload = function(e) {
+          cropperImage.src = e.target.result;
+          cropperModal.style.display = 'flex';
+          
+          if (cropper) cropper.destroy();
+          cropper = new Cropper(cropperImage, {
+            aspectRatio: 1,
+            viewMode: 1
+          });
+        };
+        dataReader.readAsDataURL(file);
+      }
     };
-    reader.readAsDataURL(file);
+    reader.readAsArrayBuffer(file);
   });
 
   btnCancelCrop.addEventListener('click', function() {

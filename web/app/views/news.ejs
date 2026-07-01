@@ -27,6 +27,9 @@
         <%= months[new Date(item.created_at).getMonth()] %>
       </div>
       <div class="body">
+        <% if (item.channel_name) { %>
+          <div style="font-size: 11px; color: #888888; margin-bottom: 2px;">Канал: <%= item.channel_name %></div>
+        <% } %>
         <% if (typeof cat !== 'undefined' && cat === 'channel' && typeof shortname !== 'undefined' && shortname) { %>
           <div class="title"><a href="/channels/<%= shortname %>/news/<%= item.id %>"><%= item.title %></a></div>
         <% } else if (item.is_channel_news) { %>

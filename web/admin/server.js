@@ -296,6 +296,9 @@ app.use('/reports', reportsRoutes);
 const newsRoutes = require('./routes/news');
 app.use('/news', newsRoutes);
 
+const announcesRoutes = require('./routes/announces');
+app.use('/announces', announcesRoutes);
+
 const logsRoutes = require('./routes/logs');
 app.use('/', logsRoutes);
 

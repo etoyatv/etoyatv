@@ -11,7 +11,7 @@ const globalAuthMiddleware = async (req, res, next) => {
   if (req.session.user && req.session.user.id) {
     try {
       const connection = await pool.getConnection();
-      const [u] = await connection.query('SELECT role, chat_color, is_banned, banned_until, deleted_at FROM users WHERE id = ?', [req.session.user.id]);
+      const [u] = await connection.query('SELECT role, chat_color, is_banned, banned_until, deleted_at, is_verified, email FROM users WHERE id = ?', [req.session.user.id]);
       if (u.length > 0) {
         const userData = u[0];
         
@@ -27,6 +27,26 @@ const globalAuthMiddleware = async (req, res, next) => {
 
         req.session.user.role = userData.role;
         req.session.user.chat_color = userData.chat_color;
+        if (userData.email) {
+          req.session.user.email = userData.email;
+        }
+
+        // Check if user is verified
+        if (userData.is_verified === 0) {
+          connection.release();
+          const allowedPaths = [
+            '/unverified',
+            '/unverified/resend',
+            '/unverified/change-email',
+            '/logout',
+            '/register/verify'
+          ];
+          if (!allowedPaths.includes(req.path)) {
+            return res.redirect('/unverified');
+          }
+          res.locals.user = req.session.user || null;
+          return next();
+        }
       } else {
         // User not found in DB
         connection.release();
@@ -73,12 +93,14 @@ const globalAuthMiddleware = async (req, res, next) => {
       const [allTeamRows] = await connection.query("SELECT c.id FROM channels c JOIN channel_team t ON c.id = t.channel_id WHERE t.user_id = ? AND c.status IN ('active', 'banned') AND (t.is_editor = 1 OR t.is_reporter = 1 OR t.is_coowner = 1) LIMIT 1", [req.session.user.id]);
       res.locals.hasPanelAccess = allOwnedChannels.length > 0 || allTeamRows.length > 0;
 
-      const [staffRows] = await connection.query("SELECT role, mask_mode FROM staff WHERE user_id = ?", [req.session.user.id]);
+      const [staffRows] = await connection.query("SELECT role, mask_mode, hide_admin_tools FROM staff WHERE user_id = ?", [req.session.user.id]);
       if (staffRows.length > 0) {
         req.session.user.staff_role = staffRows[0].role;
         req.session.user.mask_mode = staffRows[0].mask_mode;
+        req.session.user.hide_admin_tools = staffRows[0].hide_admin_tools === 1;
         res.locals.user.staff_role = staffRows[0].role;
         res.locals.user.mask_mode = staffRows[0].mask_mode;
+        res.locals.user.hide_admin_tools = staffRows[0].hide_admin_tools === 1;
       }
 
       connection.release();

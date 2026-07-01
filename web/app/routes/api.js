@@ -201,7 +201,7 @@ router.post('/api/internal/rtmp/on_publish', async (req, res) => {
     const channelId = channels[0].id;
     const channelName = channels[0].name;
 
-    // 2. Prevent multiple publishers
+    // 2. Disconnect stale publisher if active
     try {
       const axios = require('axios');
       const response = await axios.get('http://192.168.90.5:8000/api/streams', {
@@ -212,9 +212,32 @@ router.post('/api/internal/rtmp/on_publish', async (req, res) => {
       });
       const liveStreams = response.data.live;
       if (liveStreams && liveStreams[shortname] && liveStreams[shortname].publisher) {
-        if (liveStreams[shortname].publisher.clientId !== streamId) {
-          console.log(`[RTMP] Rejected duplicate publish attempt for channel ${shortname}`);
-          return res.status(403).json({ error: 'Stream is already active by another user' });
+        const oldClientId = liveStreams[shortname].publisher.clientId;
+        if (oldClientId !== streamId) {
+          console.log(`[RTMP] Stale publisher detected for channel ${shortname} (Client: ${oldClientId}). Disconnecting...`);
+          try {
+            await axios.delete(`http://192.168.90.5:8000/api/clients/${oldClientId}`, {
+              auth: {
+                username: process.env.RTMP_API_USER || 'admin',
+                password: process.env.RTMP_API_PASS || 'admin'
+              }
+            });
+            console.log(`[RTMP] Disconnected stale client ${oldClientId} for channel ${shortname}`);
+          } catch (delErr) {
+            console.error(`[RTMP] Failed to disconnect stale client ${oldClientId}:`, delErr.message);
+            // Fallback: delete the entire stream if client delete fails
+            try {
+              await axios.delete(`http://192.168.90.5:8000/api/streams/live/${shortname}`, {
+                auth: {
+                  username: process.env.RTMP_API_USER || 'admin',
+                  password: process.env.RTMP_API_PASS || 'admin'
+                }
+              });
+              console.log(`[RTMP] Fallback: dropped stream for channel ${shortname}`);
+            } catch (fallbackErr) {
+              console.error(`[RTMP] Fallback stream drop also failed:`, fallbackErr.message);
+            }
+          }
         }
       }
     } catch (e) {
@@ -435,6 +458,10 @@ router.post('/api/panel/records/record/start', panelMiddleware, async (req, res)
   const channelName = res.locals.panelChannel.name;
   const shortname = res.locals.panelChannel.shortname;
   
+  const isVerified = res.locals.panelChannel.is_verified;
+  const isPremium = res.locals.panelChannel.is_premium;
+  const recordLimitSeconds = (isVerified || isPremium) ? 3600 : 300;
+  
   if (activeRecordings.has(channelId)) {
     return res.status(400).json({ success: false, error: 'Запись этого эфира уже идет.' });
   }
@@ -479,7 +506,7 @@ router.post('/api/panel/records/record/start', panelMiddleware, async (req, res)
       .output(outputPath)
       .outputOptions([
         '-c', 'copy',
-        '-t', '300'
+        '-t', recordLimitSeconds.toString()
       ])
       .on('start', (cmd) => {
         console.log(`Started ffmpeg recording for channel ${channelId}: ${cmd}`);
@@ -589,6 +616,29 @@ router.get('/api/panel/records/record/status', panelMiddleware, async (req, res)
       success: true,
       recording: false
     });
+  }
+});
+
+router.get('/api/admin/check-media-server', async (req, res) => {
+  if (!req.session.user || !['admin', 'moderator', 'mod'].includes(req.session.user.staff_role)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  try {
+    const axios = require('axios');
+    const response = await axios.get('http://192.168.90.5:8000/api/streams', {
+      auth: {
+        username: process.env.RTMP_API_USER || 'admin',
+        password: process.env.RTMP_API_PASS || 'admin'
+      },
+      timeout: 3000
+    });
+    if (response.status === 200) {
+      return res.json({ success: true, message: 'Подключение к медиасерверу успешно выполнено' });
+    } else {
+      return res.json({ success: false, message: `Медиасервер вернул статус: ${response.status}` });
+    }
+  } catch (error) {
+    return res.json({ success: false, message: `Ошибка подключения к медиасерверу: ${error.message}` });
   }
 });
 

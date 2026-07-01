@@ -1067,6 +1067,7 @@ const escapeHtml = (str) => {
             role: "owner",
             chat_color: "<%= locals.user ? (locals.user.chat_color || '') : '' %>"
         };
+        window.CURRENT_USER_TOKEN = "<%= locals.user ? encryptUser({ id: locals.user.id, username: locals.user.username, role: 'owner', chat_color: locals.user.chat_color }) : '' %>";
     </script>
     <script src="/js/studio.js?v=<%= Date.now() %>"></script>
 

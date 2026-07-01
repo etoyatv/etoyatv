@@ -143,6 +143,7 @@ async function initDb() {
     try { await connection.query(`ALTER TABLE channels ADD COLUMN bg_fit VARCHAR(50) DEFAULT 'stretch'`); } catch (e) { }
     try { await connection.query(`ALTER TABLE channels ADD COLUMN player_link_color VARCHAR(50) DEFAULT NULL`); } catch (e) { }
     try { await connection.query(`ALTER TABLE channels ADD COLUMN is_personal BOOLEAN DEFAULT TRUE`); } catch (e) { }
+    try { await connection.query(`ALTER TABLE channels ADD COLUMN premium_until DATETIME DEFAULT NULL`); } catch (e) { }
     try { await connection.query(`ALTER TABLE channel_team ADD COLUMN is_coowner BOOLEAN DEFAULT FALSE`); } catch (e) { }
     try { await connection.query(`ALTER TABLE channel_team ADD COLUMN order_index INT DEFAULT 0`); } catch (e) { }
     try { await connection.query(`ALTER TABLE records ADD COLUMN is_18_plus BOOLEAN DEFAULT FALSE`); } catch (e) { }
@@ -402,7 +403,8 @@ async function initDb() {
       'ads_enabled': '0',
       'ads_config': '[]',
       'forbidden_words': '',
-      'invite_system_enabled': '0'
+      'invite_system_enabled': '0',
+      'news_source': 'service_channel'
     };
     for (const [key, value] of Object.entries(defaultSettings)) {
       await connection.query('INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)', [key, value]);
@@ -570,6 +572,7 @@ async function initDb() {
       "totp_backup_codes TEXT DEFAULT NULL",
       "invited_by INT NULL",
       "last_password_change DATETIME NULL",
+      "last_email_change DATETIME NULL",
       "reg_ip VARCHAR(255) DEFAULT NULL",
       "last_ip VARCHAR(255) DEFAULT NULL",
       "created_at DATETIME DEFAULT CURRENT_TIMESTAMP"
@@ -608,7 +611,8 @@ async function initDb() {
       "autopilot_album_id INT NULL",
       "autopilot_start_time DATETIME NULL",
       "live_started_at DATETIME NULL",
-      "current_streamer_id INT NULL"
+      "current_streamer_id INT NULL",
+      "logo_fit VARCHAR(50) DEFAULT 'cover'"
     ];
     for (let col of channelColumns) {
       try {
@@ -672,6 +676,14 @@ async function initDb() {
       }
     }
 
+    try {
+      await connection.query("ALTER TABLE staff ADD COLUMN hide_admin_tools BOOLEAN DEFAULT 0");
+    } catch (e) {
+      if (e.code !== 'ER_DUP_FIELDNAME') {
+        console.error('Error adding hide_admin_tools to staff:', e);
+      }
+    }
+
     const recordColumns = [
       "description TEXT",
       "video_url VARCHAR(255) NOT NULL DEFAULT ''",
@@ -690,7 +702,7 @@ async function initDb() {
       }
     }
 
-    const tablesWithHidden = ['channel_comments', 'record_comments', 'channel_news', 'profile_comments'];
+    const tablesWithHidden = ['channel_comments', 'record_comments', 'channel_news', 'profile_comments', 'programs'];
     for (const table of tablesWithHidden) {
       try {
         await connection.query(`ALTER TABLE ${table} ADD COLUMN is_hidden BOOLEAN DEFAULT FALSE`);

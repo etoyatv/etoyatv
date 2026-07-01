@@ -145,6 +145,14 @@
             <button type="button" class="btn-black-border" onclick="document.getElementById('toggleServiceForm').submit()">Переключить</button>
             <% } %>
           </div>
+
+          <div class="info-row">
+            <strong>Тип канала:</strong> 
+            <span style="flex-grow: 1;"><%= channel.is_personal ? 'Личный' : 'Кооперативный' %></span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="document.getElementById('togglePersonalForm').submit()">Изменить тип канала</button>
+            <% } %>
+          </div>
           
           <div style="margin-top:20px; font-weight:bold;">Команда канала:</div>
           <div class="info-row">
@@ -157,11 +165,36 @@
             <% } %>
           </div>
 
+          <% if (!channel.is_personal) { %>
+          <div class="info-row">
+            <strong>Со-владельцы:</strong> 
+            <span style="flex-grow: 1;">
+              <% 
+                const coowners = team.filter(t => t.is_coowner === 1);
+                if (coowners.length > 0) { 
+              %>
+                <%- coowners.map(t => {
+                  let escapedUsername = escapeHtml(t.username || '');
+                  return `<a href="${APP_URL}/ru/account,userinfo/?username=${encodeURIComponent(t.username)}" target="_blank" style="color: #3b9cd9; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${escapedUsername}</a> (id: ${t.user_id})`;
+                }).join(', ') %>
+              <% } else { %>
+                Нет со-владельцев
+              <% } %>
+            </span>
+            <% if (!isModOnly) { %>
+            <button type="button" class="btn-black-border" onclick="openCoownersModal()">Изменить со-владельцев</button>
+            <% } %>
+          </div>
+          <% } %>
+
           <div class="info-row">
             <strong>Команда канала:</strong> 
             <span style="flex-grow: 1;">
-              <% if (team.length > 0) { %>
-                <%- team.map(t => {
+              <% 
+                const teamMembers = channel.is_personal ? team : team.filter(t => t.is_coowner !== 1);
+                if (teamMembers.length > 0) { 
+              %>
+                <%- teamMembers.map(t => {
                   let roles = [];
                   if(t.is_reporter) roles.push('Репортер');
                   if(t.is_moderator) roles.push('Модератор');
@@ -184,20 +217,29 @@
         <div class="info-section">
           <h3>Привилегии:</h3>
           
-          <label class="checkbox-group">
-            <input type="checkbox" name="is_premium" value="1" <%= channel.is_premium ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
-            Премиум-статус канала (отображает плашку ПРЕМИУМ)
-          </label>
-          
-          <label class="checkbox-group">
-            <input type="checkbox" name="is_verified" value="1" <%= channel.is_verified ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
-            Подтвержденный статус (зеленая галочка рядом с именем)
-          </label>
+          <div class="info-row" style="margin-bottom: 15px; border-bottom: none; padding: 0;">
+            <strong style="width: 150px;">Premium статус:</strong>
+            <%
+              // Determine current tier
+              let currentTier = 1; // None
+              if (channel.is_premium && channel.is_verified) {
+                currentTier = 3; // Premium
+              } else if (channel.is_verified) {
+                currentTier = 2; // Verified
+              }
+            %>
+            <select name="premium_tier" id="premiumTierSelect" style="padding: 6px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; background-color: #343b40; color: #fff;" <%= isModOnly ? 'disabled' : '' %>>
+              <option value="1" <%= currentTier === 1 ? 'selected' : '' %>>1 - Без привилегии</option>
+              <option value="2" <%= currentTier === 2 ? 'selected' : '' %>>2 - Подтвержденный канал</option>
+              <option value="3" <%= currentTier === 3 ? 'selected' : '' %>>3 - Премиум канал</option>
+            </select>
+          </div>
 
-          <label class="checkbox-group">
-            <input type="checkbox" name="is_personal" value="1" <%= channel.is_personal ? 'checked' : '' %> <%= isModOnly ? 'disabled' : '' %>>
-            Личный канал (если выключено, канал является кооперативным)
-          </label>
+          <div id="premiumUntilRow" class="info-row" style="margin-bottom: 15px; border-bottom: none; padding: 0; display: <%= currentTier === 3 ? 'flex' : 'none' %>;">
+            <strong style="width: 150px;">Премиум до:</strong>
+            <input type="datetime-local" name="premium_until" id="premiumUntilInput" value="<%= channel.premium_until ? new Date(new Date(channel.premium_until).getTime() - new Date(channel.premium_until).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '' %>" style="padding: 5px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; background-color: #343b40; color: #fff;" <%= isModOnly ? 'disabled' : '' %>>
+            <span style="font-size: 12px; color: #888; margin-left: 10px; align-self: center;">(Оставьте пустым для бессрочного Premium)</span>
+          </div>
         </div>
 
         <div class="info-section">
@@ -243,6 +285,7 @@
       <form id="deleteForm" action="/channels/<%= channel.id %>/delete" method="POST" style="display:none;"></form>
       <form id="resetKeyForm" action="/channels/<%= channel.id %>/reset_stream_key" method="POST" style="display:none;"></form>
       <form id="toggleServiceForm" action="/channels/<%= channel.id %>/toggle_service" method="POST" style="display:none;"></form>
+      <form id="togglePersonalForm" action="/channels/<%= channel.id %>/toggle_personal" method="POST" style="display:none;"></form>
       
     </main>
     
@@ -315,6 +358,30 @@
       </div>
     </div>
 
+    <div id="coownersModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title">Изменить со-владельцев канала</h3>
+        <form action="/channels/<%= channel.id %>/edit_coowners" method="POST">
+          <div class="modal-body">
+            <p>Чтобы добавить со-владельца, введите его ID или Username и отметьте галочку «Добавить». Чтобы удалить, введите его ID или Username и снимите галочку.</p>
+            <div class="form-group" style="width: 100%; position: relative;">
+              <label>ID или Username пользователя:</label>
+              <input type="text" name="coowner_user" id="coownerUserInput" class="form-control" required style="width:100%;" autocomplete="off" oninput="fetchAutocomplete(this.value, 'coownerUserDropdown', 'coownerUserInput')">
+              <div id="coownerUserDropdown" class="autocomplete-dropdown" style="display:none; position:absolute; width:100%; background:#111; border:1px solid #333; z-index:100; max-height:200px; overflow-y:auto; border-radius:4px; margin-top:5px;"></div>
+            </div>
+            <label class="checkbox-group">
+              <input type="checkbox" name="is_coowner" value="1" checked>
+              Со-владелец
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-black-border">Применить</button>
+            <button type="button" class="btn-black-border" onclick="closeModals()">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="banModal" class="modal-overlay">
       <div class="modal-content">
         <h3 style="margin-top:0; margin-bottom: 20px;">Блокировка канала</h3>
@@ -367,20 +434,33 @@
       }
       function openOwnerModal() { document.getElementById('ownerModal').classList.add('active'); }
       function openTeamModal() { document.getElementById('teamModal').classList.add('active'); }
+      function openCoownersModal() { document.getElementById('coownersModal').classList.add('active'); }
       function closeModals() {
         document.getElementById('quotaModal').classList.remove('active');
         document.getElementById('ownerModal').classList.remove('active');
         document.getElementById('teamModal').classList.remove('active');
+        if (document.getElementById('coownersModal')) document.getElementById('coownersModal').classList.remove('active');
         document.getElementById('banModal').classList.remove('active');
       }
 
       document.addEventListener('DOMContentLoaded', () => {
-        const premiumCheckbox = document.querySelector('input[name="is_premium"]');
-        if (premiumCheckbox) {
-          premiumCheckbox.addEventListener('change', function() {
-            const cdnQuotaInput = document.getElementById('cdnQuotaInput');
-            const cdnQuotaText = document.getElementById('cdnQuotaText');
-            if (this.checked) {
+        const premiumTierSelect = document.getElementById('premiumTierSelect');
+        const premiumUntilRow = document.getElementById('premiumUntilRow');
+        const premiumUntilInput = document.getElementById('premiumUntilInput');
+        const cdnQuotaInput = document.getElementById('cdnQuotaInput');
+        const cdnQuotaText = document.getElementById('cdnQuotaText');
+
+        if (premiumTierSelect) {
+          premiumTierSelect.addEventListener('change', function() {
+            const tier = parseInt(this.value);
+            if (tier === 3) {
+              premiumUntilRow.style.display = 'flex';
+            } else {
+              premiumUntilRow.style.display = 'none';
+              premiumUntilInput.value = '';
+            }
+
+            if (tier === 2 || tier === 3) {
               cdnQuotaInput.value = '10';
               cdnQuotaText.innerHTML = '<%= usageGB %> ГБ (Авто: Лимит 10 ГБ)';
             } else {
@@ -430,7 +510,7 @@
 
       // Hide dropdown when clicking outside
       document.addEventListener('click', function(e) {
-        if (!e.target.closest('.autocomplete-dropdown') && e.target.id !== 'newOwnerInput' && e.target.id !== 'teamUserInput') {
+        if (!e.target.closest('.autocomplete-dropdown') && e.target.id !== 'newOwnerInput' && e.target.id !== 'teamUserInput' && e.target.id !== 'coownerUserInput') {
           document.querySelectorAll('.autocomplete-dropdown').forEach(el => el.style.display = 'none');
         }
       });

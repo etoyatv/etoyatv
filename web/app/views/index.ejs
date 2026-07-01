@@ -32,7 +32,7 @@
                           <div class="online_label"></div>
                         <% } %>
                         <div class="views white"><%= ch.viewers || 0 %></div>
-                        <div class="program grey">Телеканал: <span class="blue"><%= ch.name %></span><% if (ch.is_verified) { %><span class="verified_icon" title="Подтвержденный канал"></span><% } %><br>
+                        <div class="program grey">Телеканал: <span class="blue"><%= ch.name %></span><% if (ch.is_verified) { %><span class="verified_icon <%= ch.is_premium ? 'blue' : '' %>" title="<%= ch.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>"></span><% } %><br>
                           Передача: <span class="white"><%= ch.is_live ? (ch.live_title || ('Передача от ' + formatDate(ch.live_started_at || new Date(), userTimezone, 'DD.MM.YYYY HH:mm'))) : 'Автопилот' %></span>
                         </div>
                       </span>
@@ -103,6 +103,9 @@
                             <%= months[new Date(item.created_at).getMonth()] %>
                           </div>
                           <div class="body">
+                            <% if (item.channel_name) { %>
+                              <span style="font-size: 11px; color: #888888; display: block; margin-bottom: 2px;">Канал: <%= item.channel_name %></span>
+                            <% } %>
                             <div class="title">
                               <a href="<%= item.is_channel_news ? '/channels/' + item.shortname + '/news/' + item.id : '/ru/news,view,' + item.id %>">
                                 <%= item.title %>
@@ -215,7 +218,7 @@
             } else {
               label += '<div class="online_label"></div>';
             }
-            var verifiedHtml = channel.is_verified ? '<span class="verified_icon" title="Подтвержденный канал"></span>' : '';
+            var verifiedHtml = channel.is_verified ? '<span class="verified_icon ' + (channel.is_premium ? 'blue' : '') + '" title="' + (channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал') + '"></span>' : '';
             var html = '<a href="' + channel.url + '" class="thumb hidden" style="background: #000 url(' + channel.thumbnail + ') no-repeat center center;display:none;position:absolute;top:0;left:0;">\
       <span class="border_thumb">'+ label + ' \
       <div class="views white">'+ channel.spectators + '</div>\
@@ -376,7 +379,7 @@
                               style="color: #6fdeee; font-size: 13px; font-weight: bold; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; display: flex; align-items: center;">
                               <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= ch.name %></span>
                               <% if (ch.is_verified) { %>
-                                <span class="verified_icon" title="Подтвержденный канал" style="flex-shrink: 0; margin-left: 5px;"></span>
+                                <span class="verified_icon <%= ch.is_premium ? 'blue' : '' %>" title="<%= ch.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>" style="flex-shrink: 0; margin-left: 5px;"></span>
                               <% } %>
                             </div>
                             <div
@@ -430,6 +433,9 @@
                       <%= ('0' + new Date(item.created_at).getDate()).slice(-2) %>
                         <%= shortMonths[new Date(item.created_at).getMonth()] %>
                     </div>
+                    <% if (item.channel_name) { %>
+                      <div style="font-size: 11px; color: #888888; margin-bottom: 5px;">Канал: <%= item.channel_name %></div>
+                    <% } %>
                     <div style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">
                       <a href="<%= item.is_channel_news ? '/channels/' + item.shortname + '/news/' + item.id : '/ru/news,view,' + item.id %>" style="color: #6fdeee; text-decoration: none;">
                         <%= item.title %>

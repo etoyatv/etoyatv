@@ -228,7 +228,9 @@
     <%- include('partials/sidebar') %>
 
     <main class="main-content">
-      <div class="reports-page-title">Сейчас <%= total_pending %> жалоб, которые требуют рассмотрения</div>
+      <div class="users-header-stats">
+        <p>Сейчас жалоб, которые требуют рассмотрения: <strong><%= total_pending %></strong></p>
+      </div>
 
       <% if (complaints.length === 0) { %>
         <p style="color: #a1b0b8; text-align: center;">Жалоб пока нет.</p>

@@ -1,0 +1,169 @@
+<% if (typeof user !== 'undefined' && user && user.staff_role && user.mask_mode !== 'user_mask' && !user.hide_admin_tools) { %>
+  <% 
+    let isTargetSuperadmin = false;
+    if (typeof profileUser !== 'undefined' && profileUser && (profileUser.is_superadmin === 1 || profileUser.is_superadmin === true)) {
+      isTargetSuperadmin = true;
+    }
+    if (typeof channel !== 'undefined' && channel && (channel.owner_is_superadmin === 1 || channel.owner_is_superadmin === true)) {
+      isTargetSuperadmin = true;
+    }
+    if (typeof record !== 'undefined' && record && (record.owner_is_superadmin === 1 || record.owner_is_superadmin === true)) {
+      isTargetSuperadmin = true;
+    }
+  %>
+  <% if (!isTargetSuperadmin || user.is_superadmin) { %>
+  <!-- ADMIN/MODERATOR TOOLS -->
+  <div class="blocks" style="margin-bottom: 15px;">
+    <div class="blackbox" style="width: auto;">
+      <div class="blackbox_tl"></div>
+      <div class="blackbox_tc"></div>
+      <div class="blackbox_tr"></div>
+      <div class="blackbox_cw">
+        <div class="blackbox_c">
+          <div class="blackbox_ci">
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">
+                  <%= user.staff_role === 'admin' ? 'Инструменты администратора' : 'Инструменты модератора' %>
+                </div>
+              </div>
+            </div>
+            <div class="block-content" style="padding: 12px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.6; color: #c0c0b2;">
+              
+              <% if (typeof channel !== 'undefined' && channel && channel.id) { %>
+                <!-- Channel Context -->
+                <div style="margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 8px;">
+                  <strong style="color: #fff;">User ID:</strong> <%= channel.user_id %><br>
+                  <strong style="color: #fff;">Channel ID:</strong> <%= channel.id %><br>
+                  <strong style="color: #fff;">Тип:</strong> <%= channel.is_personal ? 'Личный' : 'Кооперативный' %><br>
+                  <strong style="color: #fff;">Статус:</strong> <span style="color: <%= channel.status === 'banned' ? '#ff4d4d' : (channel.status === 'active' ? '#4dff4d' : '#ffcc00') %>;"><%= channel.status %></span>
+                </div>
+                <ul style="margin: 0; padding-left: 15px; list-style-type: disc;">
+                  <li style="margin-bottom: 6px;">
+                    <a href="#" id="check-media-server-btn" style="color: #6fdeee; text-decoration: none;" onclick="checkMediaServerConnection(); return false;">Проверить подключение к медиасерверу</a>
+                  </li>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/channels/<%= channel.id %>/edit" target="_blank" style="color: #6fdeee; text-decoration: none;">Управление телеканалом в Админке</a>
+                  </li>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/users/<%= channel.user_id %>/edit" target="_blank" style="color: #6fdeee; text-decoration: none;">Управление владельцем в Админке</a>
+                  </li>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/reports/channels" target="_blank" style="color: #6fdeee; text-decoration: none;">Жалобы на каналы</a>
+                  </li>
+                </ul>
+
+              <% } else if (typeof record !== 'undefined' && record && record.id) { %>
+                <!-- Record Context -->
+                <div style="margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 8px;">
+                  <strong style="color: #fff;">Record ID:</strong> <%= record.id %><br>
+                  <strong style="color: #fff;">Channel ID:</strong> <%= record.channel_id %><br>
+                  <% if (typeof record.owner_user_id !== 'undefined') { %>
+                    <strong style="color: #fff;">Owner ID:</strong> <%= record.owner_user_id %><br>
+                  <% } %>
+                  <strong style="color: #fff;">Просмотры:</strong> <%= record.views %><br>
+                  <strong style="color: #fff;">Статус:</strong> <span style="color: <%= record.status === 'banned' ? '#ff4d4d' : (record.status === 'active' ? '#4dff4d' : '#ffcc00') %>;"><%= record.status || 'active' %></span>
+                </div>
+                <ul style="margin: 0; padding-left: 15px; list-style-type: disc;">
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/records/<%= record.id %>/edit" target="_blank" style="color: #6fdeee; text-decoration: none;">Управление записью в Админке</a>
+                  </li>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/channels/<%= record.channel_id %>/edit" target="_blank" style="color: #6fdeee; text-decoration: none;">Управление телеканалом в Админке</a>
+                  </li>
+                  <% if (typeof record.owner_user_id !== 'undefined') { %>
+                    <li style="margin-bottom: 6px;">
+                      <a href="<%= ADMIN_URL %>/users/<%= record.owner_user_id %>/edit" target="_blank" style="color: #6fdeee; text-decoration: none;">Управление владельцем в Админке</a>
+                    </li>
+                  <% } %>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/reports/records" target="_blank" style="color: #6fdeee; text-decoration: none;">Жалобы на записи</a>
+                  </li>
+                </ul>
+
+              <% } else if (typeof profileUser !== 'undefined' && profileUser && profileUser.id) { %>
+                <!-- User Profile Context -->
+                <div style="margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 8px;">
+                  <strong style="color: #fff;">User ID:</strong> <%= profileUser.id %><br>
+                  <strong style="color: #fff;">Username:</strong> <%= profileUser.username %><br>
+                  <% 
+                  let displayRole = 'Пользователь';
+                  if (profileUser.is_superadmin) {
+                    displayRole = 'Главный администратор';
+                  } else if (profileUser.staff_role === 'admin') {
+                    displayRole = 'Администратор';
+                  } else if (profileUser.staff_role === 'moderator' || profileUser.staff_role === 'mod') {
+                    displayRole = 'Модератор';
+                  }
+                  %>
+                  <strong style="color: #fff;">Роль:</strong> <span style="color: #ffcc00;"><%= displayRole %></span><br>
+                  <strong style="color: #fff;">Статус:</strong> <span style="color: <%= profileUser.is_banned ? '#ff4d4d' : '#4dff4d' %>;"><%= profileUser.is_banned ? 'Забанен' : 'Активен' %></span>
+                </div>
+                <ul style="margin: 0; padding-left: 15px; list-style-type: disc;">
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/users/<%= profileUser.id %>/edit" target="_blank" style="color: #6fdeee; text-decoration: none;">Управление пользователем в Админке</a>
+                  </li>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/logs?search=<%= encodeURIComponent(profileUser.username) %>" target="_blank" style="color: #6fdeee; text-decoration: none;">Логи действий пользователя</a>
+                  </li>
+                  <li style="margin-bottom: 6px;">
+                    <a href="<%= ADMIN_URL %>/reports/users" target="_blank" style="color: #6fdeee; text-decoration: none;">Жалобы на пользователей</a>
+                  </li>
+                </ul>
+              <% } %>
+
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="blackbox_bl"></div>
+      <div class="blackbox_bc"></div>
+      <div class="blackbox_br"></div>
+    </div>
+  </div>
+
+  <script type="text/javascript">
+    function checkMediaServerConnection() {
+      var btn = $('#check-media-server-btn');
+      if (!btn.length) return;
+      var oldText = btn.text();
+      btn.text('Проверка подключения...').css({ 'pointer-events': 'none', 'opacity': '0.7' });
+
+      $.ajax({
+        url: '/api/admin/check-media-server',
+        method: 'GET',
+        dataType: 'json',
+        success: function(data) {
+          btn.text(oldText).css({ 'pointer-events': 'auto', 'opacity': '1' });
+          if (data.success) {
+            if (window.showToast) {
+              window.showToast(data.message || 'Медиасервер доступен', 'success');
+            } else {
+              alert(data.message || 'Медиасервер доступен');
+            }
+          } else {
+            if (window.showToast) {
+              window.showToast(data.message || 'Ошибка подключения к медиасерверу', 'error');
+            } else {
+              alert(data.message || 'Ошибка подключения к медиасерверу');
+            }
+          }
+        },
+        error: function(xhr, status, error) {
+          btn.text(oldText).css({ 'pointer-events': 'auto', 'opacity': '1' });
+          var errMsg = 'Не удалось выполнить проверку';
+          if (xhr.responseJSON && xhr.responseJSON.message) {
+            errMsg = xhr.responseJSON.message;
+          }
+          if (window.showToast) {
+            window.showToast(errMsg, 'error');
+          } else {
+            alert(errMsg);
+          }
+        }
+      });
+    }
+  </script>
+  <% } %>
+<% } %>

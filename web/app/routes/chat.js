@@ -1,6 +1,7 @@
 const { pool } = require('../../config/db');
 const { isIpInBanRecord } = require('../../utils/ipChecker');
 const { spawn } = require('child_process');
+const { decryptUser } = require('../../utils/chatCrypto');
 const activeStudioStreams = {};
 const activeChannelOverlays = {};
 const pendingStudioStreamEnds = {};
@@ -91,7 +92,7 @@ module.exports = function(io) {
     let currentUser = null;
 
     socket.on('join_channel', async (data) => {
-      const { channelId, user, guestName, color } = data;
+      const { channelId, guestName, color, userToken } = data;
       currentChannel = channelId;
       socket.join(`channel_${channelId}`);
       
@@ -105,18 +106,23 @@ module.exports = function(io) {
       }
       
       let role = 'guest';
-      let username = sanitizeNickname(guestName || 'Гость');
+      let username = 'Гость';
       let dbUserId = null;
       let isBanned = false;
+      let decryptedUser = null;
+
+      if (userToken) {
+        decryptedUser = decryptUser(userToken);
+      }
 
       const ipBanned = await checkIpBan(socket);
       if (ipBanned) {
         isBanned = true;
         socket.emit('user_banned_state', { isBanned: true });
-      } else if (user) {
-        role = user.role || 'registered';
-        username = user.username;
-        dbUserId = user.id;
+      } else if (decryptedUser) {
+        role = decryptedUser.role || 'registered';
+        username = decryptedUser.username;
+        dbUserId = decryptedUser.id;
         try {
           const [bans] = await pool.query('SELECT * FROM channel_bans WHERE channel_id = ? AND user_id = ? AND banned_until > NOW()', [channelId, dbUserId]);
           if (bans.length > 0) {
@@ -127,6 +133,20 @@ module.exports = function(io) {
           }
         } catch (e) { console.error(e); }
       } else {
+         // Guest path: check username collision with registered users
+         let proposedName = sanitizeNickname(guestName || 'Гость');
+         if (proposedName.toLowerCase() !== 'гость') {
+            try {
+               const [existingUsers] = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [proposedName]);
+               if (existingUsers.length > 0) {
+                  proposedName = 'Гость_' + Math.floor(Math.random() * 10000);
+                  socket.emit('guest_name_changed', { name: proposedName });
+               }
+            } catch(e) {
+               console.error('Error checking guest username collision:', e);
+            }
+         }
+         username = proposedName;
          try {
            const [bans] = await pool.query('SELECT * FROM channel_bans WHERE channel_id = ? AND username = ? AND banned_until > NOW()', [channelId, username]);
            if (bans.length > 0) {
@@ -152,7 +172,7 @@ module.exports = function(io) {
           }
           return ip;
         })(),
-        isInvisible: (user && user.mask_mode === 'invisible') || (data && data.isStudio)
+        isInvisible: (decryptedUser && decryptedUser.mask_mode === 'invisible') || (data && data.isStudio)
       };
 
       if (!channelUsers[channelId]) channelUsers[channelId] = [];
@@ -248,7 +268,24 @@ module.exports = function(io) {
            socket.emit('user_banned_state', { isBanned: true });
            return;
          }
-         currentUser.username = sanitizeNickname(data.newName || 'Гость');
+         
+         const proposedName = sanitizeNickname(data.newName || 'Гость');
+         if (proposedName.toLowerCase() === 'гость') {
+            currentUser.username = 'Гость';
+         } else {
+            try {
+               const [existingUsers] = await pool.query('SELECT id FROM users WHERE LOWER(username) = LOWER(?)', [proposedName]);
+               if (existingUsers.length > 0) {
+                  socket.emit('guest_name_error', { error: 'Этот никнейм занят зарегистрированным пользователем' });
+                  return;
+               }
+               currentUser.username = proposedName;
+            } catch(e) {
+               console.error('Error checking guest name change collision:', e);
+               return;
+            }
+         }
+         
          try {
            const [bans] = await pool.query('SELECT * FROM channel_bans WHERE channel_id = ? AND username = ? AND banned_until > NOW()', [currentChannel, currentUser.username]);
            if (bans.length > 0) {
@@ -259,6 +296,7 @@ module.exports = function(io) {
              socket.emit('user_banned_state', { isBanned: false });
            }
          } catch(e) {}
+         
          socket.emit('guest_name_changed', { name: currentUser.username });
          if (currentChannel && channelUsers[currentChannel]) {
             emitUpdateUsers(currentChannel);

@@ -45,7 +45,7 @@
       <% } %>
     </span></a>
       <div class="right_panel" style="float: right; width: 52px; text-align: center; margin-left: 10px;">
-        <a href="/<%= channel.shortname %>" class="logo" style="display: block; width: 50px; height: 50px;"><img width="50" height="50" src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="<%= channel.name %>" style="object-fit: cover; display: block; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>"></a>
+        <a href="/<%= channel.shortname %>" class="logo" style="display: block; width: 50px; height: 50px;"><img width="50" height="50" src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="<%= channel.name %>" style="object-fit: <%= channel.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= channel.logo_fit === 'contain' ? 'background: #000;' : '' %> display: block; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>"></a>
         <% if (locals.user) { %>
         <div class="likes-badge channel-badge">
           <span id="fans_count_<%= channel.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 16px;"><%= channel.fans_count || 0 %></span>
@@ -54,8 +54,8 @@
         <% } %>
       </div>
     <div class="info"> 
-    <div class="grid_title">Телеканал: <a href="/<%= channel.shortname %>"><%= channel.name %></a><% if (channel.is_verified) { %><span class="verified_icon" title="Подтвержденный канал"></span><% } %><% if(channel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div> 
-    <div class="list_title">Телеканал: <a href="/<%= channel.shortname %>"><%= channel.name %></a><% if (channel.is_verified) { %><span class="verified_icon" title="Подтвержденный канал"></span><% } %><% if(channel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div> 
+    <div class="grid_title">Телеканал: <a href="/<%= channel.shortname %>"><%= channel.name %></a><% if (channel.is_verified) { %><span class="verified_icon <%= channel.is_premium ? 'blue' : '' %>" title="<%= channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>"></span><% } %><% if(channel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div> 
+    <div class="list_title">Телеканал: <a href="/<%= channel.shortname %>"><%= channel.name %></a><% if (channel.is_verified) { %><span class="verified_icon <%= channel.is_premium ? 'blue' : '' %>" title="<%= channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>"></span><% } %><% if(channel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div> 
 
     <div class="description darkgrey" style="white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;"><%= channel.description || 'Описание телеканала не заполнено' %></div>
     </div>

@@ -1,3 +1,7 @@
+<%
+  const isPremiumOrVerified = locals.panelChannel && (locals.panelChannel.is_premium === 1 || locals.panelChannel.is_verified === 1 || locals.panelChannel.is_premium === true || locals.panelChannel.is_verified === true);
+  const maxMbText = isPremiumOrVerified ? '2 ГБ' : '256 Мб';
+%>
 <%- include('../panel_layout', { activeMenu: 'records', activeSubmenu: 'all', breadcrumbs: '<a href="/ru/panel,dashboard">Панель управления</a> &gt; <a href="/ru/panel,records">Медиа-архив</a> &gt; ' + escapeHtml(record.title) + ' &gt; Редактирование', body: `
 
 <div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
@@ -14,7 +18,7 @@
 </div>
 <div style="text-align: right; margin-bottom: 15px;">
     <button class="btn" style="font-size: 11px;" onclick="window.location.href='/ru/panel,records,upload'">Добавить видео</button> 
-    <span style="font-size: 11px; color:#8c989e; margin-left: 10px;">Загружайте любые видео файлы. Максимальный размер 200 Мб.</span>
+    <span style="font-size: 11px; color:#8c989e; margin-left: 10px;">Загружайте любые видео файлы. Максимальный размер ${maxMbText}.</span>
 </div>
 
 <div style="display: flex; gap: 20px;">

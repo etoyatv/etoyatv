@@ -183,6 +183,7 @@
                         <div class="channel-select-row" data-id="<%= ch.id %>"
                           onclick="selectChannel(this, <%= ch.id %>)">
                           <img src="<%= CDN_BASE_URL %><%= ch.logo_url || '/images/default_channel_logo.png'  %>" class="channel-icon"
+                            style="object-fit: <%= ch.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= ch.logo_fit === 'contain' ? 'background: #000;' : '' %>"
                             alt="Logo">
                           <div class="channel-name">
                             <%= ch.name %>

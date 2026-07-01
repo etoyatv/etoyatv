@@ -18,12 +18,23 @@ router.get('/api/users/search', async (req, res) => {
     if (q.length < 2) return res.json([]);
     
     const connection = await pool.getConnection();
-    const [users] = await connection.query(`
-      SELECT id, username, avatar 
-      FROM users 
-      WHERE username LIKE ? AND deleted_at IS NULL
-      LIMIT 10
-    `, [`%${q}%`]);
+    const isSuper = req.user && req.user.is_superadmin;
+    
+    let queryStr = `
+      SELECT u.id, u.username, u.avatar 
+      FROM users u
+      LEFT JOIN staff s ON u.id = s.user_id
+      WHERE u.username LIKE ? AND u.deleted_at IS NULL
+    `;
+    const params = [`%${q}%`];
+    
+    if (!isSuper) {
+      queryStr += ` AND (s.is_superadmin IS NULL OR s.is_superadmin = 0)`;
+    }
+    
+    queryStr += ` LIMIT 10`;
+    
+    const [users] = await connection.query(queryStr, params);
     connection.release();
     
     res.json(users);

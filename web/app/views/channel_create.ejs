@@ -25,19 +25,38 @@
       <h2 style="color: #ff4d4d; margin-top: 0; margin-bottom: 20px; font-size: 24px;">Блокировка канала</h2>
       <p style="color: #ddd; font-size: 16px; line-height: 1.5; margin-bottom: 25px;">
         Ваш телеканал был поставлен на удаление администрацией платформы.<br><br>
-        Канал будет полностью удален в течении <b><%= adminDeletedDaysLeft %></b> дней без права восстановления. В течение этого времени создание нового канала невозможно.
+        Канал будет полностью удален в течении <b><%= typeof adminDeletedDaysLeft !== 'undefined' ? adminDeletedDaysLeft : 30 %></b> дней без права восстановления. В течение этого времени создание нового канала невозможно.
       </p>
       <a href="/ru/panel,dashboard" style="display: inline-block; background: #ff4d4d; color: #fff; text-decoration: none; padding: 10px 25px; border-radius: 4px; font-weight: bold;">Понятно</a>
     </div>
   </div>
-<% } else if (typeof hasRecentlyDeletedChannel !== 'undefined' && hasRecentlyDeletedChannel !== false) { %>
-  <div style="background-color: #3a4247; border: 1px solid #ffcc00; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
-    <p style="color: #ffcc00; margin: 0 0 15px 0; font-size: 13px;"><b>Внимание:</b> Вы недавно удалили свой телеканал. Вы действительно хотите восстановить канал? Осталось дней для восстановления: <b><%= hasRecentlyDeletedChannel %></b>.</p>
-    <form action="/channels/restore" method="post" style="display: inline-block;">
-      <button type="submit" style="background: #39b54a; border: 1px solid #2d923a; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Восстановить телеканал</button>
-    </form>
-  </div>
 <% } else { %>
+  <% if (typeof deletedChannels !== 'undefined' && deletedChannels.length > 0) { %>
+    <div style="background-color: #3a4247; border: 1px solid #ffcc00; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+      <% if (deletedChannels.length === 1) { %>
+        <p style="color: #ffcc00; margin: 0 0 15px 0; font-size: 13px;"><b>Внимание:</b> Вы недавно удалили свой телеканал <b><%= deletedChannels[0].name %></b>. Вы действительно хотите восстановить канал? Осталось дней для восстановления: <b><%= deletedChannels[0].daysLeft %></b>.</p>
+        <form action="/channels/restore" method="post" style="display: inline-block; margin: 0;">
+          <input type="hidden" name="channel_id" value="<%= deletedChannels[0].id %>">
+          <button type="submit" style="background: #39b54a; border: 1px solid #2d923a; padding: 8px 20px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Восстановить телеканал</button>
+        </form>
+      <% } else { %>
+        <p style="color: #ffcc00; margin: 0 0 15px 0; font-size: 13px;"><b>Внимание:</b> У вас есть удаленные телеканалы, доступные для восстановления:</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;">
+          <% deletedChannels.forEach(function(ch) { %>
+            <div style="display: flex; justify-content: space-between; align-items: center; background: #2b3136; padding: 10px; border-radius: 4px; border: 1px solid #4a5359;">
+              <div style="color: #fff; font-size: 13px;">
+                Телеканал: <b><%= ch.name %></b> (Осталось дней: <%= ch.daysLeft %>)
+              </div>
+              <form action="/channels/restore" method="post" style="margin: 0;">
+                <input type="hidden" name="channel_id" value="<%= ch.id %>">
+                <button type="submit" style="background: #39b54a; border: 1px solid #2d923a; padding: 5px 15px; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; border-radius: 3px;">Восстановить</button>
+              </form>
+            </div>
+          <% }); %>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
   <form action="/channels/create" method="post" id="channel-create-form">
     <div style="margin-bottom: 20px; background: #2a2a2a; padding: 15px; border-radius: 4px; border: 1px solid #3d464d;">
       <label style="color: #c0c0b2; display: block; margin-bottom: 10px; font-weight: bold;">Выберите тип канала:</label>

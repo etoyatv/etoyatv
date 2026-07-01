@@ -145,9 +145,12 @@ async function processRecord(record) {
   }
 }
 
+const CONCURRENCY = 3;
+let activeJobs = 0;
+
 async function loop() {
-  console.log('Worker started, polling for pending records...');
-  await logSystem('Worker (HLS конвертер) запущен');
+  console.log(`Worker started, polling for pending records with concurrency ${CONCURRENCY}...`);
+  await logSystem(`Worker (HLS конвертер) запущен. Потоков: ${CONCURRENCY}`);
   
   // Reset any stuck processing records back to pending (e.g., after a container restart)
   try {
@@ -161,16 +164,24 @@ async function loop() {
 
   while (true) {
     try {
-      const [rows] = await pool.query("SELECT * FROM records WHERE processing_status = 'pending' AND hls_url IS NULL ORDER BY created_at ASC LIMIT 1");
-      if (rows.length > 0) {
-        const record = rows[0];
-        // Mark as processing
-        await pool.query("UPDATE records SET processing_status = 'processing' WHERE id = ?", [record.id]);
-        
-        await processRecord(record);
+      if (activeJobs < CONCURRENCY) {
+        const [rows] = await pool.query("SELECT * FROM records WHERE processing_status = 'pending' AND hls_url IS NULL ORDER BY created_at ASC LIMIT 1");
+        if (rows.length > 0) {
+          const record = rows[0];
+          // Mark as processing
+          await pool.query("UPDATE records SET processing_status = 'processing' WHERE id = ?", [record.id]);
+          
+          activeJobs++;
+          processRecord(record).finally(() => {
+            activeJobs--;
+          });
+        } else {
+          // Wait 5 seconds before polling again
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
       } else {
-        // Wait 5 seconds before polling again
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Limit reached, wait a bit before checking if slot is free
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     } catch (err) {
       console.error('Error in worker loop:', err);

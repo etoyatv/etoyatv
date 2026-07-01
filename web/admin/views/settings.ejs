@@ -357,6 +357,19 @@
               </label>
             </div>
           </div>
+
+          <div class="settings-box">
+            <h3 class="settings-section-title">Источники новостей</h3>
+            
+            <div class="form-group">
+              <label>Источник новостей на главной странице:</label>
+              <select name="news_source" class="form-control" style="width: 100%; max-width: 400px; background: #333; color: #fff; border: 1px solid #555; padding: 8px; border-radius: 4px;">
+                <option value="service_channel" <%= settings.news_source === 'service_channel' ? 'selected' : '' %>>Служебный канал (по умолчанию)</option>
+                <option value="all_channels" <%= settings.news_source === 'all_channels' ? 'selected' : '' %>>Со всех каналов</option>
+              </select>
+              <div class="switch-desc" style="margin-top: 5px; color: #aaa;">Выберите, откуда брать последние новости для отображения на главной странице и на общей вкладке новостей. При выборе "Со всех каналов" новости будут браться со всех пользовательских телеканалов.</div>
+            </div>
+          </div>
           
           <div class="settings-box">
             <h3 class="settings-section-title">Информационный баннер</h3>
@@ -445,7 +458,7 @@
         <form action="/settings/personal" method="POST">
           <div class="settings-box">
             <h3 class="settings-section-title">Отображение контента</h3>
-            <div class="switch-row" style="margin-bottom:0;">
+            <div class="switch-row">
               <div class="switch-info">
                 <div class="switch-title">Размытие 18+ обложек</div>
                 <div class="switch-desc">Если включено, обложки каналов и записей с меткой 18+ будут заблюрены в панели администратора.</div>
@@ -453,6 +466,18 @@
               <div style="display: flex; align-items: center; gap: 15px;">
                 <label class="switch">
                   <input type="checkbox" name="blur_18_plus" value="1" <%= user && user.blur_18_plus ? 'checked' : '' %>>
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+            <div class="switch-row" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-bottom:0;">
+              <div class="switch-info">
+                <div class="switch-title">Отключить инструменты администратора на основном сайте</div>
+                <div class="switch-desc">Если включено, виджеты инструментов администратора/модератора не будут отображаться на основном сайте.</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 15px;">
+                <label class="switch">
+                  <input type="checkbox" name="hide_admin_tools" value="1" <%= user && user.hide_admin_tools ? 'checked' : '' %>>
                   <span class="slider"></span>
                 </label>
               </div>

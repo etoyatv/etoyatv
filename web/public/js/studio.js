@@ -313,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         socket.emit('join_channel', {
             channelId: window.CHANNEL_ID,
             user: window.CURRENT_USER,
+            userToken: window.CURRENT_USER_TOKEN,
             guestName: window.CURRENT_USER.username,
             color: window.CURRENT_USER.chat_color || '#ffc107',
             isStudio: true

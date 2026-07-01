@@ -6924,10 +6924,24 @@ a.jScrollActiveArrowButton:hover {}
 .verified_icon {
   display: inline-block;
   vertical-align: middle;
-  width: 16px;
-  height: 14px;
-  background: url(../images/css_img_2_sprite1.png) no-repeat -92px -46px;
+  width: 16px !important;
+  height: 16px !important;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232bc85c'%3E%3Cpath d='M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.357.278C14.775 2.525 13.435 1.5 11.9 1.5c-1.535 0-2.875 1.025-3.515 2.288-.416-.178-.877-.278-1.357-.278C4.92 3.51 3.21 5.29 3.21 7.5c0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.357-.278.64 1.263 1.98 2.288 3.515 2.288 1.535 0 2.875-1.025 3.515-2.288.416.178.877.278 1.357.278 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.72 4.195l-3.85-3.85 1.43-1.43 2.42 2.42 6.16-6.16 1.43 1.43-7.59 7.59z'/%3E%3C/svg%3E") no-repeat 0 0 !important;
+  background-size: contain !important;
   margin-left: 5px;
+}
+
+.verified_icon.blue {
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%231d9bf0'%3E%3Cpath d='M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.99-3.818-3.99-.48 0-.941.1-1.357.278C14.775 2.525 13.435 1.5 11.9 1.5c-1.535 0-2.875 1.025-3.515 2.288-.416-.178-.877-.278-1.357-.278C4.92 3.51 3.21 5.29 3.21 7.5c0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.58.875 2.95 2.148 3.6-.154.435-.238.905-.238 1.4 0 2.21 1.71 3.99 3.818 3.99.48 0 .941-.1 1.357-.278.64 1.263 1.98 2.288 3.515 2.288 1.535 0 2.875-1.025 3.515-2.288.416.178.877.278 1.357.278 2.108 0 3.818-1.78 3.818-3.99 0-.495-.084-.965-.238-1.4 1.273-.65 2.148-2.02 2.148-3.6zm-12.72 4.195l-3.85-3.85 1.43-1.43 2.42 2.42 6.16-6.16 1.43 1.43-7.59 7.59z'/%3E%3C/svg%3E") no-repeat 0 0 !important;
+  background-size: contain !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.block-title .verified_icon,
+.channelinfoblock .verified_icon {
+  position: relative !important;
+  top: -2px !important;
 }
 
 .channelinfoblock .left .logo .premium_label {
@@ -6961,4 +6975,17 @@ a.jScrollActiveArrowButton:hover {}
   left: 5px;
   background: url(../images/css_img_2_sprite1.png) no-repeat -124px -271px;
   z-index: 10;
+}
+
+/* Auto-scaling for higher resolution displays */
+@media screen and (min-width: 2048px) and (max-width: 3199px) {
+  body {
+    zoom: 1.35;
+  }
+}
+
+@media screen and (min-width: 3200px) {
+  body {
+    zoom: 1.85;
+  }
 }

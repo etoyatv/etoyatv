@@ -23,11 +23,23 @@
                 <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
                     <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Логотип канала:</label>
                     <div style="flex-grow: 1; display: flex; gap: 15px; align-items: center;">
-                        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel && locals.panelChannel.logo_url ? locals.panelChannel.logo_url : '/images/default_channel_logo.png')}" style="max-height: 50px; background: #fff; padding: 2px;">
+                        <div style="width: 80px; height: 80px; background: #000; border: 1px solid #444; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 4px; flex-shrink: 0;">
+                            <img id="logoPreviewImg" src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel && locals.panelChannel.logo_url ? locals.panelChannel.logo_url : '/images/default_channel_logo.png')}" style="width: 100%; height: 100%; object-fit: ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'contain' : 'cover'}; ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'background: #000;' : ''}">
+                        </div>
                         <div>
                             <input type="file" name="logo" class="form-control" accept="image/*" style="margin-bottom: 5px;"><br>
                             ${locals.panelChannel && locals.panelChannel.logo_url ? '<label style="font-size: 12px; color: #ff4d4d;"><input type="checkbox" name="delete_logo" value="1"> Удалить текущий логотип</label>' : ''}
                         </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Формат отображения логотипа:</label>
+                    <div style="flex-grow: 1;">
+                        <select name="logo_fit" class="form-control" style="width: 200px;" onchange="updateLogoPreviewFit(this.value)">
+                            <option value="cover" ${!locals.panelChannel || locals.panelChannel.logo_fit !== 'contain' ? 'selected' : ''}>Обрезка</option>
+                            <option value="contain" ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'selected' : ''}>Вписать</option>
+                        </select>
                     </div>
                 </div>
 
@@ -126,6 +138,19 @@
                 </div>
             </form>
             <script>
+                function updateLogoPreviewFit(fit) {
+                    const img = document.getElementById('logoPreviewImg');
+                    if (img) {
+                        if (fit === 'contain') {
+                            img.style.objectFit = 'contain';
+                            img.style.background = '#000';
+                        } else {
+                            img.style.objectFit = 'cover';
+                            img.style.background = 'none';
+                        }
+                    }
+                }
+
                 function resetColor(inputName, defaultValue) {
                     const input = document.querySelector('input[name="' + inputName + '"]');
                     if (input) {
@@ -151,12 +176,12 @@
                         const file = e.target.files[0];
                         if (!file) return;
 
-                        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+                        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/apng'];
+                        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.apng'];
                         const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
                         if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
-                            alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp).");
+                            alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp, apng).");
                             this.value = '';
                             return;
                         }
@@ -166,6 +191,42 @@
                             this.value = '';
                             return;
                         }
+
+                        const inputEl = this;
+                        const isPremiumOrVerified = ${locals.panelChannel && (locals.panelChannel.is_premium || locals.panelChannel.is_verified) ? 'true' : 'false'};
+
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const arr = new Uint8Array(event.target.result);
+                            let hasAcn = false;
+                            for (let i = 0; i < arr.length - 4; i++) {
+                                if (arr[i] === 0x61 && arr[i+1] === 0x63 && arr[i+2] === 0x54 && arr[i+3] === 0x4C) { // "acTL"
+                                    hasAcn = true;
+                                    break;
+                                }
+                            }
+
+                            const isGif = file.type === 'image/gif' || extension === '.gif';
+                            const isApng = file.type === 'image/apng' || extension === '.apng' || hasAcn;
+
+                            if ((isGif || isApng) && !isPremiumOrVerified) {
+                                alert("Анимации (APNG, GIF) в дизайне доступны только для премиум или подтвержденных каналов.");
+                                inputEl.value = '';
+                                return;
+                            }
+
+                            if (inputEl.name === 'logo') {
+                                const img = document.getElementById('logoPreviewImg');
+                                if (img) {
+                                    const dataReader = new FileReader();
+                                    dataReader.onload = function(e) {
+                                        img.src = e.target.result;
+                                    };
+                                    dataReader.readAsDataURL(file);
+                                }
+                            }
+                        };
+                        reader.readAsArrayBuffer(file);
                     });
                 });
             </script>

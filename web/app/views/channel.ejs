@@ -90,7 +90,7 @@
                     <div class="block-head-bg"></div>
                     <div class="block-head">
                       <div class="block-head-right">
-                        <div class="block-title"><span id="channel_title"><%= channel.name %></span><% if (channel.is_verified) { %><span class="verified_icon" title="Подтвержденный канал"></span><% } %>
+                        <div class="block-title"><span id="channel_title"><%= channel.name %></span><% if (channel.is_verified) { %><span class="verified_icon <%= channel.is_premium ? 'blue' : '' %>" title="<%= channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>"></span><% } %>
                           <% if (channel.is_18_plus) { %> <span class="label_18"
                               style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span>
                             <% } %> <span id="channel_program_title"></span>
@@ -249,14 +249,14 @@
                                 style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
                                 <a href="/<%= channel.shortname %>" style="display: block;">
                                   <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="Logo"
-                                    style="width: 50px; height: 50px; background: #fff; border: 1px solid #444; box-sizing: border-box; object-fit: cover; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                    style="width: 50px; height: 50px; background: <%= channel.player_bg_color || '#000000' %>; border: 1px solid #444; box-sizing: border-box; object-fit: <%= channel.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
                                 </a>
                                 <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
                                   <a href="/<%= channel.shortname %>"
                                     style="background: rgba(0,0,0,0.6); color: #00FFFF; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap;">
                                     <%= channel.name %>
                                     <% if (channel.is_verified) { %>
-                                      <span class="verified_icon" title="Подтвержденный канал" style="margin-left: 5px; display: inline-block;"></span>
+                                      <span class="verified_icon <%= channel.is_premium ? 'blue' : '' %>" title="<%= channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>" style="margin-left: 5px; display: inline-block;"></span>
                                     <% } %>
                                   </a>
                                 </div>
@@ -528,6 +528,7 @@
                       <script src="/socket.io/socket.io.js"></script>
                       <%
                         let currentUserStr = 'null';
+                        let userToken = '';
                         if (typeof user !== 'undefined' && user) {
                           let finalRole = user.role;
                           if (user.role !== 'admin' && typeof channelRole !== 'undefined' && channelRole !== 'guest') {
@@ -539,18 +540,23 @@
                           if (user.id === channel.user_id) {
                             finalRole = 'owner';
                           }
-                          currentUserStr = JSON.stringify(Object.assign({}, user, { role: finalRole }));
+                          const publicUser = {
+                            id: user.id,
+                            username: user.username,
+                            role: finalRole,
+                            chat_color: user.chat_color
+                          };
+                          currentUserStr = JSON.stringify(publicUser);
+                          userToken = encryptUser(Object.assign({}, publicUser, { mask_mode: user.mask_mode }));
                         }
                       %>
-                      <div id="yatv-app-data" data-user="<%= currentUserStr %>" style="display:none;"></div>
-                      <script>
-                        window.CHANNEL_ID = <%= channel.id %>;
-                        const __appData = document.getElementById('yatv-app-data');
-                        const __userAttr = __appData ? __appData.getAttribute('data-user') : 'null';
-                        window.CURRENT_USER = (__userAttr && __userAttr !== 'null') ? JSON.parse(__userAttr) : null;
-                        window.CHANNEL_OWNER_ID = <%= channel.user_id %>;
-                        window.CHAT_ENABLED = <%= channel.chat_enabled ? 'true' : 'false' %>;
-                        window.IS_MODERATOR = <%= typeof isModerator !== 'undefined' && isModerator ? 'true' : 'false' %>;
+                       <script>
+                         window.CHANNEL_ID = <%= channel.id %>;
+                         window.CURRENT_USER = <%- currentUserStr %>;
+                         window.CURRENT_USER_TOKEN = <%- userToken ? `'${userToken}'` : 'null' %>;
+                         window.CHANNEL_OWNER_ID = <%= channel.user_id %>;
+                         window.CHAT_ENABLED = <%= channel.chat_enabled ? 'true' : 'false' %>;
+                         window.IS_MODERATOR = <%= typeof isModerator !== 'undefined' && isModerator ? 'true' : 'false' %>;
                         window.USER_TIMEZONE = '<%= typeof userTimezone !== 'undefined' ? userTimezone : 'Europe/Moscow' %>';
                       </script>
                       <script src="<%= CDN_BASE_URL %>/js/player.js?v=<%= Date.now() %>"></script>
@@ -689,7 +695,7 @@
                     </div>
                     <div class="block-content">
                       <div id="translations_list">
-                        <div class="records_list" style="padding: 10px;">
+                        <div class="records_list" style="padding: 0;">
                           <% if (channel.is_live) { %>
                             <div class="item first item_end" id="schedule_live_item">
                               <div class="record_item" style="position: relative;">
@@ -725,14 +731,14 @@
 
                             <% if (locals.programs && programs.length > 0) { %>
                               <% programs.forEach((p, i) => { %>
-                                <div class="item <%= i === programs.length - 1 ? 'last item_end' : '' %>" style="padding: 10px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
-                                  <div style="float: left; width: 45px; text-align: center; margin-right: 10px; padding-top: 5px;">
+                                 <div class="item <%= (!channel.is_live && i === 0) ? 'first' : '' %> <%= i === programs.length - 1 ? 'last item_end' : '' %>" style="padding: 10px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
+                                  <div class="date" style="float: left; width: 70px; text-align: center; margin-right: 10px;">
                                     <% const d = new Date(p.start_time); %>
-                                    <div style="font-size: 14px; color: #fff;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
-                                    <div style="font-size: 11px; color: #8c989e;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
+                                    <div class="time" style="font-size: 16px; font-weight: bold; color: #c0c0b2; line-height: 1.2;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
+                                    <div class="day" style="font-size: 11px; color: #777; margin-top: 4px; line-height: 1.2;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
                                   </div>
                                   <div class="logo" style="float: left; width: 60px; height: 60px; padding: 1px; background: url('<%= CDN_BASE_URL %>/images/css_img_38_border.bg.png') repeat; margin-right: 10px;">
-                                    <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: cover; display: block; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                    <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: <%= channel.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= channel.logo_fit === 'contain' ? 'background: #000;' : '' %> display: block; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
                                   </div>
                                   <div class="info" style="overflow: hidden; padding-top: 5px;">
                                     <div class="title" style="margin-bottom: 5px;">
@@ -744,11 +750,24 @@
                                     <div class="description" style="font-size: 11px; color: #555; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">
                                       <%= p.description || 'Описание передачи не заполнено' %>
                                     </div>
-                                    <div style="margin-top: 5px;">
-                                      <a href="#" onclick="event.preventDefault(); toggleBookmark(<%= p.id %>, this);" style="font-size: 11px; color: #00a0e3; text-decoration: none;">
-                                        <%= (typeof p.is_bookmarked !== 'undefined' ? p.is_bookmarked : false) ? 'Удалить из личного расписания' : 'Добавить в личное расписание' %>
-                                      </a>
-                                    </div>
+                                     <div class="likes-badge" style="position: absolute; right: 0; top: 10px;">
+                                       <span id="program_bookmarks_count_<%= p.id %>"
+                                         style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;">
+                                         <%= p.bookmarks_count || 0 %>
+                                       </span>
+                                       <% if (locals.user) { %>
+                                         <a href="#" onclick="toggleBookmark(<%= p.id %>); return false;"
+                                           style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                             class="block-head-icon-heart heart-btn <%= p.is_bookmarked ? 'active' : '' %>"
+                                             id="program_bookmark_icon_<%= p.id %>"
+                                             style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                       <% } else { %>
+                                         <a href="/login"
+                                           style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                             class="block-head-icon-heart heart-btn"
+                                             style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                       <% } %>
+                                     </div>
                                   </div>
                                 </div>
                               <% }); %>
@@ -927,21 +946,19 @@
                           </div>
                         </div>
                       </div>
-                      <div class="block-content">
-                        <div style="padding: 10px;" id="fans_list_container">
+                      <div class="block-content" style="padding: 10px;">
+                        <div id="fans_list_container">
                           <% if (fans.length> 0) { %>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <div class="users" style="display: flex; flex-wrap: wrap; gap: 15px 7px;">
                               <% fans.forEach(fan=> { %>
-                                <div style="width: 90px; text-align: center; margin-bottom: 5px;">
-                                  <a href="/ru/account,userinfo?username=<%= fan.username %>"
-                                    style="text-decoration: none;">
-                                    <div class="border_logo" style="margin: 0 auto; width: 90px; height: 90px;">
-                                      <img src="<%= CDN_BASE_URL %><%= fan.avatar  %>" style="width: 90px; height: 90px; background: #222;">
-                                    </div>
-                                    <div
-                                      style="color: #6fdeee; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 5px;">
-                                      <%= fan.username %>
-                                    </div>
+                                <div class="item" style="margin-right: 0;">
+                                  <a class="logo" href="/ru/account,userinfo/?username=<%= encodeURIComponent(fan.username) %>"
+                                    style="background: url('<%= CDN_BASE_URL %><%= fan.avatar || '/images/default_user_avatar.png' %>') no-repeat center center; background-size: cover; width: 100px; height: 100px; display: block;"><span
+                                      class="border_logo"></span></a>
+                                  <a href="/ru/account,userinfo/?username=<%= encodeURIComponent(fan.username) %>"
+                                    class="<%= fan.is_online ? 'green' : '' %>"
+                                    style="font-size: 11px; display: block; word-break: break-all; margin-top: 5px;">
+                                    <%= fan.username %>
                                   </a>
                                 </div>
                                 <% }) %>
@@ -1231,18 +1248,24 @@
               const container = document.getElementById('fans_list_container');
               if (container && data.fans) {
                 if (data.fans.length > 0) {
-                  let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+                  const cdnBase = '<%= CDN_BASE_URL %>';
+                  let html = '<div class="users" style="display: flex; flex-wrap: wrap; gap: 15px 7px;">';
                   data.fans.forEach(fan => {
+                    const onlineClass = fan.is_online ? 'green' : '';
+                    const rawAvatar = fan.avatar || '/images/default_user_avatar.png';
+                    const avatarUrl = rawAvatar.startsWith('http') ? rawAvatar : (cdnBase + rawAvatar);
                     html += `
-              <div style="width: 100px; text-align: center;">
-                <a href="/ru/account,userinfo?username=${fan.username}">
-                  <div class="border_logo">
-                    <img src="${fan.avatar}" style="width: 100px; height: 100px; background: #000;">
-                  </div>
-                  <div style="color: #6fdeee; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${fan.username}</div>
-                </a>
-              </div>
-            `;
+                      <div class="item" style="margin-right: 0;">
+                        <a class="logo" href="/ru/account,userinfo/?username=${encodeURIComponent(fan.username)}"
+                          style="background: url('${avatarUrl}') no-repeat center center; background-size: cover; width: 100px; height: 100px; display: block;"><span
+                            class="border_logo"></span></a>
+                        <a href="/ru/account,userinfo/?username=${encodeURIComponent(fan.username)}"
+                          class="${onlineClass}"
+                          style="font-size: 11px; display: block; word-break: break-all; margin-top: 5px;">
+                          ${fan.username}
+                        </a>
+                      </div>
+                    `;
                   });
                   html += '</div>';
                   container.innerHTML = html;
@@ -1358,15 +1381,23 @@
       </script>
 
       <script>
-window.toggleBookmark = async function(programId, el) {
+window.toggleBookmark = async function(programId) {
   try {
     const res = await fetch(`/api/programs/${programId}/bookmark`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      if (data.action === 'removed') {
-        el.innerText = 'Добавить в личное расписание';
-      } else {
-        el.innerText = 'Удалить из личного расписания';
+      const countEl = document.getElementById('program_bookmarks_count_' + programId);
+      const iconEl = document.getElementById('program_bookmark_icon_' + programId);
+      if (countEl) {
+        let cur = parseInt(countEl.innerText) || 0;
+        countEl.innerText = data.action === 'added' ? cur + 1 : Math.max(0, cur - 1);
+      }
+      if (iconEl) {
+        if (data.action === 'added') {
+          iconEl.classList.add('active');
+        } else {
+          iconEl.classList.remove('active');
+        }
       }
     } else {
       alert(data.error || 'Ошибка');

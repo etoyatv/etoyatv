@@ -100,7 +100,9 @@
     <%- include('partials/sidebar') %>
 
     <main class="main-content">
-      <div class="reports-page-title">Архив обработанных жалоб (<%= typeof total_archived !== 'undefined' ? total_archived : complaints.length %>)</div>
+      <div class="users-header-stats">
+        <p>Архив обработанных жалоб: <strong><%= typeof total_archived !== 'undefined' ? total_archived : complaints.length %></strong></p>
+      </div>
 
       <% if (complaints.length === 0) { %>
         <p style="color: #a1b0b8; text-align: center;">В архиве пока пусто.</p>

@@ -31,6 +31,334 @@ app.use((req, res, next) => {
   next();
 });
 
+function isOldUserAgent(ua) {
+  if (!ua) return false;
+
+  // Windows XP (NT 5.1/5.2) or Windows Vista (NT 6.0)
+  const winMatch = ua.match(/Windows NT ([0-9\.]+)/);
+  if (winMatch) {
+    const ver = parseFloat(winMatch[1]);
+    if (ver < 6.1) return true;
+  }
+
+  // Android < 7.1
+  const androidMatch = ua.match(/Android\s+([0-9\.]+)/);
+  if (androidMatch) {
+    const ver = parseFloat(androidMatch[1]);
+    if (ver < 7.1) return true;
+  }
+
+  // iOS <= 9
+  const iosMatch = ua.match(/(iPhone|iPad|iPod).*OS\s+([0-9_\.]+)/);
+  if (iosMatch) {
+    const ver = parseFloat(iosMatch[2].replace(/_/g, '.'));
+    if (ver < 10.0) return true;
+  }
+
+  // Internet Explorer <= 10
+  if (/MSIE\s+([6-9]|10)\.0/.test(ua)) return true;
+
+  // Presto-based Opera (old Presto engine)
+  if (/Presto\//.test(ua)) return true;
+
+  // Safari <= 9 (without Chrome in User-Agent)
+  if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) {
+    const safariMatch = ua.match(/Version\/([0-9\.]+)/);
+    if (safariMatch) {
+      const ver = parseFloat(safariMatch[1]);
+      if (ver < 10.0) return true;
+    }
+  }
+
+  return false;
+}
+
+function getSupermiumSuggestion(ua) {
+  if (!ua) return false;
+  const winMatch = ua.match(/Windows NT ([0-9\.]+)/);
+  if (winMatch) {
+    const ver = parseFloat(winMatch[1]);
+    // Windows XP (5.1/5.2), Server 2003 (5.2), Vista (6.0), 7 (6.1), 8 (6.2), 8.1 (6.3)
+    if (ver >= 5.1 && ver <= 6.3) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function getFriendlyOSAndBrowser(ua) {
+  if (!ua) return { os: 'Неизвестная ОС', browser: 'Неизвестный браузер' };
+
+  let os = 'Неизвестная ОС';
+  let browser = 'Неизвестный браузер';
+
+  // Detect OS
+  if (ua.includes('Windows NT 5.1')) os = 'Windows XP';
+  else if (ua.includes('Windows NT 5.2')) os = 'Windows XP 64-bit / Server 2003';
+  else if (ua.includes('Windows NT 6.0')) os = 'Windows Vista';
+  else if (ua.includes('Windows NT 6.1')) os = 'Windows 7';
+  else if (ua.includes('Windows NT 6.2')) os = 'Windows 8';
+  else if (ua.includes('Windows NT 6.3')) os = 'Windows 8.1';
+  else if (ua.includes('Windows NT 10.0')) os = 'Windows 10/11';
+  else if (ua.includes('Android')) {
+    const match = ua.match(/Android\s+([0-9\.]+)/);
+    os = `Android ${match ? match[1] : ''}`;
+  } else if (ua.includes('iPhone') || ua.includes('iPad') || ua.includes('iPod')) {
+    const match = ua.match(/OS\s+([0-9_\.]+)/);
+    os = `iOS ${match ? match[1].replace(/_/g, '.') : ''}`;
+  } else if (ua.includes('Macintosh')) {
+    os = 'macOS';
+  } else if (ua.includes('Linux')) {
+    os = 'Linux';
+  }
+
+  // Detect Browser
+  if (ua.includes('MSIE') || ua.includes('Trident')) {
+    const match = ua.match(/(?:MSIE\s+|rv:)([0-9\.]+)/);
+    browser = `Internet Explorer ${match ? match[1] : ''}`;
+  } else if (ua.includes('Presto') || ua.includes('OPR/')) {
+    browser = 'Opera';
+  } else if (ua.includes('Firefox')) {
+    const match = ua.match(/Firefox\/([0-9\.]+)/);
+    browser = `Firefox ${match ? match[1] : ''}`;
+  } else if (ua.includes('Chrome')) {
+    const match = ua.match(/Chrome\/([0-9\.]+)/);
+    browser = `Chrome ${match ? match[1] : ''}`;
+  } else if (ua.includes('Safari')) {
+    const match = ua.match(/Version\/([0-9\.]+)/);
+    browser = `Safari ${match ? match[1] : ''}`;
+  }
+
+  return { os, browser };
+}
+
+// Redirect HTTP to HTTPS for modern browsers, bypass for old OS/browsers
+app.use((req, res, next) => {
+  if (req.secure) {
+    return next();
+  }
+
+  if (req.path.startsWith('/api/internal/')) {
+    return next();
+  }
+
+  const ua = req.headers['user-agent'] || '';
+  if (isOldUserAgent(ua)) {
+    return next();
+  }
+
+  res.redirect(301, 'https://' + req.headers.host + req.originalUrl);
+});
+
+// Block old OS/browsers early and return HTTP 503
+app.use((req, res, next) => {
+  const ua = req.headers['user-agent'] || '';
+  if (isOldUserAgent(ua)) {
+    // Bypass for internal APIs, socket.io, and static assets
+    if (
+      req.path.startsWith('/api/') ||
+      req.path.startsWith('/chat-assets/') ||
+      req.path.startsWith('/socket.io/') ||
+      /\.(css|js|png|jpe?g|gif|svg|ico|mp3|mp4|webm|woff2?|ttf|eot)$/i.test(req.path)
+    ) {
+      return next();
+    }
+
+    const detectedSystem = getFriendlyOSAndBrowser(ua);
+    const showSupermium = getSupermiumSuggestion(ua);
+
+    res.status(503).send(`<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Доступ ограничен</title>
+  <style type="text/css">
+    body {
+      background-color: #121212;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+    .warning-banner {
+      background: #1e1e1e;
+      border: 1px solid #ff5c5c;
+      border-radius: 12px;
+      padding: 30px;
+      max-width: 650px;
+      width: 90%;
+      margin: 10vh auto;
+      display: inline-block;
+      text-align: left;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      box-sizing: border-box;
+      vertical-align: middle;
+    }
+    .warning-banner h3 {
+      color: #ff5c5c;
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 20px;
+      font-weight: bold;
+      line-height: 1.4;
+    }
+    .warning-banner p {
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 20px;
+      color: #cccccc;
+    }
+    .table-container {
+      margin-bottom: 20px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .legacy-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(20, 20, 20, 0.5);
+    }
+    .legacy-table th, .legacy-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+    }
+    .legacy-table th {
+      background: rgba(255, 92, 92, 0.1);
+      color: #ff5c5c;
+      font-weight: 600;
+    }
+    .legacy-table tr:last-child td {
+      border-bottom: none;
+    }
+    .badge-danger {
+      background: rgba(255, 92, 92, 0.2);
+      color: #ff8585;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid rgba(255, 92, 92, 0.3);
+      display: inline-block;
+    }
+    .badge-success {
+      background: rgba(46, 204, 113, 0.2);
+      color: #2ecc71;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      display: inline-block;
+    }
+    .supermium-box {
+      background: rgba(0, 225, 255, 0.05);
+      border: 1px solid rgba(0, 225, 255, 0.2);
+      border-radius: 6px;
+      padding: 20px;
+      margin-top: 15px;
+    }
+    .supermium-box h4 {
+      color: #00e1ff;
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .supermium-links {
+      margin-top: 15px;
+    }
+    .supermium-btn {
+      display: inline-block;
+      background: #00a0e3;
+      color: #ffffff !important;
+      padding: 10px 20px;
+      text-decoration: none !important;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 14px;
+      border: none;
+    }
+    .supermium-btn:hover {
+      background: #00c0ff;
+    }
+  </style>
+</head>
+<body>
+  <div class="warning-banner">
+    <h3>Доступ ограничен: операционная система или браузер не поддерживаются</h3>
+    <p>
+      Вход на сайт с вашего устройства заблокирован из соображений безопасности. Вы используете устаревшую операционную систему или веб-браузер, которые не поддерживают современные стандарты безопасного шифрования (SSL/TLS), медиа-кодеки и API-интерфейсы. Для продолжения работы вам необходимо обновить ПО или использовать рекомендованный браузер.
+    </p>
+    
+    <div class="table-container">
+      <table class="legacy-table">
+        <thead>
+          <tr>
+            <th>Параметр</th>
+            <th>Ваше окружение</th>
+            <th>Рекомендуемое окружение</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Операционная система</strong></td>
+            <td>
+              <span class="badge-danger">${detectedSystem.os}</span>
+            </td>
+            <td>Windows 10 / 11, Android 7.1+, iOS 10+, Linux, macOS</td>
+          </tr>
+          <tr>
+            <td><strong>Браузер</strong></td>
+            <td>
+              <span class="badge-danger">${detectedSystem.browser}</span>
+            </td>
+            <td>Современные версии Chrome, Firefox, Opera, Safari</td>
+          </tr>
+          <tr>
+            <td><strong>Статус безопасности</strong></td>
+            <td>
+              <span class="badge-danger">
+                [Небезопасно] Небезопасное HTTP-соединение
+              </span>
+            </td>
+            <td>
+              <span class="badge-success">
+                [Защищено] Защищенное HTTPS-соединение
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    ${showSupermium ? `
+      <div class="supermium-box">
+        <h4>[Решение] Решение для пользователей ${detectedSystem.os}:</h4>
+        <p style="margin-bottom: 10px; font-size: 14px; line-height: 1.6;">
+          Чтобы полноценно пользоваться сайтом с сохранением поддержки современных протоколов безопасности и медиа-функций, мы рекомендуем установить современный веб-браузер <strong>Supermium</strong>. Это полноценный порт современных версий Chromium, специально адаптированный для работы на Windows XP, Vista, 7, 8 и 8.1.
+        </p>
+        <div class="supermium-links">
+          <a href="http://lunastore.app/download.php?id=32" class="supermium-btn">Скачать Supermium</a>
+        </div>
+      </div>
+    ` : `
+      <div class="supermium-box" style="background: rgba(255, 255, 255, 0.02); border-color: rgba(255, 255, 255, 0.1);">
+        <h4>[Рекомендация] Рекомендация по обновлению:</h4>
+        <p style="margin-bottom: 0; font-size: 14px; line-height: 1.6;">
+          Пожалуйста, обновите операционную систему вашего устройства или установите последнюю поддерживаемую версию современного браузера (Google Chrome, Mozilla Firefox, Opera) для полноценного и безопасного доступа ко всем функциям платформы.
+        </p>
+      </div>
+    `}
+  </div>
+</body>
+</html>`);
+    return;
+  }
+  next();
+});
+
 app.locals.CDN_BASE_URL = process.env.CDN_BASE_URL || '';
 app.locals.RTMP_STREAM_URL = process.env.RTMP_STREAM_URL || 'http://localhost:8080/live';
 app.locals.RTMP_INGEST_URL = process.env.RTMP_INGEST_URL || 'rtmp://localhost/live';
@@ -151,26 +479,51 @@ app.use(async (req, res, next) => {
   if (req.session && req.session.user && req.session.user.staff_role) {
     try {
       const { pool } = require('../config/db');
-      const [staff] = await pool.query('SELECT role, is_superadmin, mask_mode FROM staff WHERE user_id = ?', [req.session.user.id]);
+      const [staff] = await pool.query('SELECT role, is_superadmin, mask_mode, hide_admin_tools FROM staff WHERE user_id = ?', [req.session.user.id]);
       if (staff.length === 0) {
         delete req.session.user.staff_role;
         delete req.session.user.is_superadmin;
         delete req.session.user.mask_mode;
+        delete req.session.user.hide_admin_tools;
       } else {
         req.session.user.staff_role = staff[0].role;
         req.session.user.is_superadmin = staff[0].is_superadmin === 1;
         req.session.user.mask_mode = staff[0].mask_mode;
+        req.session.user.hide_admin_tools = staff[0].hide_admin_tools === 1;
       }
     } catch (e) {
       console.error('Error verifying staff session status:', e);
     }
   }
 
+  const { encryptUser } = require('../utils/chatCrypto');
+  res.locals.encryptUser = encryptUser;
+
   res.locals.user = req.session && req.session.user ? req.session.user : null;
   res.locals.currentPath = req.path;
-  res.locals.CDN_BASE_URL = process.env.CDN_BASE_URL || '';
-  res.locals.APP_URL = process.env.APP_URL || 'http://localhost:3001';
-  res.locals.ADMIN_URL = process.env.ADMIN_URL || 'http://localhost:3002';
+  const baseCdn = process.env.CDN_BASE_URL || '';
+  let appUrl = process.env.APP_URL || 'http://localhost:3001';
+  let adminUrl = process.env.ADMIN_URL || 'http://localhost:3002';
+  if (!req.secure) {
+    res.locals.CDN_BASE_URL = baseCdn.replace('https://', 'http://');
+    res.locals.APP_URL = appUrl.replace('https://', 'http://');
+    res.locals.ADMIN_URL = adminUrl.replace('https://', 'http://');
+  } else {
+    res.locals.CDN_BASE_URL = baseCdn;
+    res.locals.APP_URL = appUrl;
+    res.locals.ADMIN_URL = adminUrl;
+  }
+  
+  const ua = req.headers['user-agent'] || '';
+  const isOld = isOldUserAgent(ua);
+  res.locals.isOldUA = isOld;
+  res.locals.showSupermium = getSupermiumSuggestion(ua);
+  if (isOld) {
+    res.locals.detectedSystem = getFriendlyOSAndBrowser(ua);
+  } else {
+    res.locals.detectedSystem = null;
+  }
+
   res.locals.HCAPTCHA_SITEKEY = process.env.HCAPTCHA_SITEKEY || '7d8ab54a-d248-41ac-89b8-abecc204de9e';
   try {
     const { pool } = require('../config/db');
@@ -367,6 +720,18 @@ async function autoUnbanChannels() {
   }
 }
 setInterval(autoUnbanChannels, 60 * 1000); // Check every minute
+
+async function autoCleanupExpiredPremiums() {
+  try {
+    const connection = await pool.getConnection();
+    await connection.query('UPDATE channels SET is_premium = 0, is_verified = 0, premium_until = NULL WHERE premium_until IS NOT NULL AND premium_until < NOW()');
+    connection.release();
+  } catch (err) {
+    console.error('Error auto-cleaning up expired premiums:', err);
+  }
+}
+setInterval(autoCleanupExpiredPremiums, 60 * 1000); // Check every minute
+
 
 const { runCleanup } = require('../utils/cleanup');
 setInterval(runCleanup, 5 * 60 * 60 * 1000); // Check every 5 hours

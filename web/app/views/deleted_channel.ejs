@@ -1,31 +1,80 @@
 <%- include('partials/header') %>
 
-<div id="content" style="min-height: 400px; display: flex; align-items: center; justify-content: center;">
-    <div class="blackbox" style="width: 600px;">
-        <div class="blackbox_tl"></div>
-        <div class="blackbox_tc"></div>
-        <div class="blackbox_tr"></div>
-        <div class="blackbox_cw">
-            <div class="blackbox_c" style="">
-                <div class="blackbox_ci">
-                    <div class="block-head-bg"></div>
-                    <div class="block-head">
-                        <div class="block-head-right">
-                            <div class="block-title" style="color: #ff4d4d;">Телеканал недоступен</div>
-                        </div>
-                    </div>
-                    <div class="block-content" style="text-align: center; padding: 30px;">
-                        <p style="color: #ccc; font-size: 16px; margin: 0;">Данный телеканал удален или заблокирован администрацией платформы.</p>
-                    </div>
-                    <div class="clear_both"></div>
-                </div>
-                <div class="clear_both"></div>
+<% if (typeof channel !== 'undefined' && channel) { %>
+  <%- `<style>
+    body, #body {
+      ${channel.bg_color ? `background-color: ${channel.bg_color} !important;` : ''}
+      ${channel.bg_url ? `
+        background-image: url('${typeof CDN_BASE_URL !== 'undefined' ? CDN_BASE_URL : (locals.CDN_BASE_URL || '')}${channel.bg_url}') !important;
+        background-attachment: fixed !important;
+        ${channel.bg_fit === 'tile' ? `
+          background-size: auto !important;
+          background-position: left top !important;
+          background-repeat: repeat !important;
+        ` : channel.bg_fit === 'center' ? `
+          background-size: auto !important;
+          background-position: center top !important;
+          background-repeat: no-repeat !important;
+        ` : channel.bg_fit === 'fit_width' ? `
+          background-size: 100% auto !important;
+          background-position: center top !important;
+          background-repeat: no-repeat !important;
+        ` : `
+          background-size: cover !important;
+          background-position: center top !important;
+          background-repeat: no-repeat !important;
+        `}
+      ` : ''}
+    }
+    ${channel.text_color ? `
+      body, #body,
+      .block-title,
+      .box-title,
+      .box-content,
+      .info-row {
+        color: ${channel.text_color} !important;
+      }
+    ` : ''}
+  </style>` %>
+<% } %>
+
+<div id="content" style="min-height: 400px; padding: 20px 0;"> 
+  <!-- LEFT COLUMN -->
+  <div class="left_blocks">
+    <div class="blackbox" style="width: auto;">
+      <div class="blackbox_tl"></div>
+      <div class="blackbox_tc"></div>
+      <div class="blackbox_tr"></div>
+      <div class="blackbox_cw">
+        <div class="blackbox_c">
+          <div class="blackbox_ci"> 
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">Телеканал удален</div>
+              </div> 
             </div>
+            <div class="block-content" style="padding: 25px; line-height: 1.8;">
+              <p style="color: #ccc; font-size: 13px; margin: 0 0 12px 0;">Телеканал был удален владельцем или администратором.</p>
+              <p style="color: #ccc; font-size: 13px; margin: 0;">Вы можете выбрать другие <a href="/ru/tv,channels" style="color: #6fdeee; text-decoration: underline;">телеканалы из списка</a>.</p>
+            </div>
+            <div class="clear_both"></div>
+          </div>
+          <div class="clear_both"></div>
         </div>
-        <div class="blackbox_bl"></div>
-        <div class="blackbox_bc"></div>
-        <div class="blackbox_br"></div>
+      </div>
+      <div class="blackbox_bl"></div>
+      <div class="blackbox_bc"></div>
+      <div class="blackbox_br"></div>
     </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right_blocks">
+    <%- include('partials/sidebar_ad_320x240') %>
+  </div>
+
+  <div class="clear_both"></div>
 </div>
 
 <%- include('partials/footer') %>

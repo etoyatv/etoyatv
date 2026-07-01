@@ -83,7 +83,7 @@ router.post('/:id/hide', async (req, res) => {
     
     // Fetch current status and channel/user status
     const [newsRows] = await pool.query(`
-      SELECT n.is_hidden, c.status as channel_status, u.is_banned as user_is_banned
+      SELECT n.is_hidden, n.title, c.status as channel_status, u.is_banned as user_is_banned, c.user_id, c.name as channel_name
       FROM channel_news n
       LEFT JOIN channels c ON n.channel_id = c.id
       LEFT JOIN users u ON c.user_id = u.id
@@ -111,16 +111,12 @@ router.post('/:id/hide', async (req, res) => {
     // Notify channel owner
     if (news.user_id) {
       const action = newHiddenStatus ? 'скрыта' : 'восстановлена';
-      const msg = `Ваша новость телеканала (ID: ${id}) была ${action} администрацией платформы.`;
+      const msg = `Ваша новость "${news.title}" на телеканале "${news.channel_name}" была ${action} администрацией платформы.`;
       await sendSystemMessage(news.user_id, msg);
     }
 
-    const [nRows] = await pool.query('SELECT n.title, c.name FROM channel_news n JOIN channels c ON n.channel_id = c.id WHERE n.id = ?', [id]);
-    const nTitle = nRows.length > 0 ? nRows[0].title : 'Unknown';
-    const cName = nRows.length > 0 ? nRows[0].name : 'Unknown';
-
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-    logAction('admin', req.session.user.username, newHiddenStatus ? `Скрыл новость "${nTitle}" (ID: ${id}) телеканала "${cName}"` : `Восстановил новость "${nTitle}" (ID: ${id}) телеканала "${cName}"`, userIp);
+    logAction('admin', req.session.user.username, newHiddenStatus ? `Скрыл новость "${news.title}" (ID: ${id}) телеканала "${news.channel_name}"` : `Восстановил новость "${news.title}" (ID: ${id}) телеканала "${news.channel_name}"`, userIp);
 
     req.session.success_msg = newHiddenStatus ? 'Новость скрыта' : 'Новость теперь отображается';
     res.redirect('back');
@@ -150,7 +146,7 @@ router.post('/:id/delete', async (req, res) => {
     
     // Notify channel owner
     if (newsRows.length > 0 && newsRows[0].user_id) {
-      const msg = `Ваша новость телеканала (ID: ${id}) была удалена администрацией платформы.`;
+      const msg = `Ваша новость "${newsRows[0].title}" на телеканале "${newsRows[0].name}" была удалена администрацией платформы.`;
       await sendSystemMessage(newsRows[0].user_id, msg);
     }
 

@@ -22,23 +22,23 @@
                                 <div class="block-title">Личное расписание пользователя <%= profileUser.username %> (<span class="blue"><%= schedules ? schedules.length : 0 %></span>)</div>
                             </div>
                         </div>
-                        <div class="block-content" style="padding: 10px;">
+                        <div class="block-content" style="padding: 0;">
                             <div id="records_list"> 
                                 <div class="records_list">
                                     <% if (locals.schedules && schedules.length > 0) { %>
                                         <% schedules.forEach((ps, idx) => { %>
-                                            <div class="item <%= idx === 0 ? 'first' : '' %> <%= idx === schedules.length - 1 ? 'last item_end' : '' %>" style="padding: 15px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
-                                                <div style="float: left; width: 60px; text-align: center; margin-right: 15px; padding-top: 5px;">
+                                            <div class="item <%= idx === 0 ? 'first' : '' %> <%= idx === schedules.length - 1 ? 'last item_end' : '' %>" style="padding: 8px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
+                                                <div class="date" style="float: left; width: 70px; text-align: center; margin-right: 15px;">
                                                   <% const d = new Date(ps.start_time); %>
-                                                  <div style="font-size: 14px; color: #fff;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
-                                                  <div style="font-size: 11px; color: #8c989e; margin-top: 2px;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
+                                                  <div class="time" style="font-size: 16px; font-weight: bold; color: #c0c0b2; line-height: 1.2;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
+                                                  <div class="day" style="font-size: 11px; color: #777; margin-top: 4px; line-height: 1.2;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
                                                 </div>
-                                                <div class="logo" style="float: left; width: 100px; height: 100px; background: #fff; margin-right: 15px;">
-                                                  <a href="/<%= ps.shortname %>" style="display: block; width: 100%; height: 100%;">
-                                                    <img src="<%= CDN_BASE_URL %><%= ps.logo_url || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: contain; display: block; <%= typeof ps.is_18_plus !== 'undefined' && ps.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                                <div class="logotype" style="float: left; width: 100px; height: 100px; margin-right: 15px;">
+                                                  <a href="/<%= ps.shortname %>" class="logo" style="background: #000 url('<%= CDN_BASE_URL %><%= ps.logo_url || '/images/default_channel_logo.png' %>') no-repeat center center; background-size: contain; display: block; width: 100%; height: 100%; <%= typeof ps.is_18_plus !== 'undefined' && ps.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                                    <span class="border_logo"></span>
                                                   </a>
                                                 </div>
-                                                <div class="info" style="overflow: hidden; padding-top: 2px;">
+                                                <div class="info" style="overflow: hidden; padding-left: 10px; padding-top: 2px;">
                                                     <div class="title" style="margin-bottom: 8px;"><a href="/<%= ps.shortname %>" style="color: #6FDEEE; font-size: 16px; text-decoration: none;"><%= ps.title %></a></div> 
                                                     <div class="channel" style="margin-bottom: 8px; font-size: 12px; color: #8c989e;">
                                                       Телеканал: <a href="/<%= ps.shortname %>" style="color: #6FDEEE; text-decoration: none;"><%= ps.channel_name %></a>
@@ -46,13 +46,24 @@
                                                     <div class="description" style="font-size: 12px; color: #555; margin-bottom: 15px; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">
                                                       <%= ps.description || 'Описание передачи не заполнено' %>
                                                     </div>
-                                                    <% if (locals.user) { %>
-                                                    <div>
-                                                      <a href="#" onclick="event.preventDefault(); toggleBookmark(<%= ps.id %>, this);" style="font-size: 12px; color: #00a0e3; text-decoration: none;">
-                                                        <%= (typeof ps.is_bookmarked !== 'undefined' ? ps.is_bookmarked : false) ? 'Удалить из личного расписания' : 'Добавить в личное расписание' %>
-                                                      </a>
+                                                    <div class="likes-badge" style="position: absolute; right: 0; top: 15px;">
+                                                      <span id="program_bookmarks_count_<%= ps.id %>"
+                                                        style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;">
+                                                        <%= ps.bookmarks_count || 0 %>
+                                                      </span>
+                                                      <% if (locals.user) { %>
+                                                        <a href="#" onclick="toggleBookmark(<%= ps.id %>); return false;"
+                                                          style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                                            class="block-head-icon-heart heart-btn <%= (typeof ps.is_bookmarked !== 'undefined' ? ps.is_bookmarked : false) ? 'active' : '' %>"
+                                                            id="program_bookmark_icon_<%= ps.id %>"
+                                                            style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                                      <% } else { %>
+                                                        <a href="/login"
+                                                          style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                                            class="block-head-icon-heart heart-btn"
+                                                            style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                                      <% } %>
                                                     </div>
-                                                    <% } %>
                                                 </div> 
                                             </div>
                                         <% }); %>
@@ -141,15 +152,23 @@
 </div>
 </div>
 <script>
-window.toggleBookmark = async function(programId, el) {
+window.toggleBookmark = async function(programId) {
   try {
     const res = await fetch(`/api/programs/${programId}/bookmark`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      if (data.action === 'removed') {
-        el.innerText = 'Добавить в личное расписание';
-      } else {
-        el.innerText = 'Удалить из личного расписания';
+      const countEl = document.getElementById('program_bookmarks_count_' + programId);
+      const iconEl = document.getElementById('program_bookmark_icon_' + programId);
+      if (countEl) {
+        let cur = parseInt(countEl.innerText) || 0;
+        countEl.innerText = data.action === 'added' ? cur + 1 : Math.max(0, cur - 1);
+      }
+      if (iconEl) {
+        if (data.action === 'added') {
+          iconEl.classList.add('active');
+        } else {
+          iconEl.classList.remove('active');
+        }
       }
       window.location.reload();
     } else {

@@ -12,7 +12,7 @@ const requireAdminAuth = async (req, res, next) => {
   try {
     const connection = await pool.getConnection();
     const [staffRows] = await connection.query(`
-      SELECT s.role, s.is_superadmin, s.blur_18_plus, s.mask_mode, u.avatar, u.is_totp_enabled 
+      SELECT s.role, s.is_superadmin, s.blur_18_plus, s.mask_mode, s.hide_admin_tools, u.avatar, u.is_totp_enabled 
       FROM staff s 
       JOIN users u ON s.user_id = u.id 
       WHERE s.user_id = ?
@@ -39,6 +39,7 @@ const requireAdminAuth = async (req, res, next) => {
     req.user.is_superadmin = staffRows[0].is_superadmin;
     req.user.blur_18_plus = staffRows[0].blur_18_plus === 1;
     req.user.mask_mode = staffRows[0].mask_mode;
+    req.user.hide_admin_tools = staffRows[0].hide_admin_tools === 1;
     req.user.avatar = staffRows[0].avatar;
     res.locals.user = req.user;
     res.locals.currentPath = req.path;

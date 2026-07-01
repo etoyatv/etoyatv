@@ -36,10 +36,11 @@ router.get('/ru/tv,viewrecord,:id', async (req, res) => {
   const { id } = req.params;
   try {
     const [recordRows] = await pool.query(`
-      SELECT r.*, c.name as channel_name, u.username as owner_username, c.shortname, c.status as c_status
+      SELECT r.*, c.name as channel_name, u.username as owner_username, c.user_id as owner_user_id, c.shortname, c.status as c_status, s.is_superadmin as owner_is_superadmin
       FROM records r
       JOIN channels c ON r.channel_id = c.id
       JOIN users u ON c.user_id = u.id
+      LEFT JOIN staff s ON u.id = s.user_id
       WHERE r.id = ?
     `, [id]);
 
@@ -277,7 +278,14 @@ router.get('/ru/tv,programs', async (req, res) => {
     const [liveChannels] = await connection.query(liveQuery, liveParams);
 
     // 2. Fetch upcoming programs matching search
-    let progQuery = "SELECT p.*, c.name as channel_name, c.shortname as channel_shortname, c.logo_url as channel_logo, c.is_18_plus, 'program' as item_type FROM programs p JOIN channels c ON p.channel_id = c.id WHERE c.status = 'active' AND c.access_level != 'private' AND p.start_time >= NOW()";
+    let progQuery = `
+      SELECT p.*, c.name as channel_name, c.shortname as channel_shortname, c.logo_url as channel_logo, c.logo_fit as channel_logo_fit, c.is_18_plus, 'program' as item_type,
+             (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id) as bookmarks_count
+             ${req.session.user ? `, (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id AND ps.user_id = ${req.session.user.id}) > 0 as is_bookmarked` : ', 0 as is_bookmarked'}
+      FROM programs p 
+      JOIN channels c ON p.channel_id = c.id 
+      WHERE c.status = 'active' AND c.access_level != 'private' AND p.start_time >= NOW() AND (p.is_hidden = 0 OR p.is_hidden IS NULL)
+    `;
     let progParams = [];
     if (searchQuery) {
       progQuery += " AND (p.title LIKE ? OR p.description LIKE ?)";
@@ -339,7 +347,7 @@ router.get('/ru/tv,channels', async (req, res) => {
       params.push(`%${searchQuery}%`, `%${searchQuery}%`);
     }
 
-    queryStr += " ORDER BY c.is_verified DESC, c.is_premium DESC, fans_count DESC, (c.is_live = 1 OR c.autopilot_enabled = 1) DESC, c.created_at DESC LIMIT ? OFFSET ?";
+    queryStr += " ORDER BY c.is_verified DESC, c.is_premium ASC, fans_count DESC, (c.is_live = 1 OR c.autopilot_enabled = 1) DESC, c.created_at DESC LIMIT ? OFFSET ?";
 
     const [countRows] = await connection.query(countQueryStr, params);
     const totalChannels = countRows[0].count;

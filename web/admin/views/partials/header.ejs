@@ -13,6 +13,7 @@
         <a href="/channels" class="<%= currentPath && currentPath.startsWith('/channels') ? 'active' : '' %>">Каналы</a>
         <a href="/records" class="<%= currentPath && currentPath.startsWith('/records') ? 'active' : '' %>">Записи</a>
         <a href="/news" class="<%= currentPath && currentPath.startsWith('/news') ? 'active' : '' %>">Новости</a>
+        <a href="/announces" class="<%= currentPath && currentPath.startsWith('/announces') ? 'active' : '' %>">Анонсы</a>
         <% if (!isModOnly && typeof invite_system_enabled !== 'undefined' && invite_system_enabled) { %>
         <a href="/invites" class="<%= currentPath === '/invites' ? 'active' : '' %>">Инвайт-коды</a>
         <% } %>

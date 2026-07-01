@@ -109,7 +109,7 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
     <!-- Logo and Title -->
     <div class="player-ui" style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
       <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="display: block;">
-        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo_50.png') : '/images/default_channel_logo_50.png')}" alt="Logo" style="width: 50px; height: 50px; background: #fff; border: 1px solid #444; box-sizing: border-box; object-fit: cover;">
+        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo_50.png') : '/images/default_channel_logo_50.png')}" alt="Logo" style="width: 50px; height: 50px; background: ${locals.panelChannel && locals.panelChannel.player_bg_color ? locals.panelChannel.player_bg_color : '#000000'}; border: 1px solid #444; box-sizing: border-box; object-fit: ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'contain' : 'cover'};">
       </a>
       <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
         <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="background: rgba(0,0,0,0.6); color: #00FFFF; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-block; text-decoration: none; white-space: nowrap;">
@@ -330,7 +330,8 @@ ${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
 <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <script>
   window.CHANNEL_ID = ${locals.panelChannel ? locals.panelChannel.id : 0};
-  window.CURRENT_USER = ${locals.user ? JSON.stringify(Object.assign({}, locals.user, { role: (locals.panelRole || 'guest') })) : 'null'};
+  window.CURRENT_USER = ${locals.user ? JSON.stringify({ id: locals.user.id, username: locals.user.username, role: (locals.panelRole || 'guest'), chat_color: locals.user.chat_color }) : 'null'};
+  window.CURRENT_USER_TOKEN = '${locals.user ? locals.encryptUser({ id: locals.user.id, username: locals.user.username, role: (locals.panelRole || 'guest'), chat_color: locals.user.chat_color, mask_mode: locals.user.mask_mode }) : ""}';
   window.CHANNEL_OWNER_ID = ${locals.panelChannel ? locals.panelChannel.user_id : 0};
   window.CHAT_ENABLED = ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'true' : 'false'};
   window.IS_MODERATOR = true; // Dashboard user is at least editor/moderator

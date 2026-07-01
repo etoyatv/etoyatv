@@ -354,17 +354,32 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
     const { 
       name, shortname, description, 
       rtmp_disabled, autopilot_disabled, chat_disabled, design_disabled,
-      cdn_quota_gb, is_premium, is_verified, is_personal
+      cdn_quota_gb, premium_tier, premium_until
     } = req.body;
 
     const quotaMB = cdn_quota_gb ? Math.floor(parseFloat(cdn_quota_gb) * 1024) : 2048;
+
+    let dbPremium = 0;
+    let dbVerified = 0;
+    let dbPremiumUntil = null;
+
+    const tier = parseInt(premium_tier);
+    if (tier === 2) {
+      dbVerified = 1;
+    } else if (tier === 3) {
+      dbPremium = 1;
+      dbVerified = 1;
+      if (premium_until && premium_until.trim() !== '') {
+        dbPremiumUntil = premium_until;
+      }
+    }
 
     let query, params;
     const connection = await pool.getConnection();
 
     if (req.file) {
       const avatarPath = '/images/design/' + req.file.filename;
-      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, logo_url = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ?, is_personal = ? WHERE id = ?';
+      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, logo_url = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ?, premium_until = ? WHERE id = ?';
       params = [
         name, shortname, description, avatarPath,
         rtmp_disabled ? 1 : 0, 
@@ -374,13 +389,13 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
         chat_disabled ? 1 : 0,
         design_disabled ? 1 : 0,
         quotaMB,
-        is_premium ? 1 : 0,
-        is_verified ? 1 : 0,
-        is_personal ? 1 : 0,
+        dbPremium,
+        dbVerified,
+        dbPremiumUntil,
         id
       ];
     } else {
-      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ?, is_personal = ? WHERE id = ?';
+      query = 'UPDATE channels SET name = ?, shortname = ?, description = ?, rtmp_disabled = ?, autopilot_disabled = ?, autopilot_enabled = CASE WHEN ? = 1 THEN 0 ELSE autopilot_enabled END, chat_disabled = ?, chat_enabled = CASE WHEN ? = 1 THEN 0 ELSE chat_enabled END, design_disabled = ?, cdn_quota_mb = ?, is_premium = ?, is_verified = ?, premium_until = ? WHERE id = ?';
       params = [
         name, shortname, description, 
         rtmp_disabled ? 1 : 0, 
@@ -390,9 +405,9 @@ router.post('/channels/:id/edit', requireAdminAuth, (req, res, next) => {
         chat_disabled ? 1 : 0,
         design_disabled ? 1 : 0,
         quotaMB,
-        is_premium ? 1 : 0,
-        is_verified ? 1 : 0,
-        is_personal ? 1 : 0,
+        dbPremium,
+        dbVerified,
+        dbPremiumUntil,
         id
       ];
     }
@@ -685,4 +700,77 @@ router.post('/channels/:id/add_team', requireAdminAuth, async (req, res) => {
   }
 });
 
+// POST /channels/:id/edit_coowners
+router.post('/channels/:id/edit_coowners', requireAdminAuth, async (req, res) => {
+  if (!req.user.is_superadmin && req.user.staff_role === 'moderator') {
+    return res.status(403).render('error', { status: 403, title: 'Отказано в доступе', message: 'Модераторам доступ запрещен' });
+  }
+  const { id } = req.params;
+  const { coowner_user, is_coowner } = req.body;
+  try {
+    const connection = await pool.getConnection();
+    const [users] = await connection.query('SELECT id, username FROM users WHERE id = ? OR username = ?', [coowner_user, coowner_user]);
+    if (users.length > 0) {
+      const uId = users[0].id;
+      
+      const [c] = await connection.query('SELECT name FROM channels WHERE id = ?', [id]);
+      const cName = c.length > 0 ? c[0].name : 'Unknown';
+      const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+
+      if (!is_coowner) {
+        // remove co-owner status
+        await connection.query('UPDATE channel_team SET is_coowner = 0 WHERE channel_id = ? AND user_id = ?', [id, uId]);
+        const [rows] = await connection.query('SELECT is_reporter, is_moderator, is_editor FROM channel_team WHERE channel_id = ? AND user_id = ?', [id, uId]);
+        if (rows.length > 0 && rows[0].is_reporter === 0 && rows[0].is_moderator === 0 && rows[0].is_editor === 0) {
+          await connection.query('DELETE FROM channel_team WHERE channel_id = ? AND user_id = ?', [id, uId]);
+        }
+        logAction('admin', req.session.user.username, `Удалил права со-владельца у пользователя "${users[0].username || users[0].id}" для телеканала "${cName}" (ID: ${id})`, userIp);
+        req.session.success_msg = 'Пользователь удален из со-владельцев';
+      } else {
+        // add co-owner status
+        await connection.query('INSERT INTO channel_team (channel_id, user_id, is_coowner, is_editor, is_reporter, is_moderator) VALUES (?, ?, 1, 1, 1, 1) ON DUPLICATE KEY UPDATE is_coowner = 1', [id, uId]);
+        logAction('admin', req.session.user.username, `Назначил пользователя "${users[0].username || users[0].id}" со-владельцем телеканала "${cName}" (ID: ${id})`, userIp);
+        req.session.success_msg = 'Со-владелец добавлен!';
+      }
+    } else {
+      req.session.error_msg = 'Пользователь не найден';
+    }
+    connection.release();
+    res.redirect('/channels/' + id + '/edit');
+  } catch(e) {
+    req.session.error_msg = 'Ошибка: ' + e.message;
+    res.redirect('/channels/' + id + '/edit');
+  }
+});
+
+// POST /channels/:id/toggle_personal - Toggle channel is_personal status
+router.post('/channels/:id/toggle_personal', requireAdminAuth, async (req, res) => {
+  if (!req.user.is_superadmin && req.user.staff_role === 'moderator') {
+    return res.status(403).render('error', { status: 403, title: 'Отказано в доступе', message: 'Модераторы не могут изменять данные каналов.' });
+  }
+  const { id } = req.params;
+  try {
+    const connection = await pool.getConnection();
+    const [channels] = await connection.query('SELECT name, is_personal FROM channels WHERE id = ?', [id]);
+    if (channels.length > 0) {
+      const channel = channels[0];
+      const newStatus = channel.is_personal ? 0 : 1;
+      await connection.query('UPDATE channels SET is_personal = ? WHERE id = ?', [newStatus, id]);
+      
+      const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
+      logAction('admin', req.session.user.username, `Изменил тип телеканала "${channel.name}" (ID: ${id}) на ${newStatus ? 'Личный' : 'Кооперативный'}`, userIp);
+      
+      req.session.success_msg = `Тип канала успешно изменен на ${newStatus ? 'Личный' : 'Кооперативный'}!`;
+    } else {
+      req.session.error_msg = 'Канал не найден';
+    }
+    connection.release();
+    res.redirect('/channels/' + id + '/edit');
+  } catch(e) {
+    req.session.error_msg = 'Ошибка: ' + e.message;
+    res.redirect('/channels/' + id + '/edit');
+  }
+});
+
 module.exports = router;
+

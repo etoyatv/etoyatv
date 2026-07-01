@@ -61,7 +61,7 @@ router.get('/ru/channel,programs', async (req, res) => {
     if (chRows[0].status === 'deleted' || chRows[0].status === 'banned') {
       connection.release();
       const isAdminOrMod = req.session.user && ['admin', 'moderator', 'mod'].includes(req.session.user.staff_role);
-      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV' });
+      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV', channel: chRows[0] });
     }
     const channel = chRows[0];
     const limit = 5;
@@ -81,15 +81,22 @@ router.get('/ru/channel,programs', async (req, res) => {
     }
 
     const [countRows] = await connection.query(`
-      SELECT COUNT(*) as count FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR
+      SELECT COUNT(*) as count FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR AND (is_hidden = 0 OR is_hidden IS NULL)
     `, [channel.id]);
     
     const totalDisplayItems = countRows[0].count + (channel.is_live ? 1 : 0);
     const totalPages = Math.ceil(totalDisplayItems / limit);
 
-    const [progRows] = await connection.query(`
-      SELECT * FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR ORDER BY start_time ASC LIMIT ? OFFSET ?
-    `, [channel.id, dbLimit, dbOffset]);
+    const query = `
+      SELECT p.*, 
+             (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id) as bookmarks_count
+             ${req.session.user ? `, (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id AND ps.user_id = ${req.session.user.id}) > 0 as is_bookmarked` : ', 0 as is_bookmarked'}
+      FROM programs p
+      WHERE p.channel_id = ? AND p.start_time >= NOW() - INTERVAL 2 HOUR AND (p.is_hidden = 0 OR p.is_hidden IS NULL)
+      ORDER BY p.start_time ASC
+      LIMIT ? OFFSET ?
+    `;
+    const [progRows] = await connection.query(query, [channel.id, dbLimit, dbOffset]);
     connection.release();
 
     res.render('channel_programs', {
@@ -122,7 +129,8 @@ router.post('/api/channels/:id/favorite', requireAuth, async (req, res) => {
     }
     const [countRows] = await connection.query('SELECT COUNT(*) as count FROM channel_fans WHERE channel_id = ?', [channelId]);
     const [fansRows] = await connection.query(`
-      SELECT u.id, u.username, u.avatar 
+      SELECT u.id, u.username, u.avatar,
+             (u.last_active IS NOT NULL AND UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(u.last_active) <= 300) as is_online
       FROM channel_fans f 
       JOIN users u ON f.user_id = u.id 
       WHERE f.channel_id = ? 
@@ -177,7 +185,7 @@ router.get('/ru/channel,records', async (req, res, next) => {
     if (channels.length === 0) return next();
     if (channels[0].status === 'deleted' || channels[0].status === 'banned') {
       const isAdminOrMod = req.session.user && ['admin', 'moderator', 'mod'].includes(req.session.user.staff_role);
-      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV' });
+      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV', channel: channels[0] });
     }
     const channel = channels[0];
     const owner = { username: channel.owner_username };
@@ -213,7 +221,7 @@ router.get('/ru/channel,programs', async (req, res, next) => {
     if (channels.length === 0) return next();
     if (channels[0].status === 'deleted' || channels[0].status === 'banned') {
       const isAdminOrMod = req.session.user && ['admin', 'moderator', 'mod'].includes(req.session.user.staff_role);
-      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV' });
+      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV', channel: channels[0] });
     }
     const channel = channels[0];
     const owner = { username: channel.owner_username };
@@ -222,7 +230,7 @@ router.get('/ru/channel,programs', async (req, res, next) => {
     const limit = 10;
     const offset = (page - 1) * limit;
 
-    const [countRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR', [channel.id]);
+    const [countRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR AND (is_hidden = 0 OR is_hidden IS NULL)', [channel.id]);
     const totalProgramsCount = countRows[0].cnt;
     const totalPages = Math.ceil(totalProgramsCount / limit) || 1;
 
@@ -231,7 +239,7 @@ router.get('/ru/channel,programs', async (req, res, next) => {
              (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id) as bookmarks_count
              ${req.session.user ? `, (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id AND ps.user_id = ${req.session.user.id}) > 0 as is_bookmarked` : ', 0 as is_bookmarked'}
       FROM programs p
-      WHERE p.channel_id = ? AND p.start_time >= NOW() - INTERVAL 2 HOUR
+      WHERE p.channel_id = ? AND p.start_time >= NOW() - INTERVAL 2 HOUR AND (p.is_hidden = 0 OR p.is_hidden IS NULL)
       ORDER BY p.start_time ASC
       LIMIT ? OFFSET ?
     `;
@@ -264,7 +272,7 @@ router.get('/ru/channel,friends', async (req, res, next) => {
     }
     if (channels[0].status === 'deleted' || channels[0].status === 'banned') {
       const isAdminOrMod = req.session.user && ['admin', 'moderator', 'mod'].includes(req.session.user.staff_role);
-      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV' });
+      if (!isAdminOrMod) return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV', channel: channels[0] });
     }
 
     const channelId = channels[0].id;
@@ -289,40 +297,52 @@ router.get('/ru/channel,friends', async (req, res, next) => {
 });
 
 router.get('/channels/create', requireAuth, async (req, res) => {
-  let hasRecentlyDeletedChannel = false;
+  let deletedChannels = [];
   let personalCount = 0;
   let cooperativeCount = 0;
   try {
     const connection = await pool.getConnection();
-    const [deleted] = await connection.query("SELECT id, deleted_at FROM channels WHERE user_id = ? AND status = 'deleted' AND deleted_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) LIMIT 1", [req.session.user.id]);
+    const [deleted] = await connection.query("SELECT id, name, shortname, deleted_at FROM channels WHERE user_id = ? AND status = 'deleted' AND deleted_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)", [req.session.user.id]);
     
     const [owned] = await connection.query("SELECT is_personal FROM channels WHERE user_id = ? AND status IN ('active', 'banned')", [req.session.user.id]);
     personalCount = owned.filter(c => c.is_personal).length;
     cooperativeCount = owned.filter(c => !c.is_personal).length;
 
     connection.release();
-    if (deleted.length > 0) {
-      const diff = Date.now() - new Date(deleted[0].deleted_at).getTime();
+
+    deletedChannels = deleted.map(ch => {
+      const diff = Date.now() - new Date(ch.deleted_at).getTime();
       const daysLeft = 30 - Math.floor(diff / (1000 * 60 * 60 * 24));
-      hasRecentlyDeletedChannel = daysLeft > 0 ? daysLeft : false;
-    }
-  } catch (e) { }
+      return {
+        id: ch.id,
+        name: ch.name || ch.shortname || 'Без названия',
+        daysLeft: daysLeft > 0 ? daysLeft : 0
+      };
+    }).filter(ch => ch.daysLeft > 0);
+  } catch (e) {
+    console.error('Error in channels/create GET:', e);
+  }
   res.render('channel_create', { 
     pageTitle: 'Создание телеканала | ЭтоЯTV', 
     error: req.query.error, 
-    hasRecentlyDeletedChannel,
+    deletedChannels,
     personalCount,
     cooperativeCount
   });
 });
 
 router.post('/channels/restore', requireAuth, async (req, res) => {
+  const { channel_id } = req.body;
   try {
     const connection = await pool.getConnection();
-    await connection.query("UPDATE channels SET status = 'active', deleted_at = NULL, rtmp_disabled = 0 WHERE user_id = ? AND status = 'deleted'", [req.session.user.id]);
+    if (channel_id) {
+      await connection.query("UPDATE channels SET status = 'active', deleted_at = NULL, rtmp_disabled = 0 WHERE user_id = ? AND id = ? AND status = 'deleted'", [req.session.user.id, channel_id]);
+    } else {
+      await connection.query("UPDATE channels SET status = 'active', deleted_at = NULL, rtmp_disabled = 0 WHERE user_id = ? AND status = 'deleted'", [req.session.user.id]);
+    }
     
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || null;
-    logAction('team', req.session.user.username, 'Отменил удаление канала', userIp);
+    logAction('team', req.session.user.username, `Отменил удаление канала ${channel_id || ''}`.trim(), userIp);
 
     connection.release();
     res.redirect('/ru/panel,dashboard');
@@ -863,7 +883,13 @@ router.get('/:shortname', async (req, res, next) => {
   }
 
   try {
-    const [channels] = await pool.query('SELECT c.*, u.username FROM channels c JOIN users u ON c.user_id = u.id WHERE c.shortname = ?', [shortname]);
+    const [channels] = await pool.query(`
+      SELECT c.*, u.username, s.is_superadmin as owner_is_superadmin 
+      FROM channels c 
+      JOIN users u ON c.user_id = u.id 
+      LEFT JOIN staff s ON u.id = s.user_id 
+      WHERE c.shortname = ?
+    `, [shortname]);
 
     if (channels.length === 0) {
       return next(); // pass to 404
@@ -872,7 +898,7 @@ router.get('/:shortname', async (req, res, next) => {
     if (channels[0].status === 'deleted' || channels[0].status === 'banned') {
       const isAdminOrMod = req.session.user && ['admin', 'moderator', 'mod'].includes(req.session.user.staff_role);
       if (!isAdminOrMod) {
-        return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV' });
+        return res.status(403).render('deleted_channel', { pageTitle: 'Канал удален | ЭтоЯTV', channel: channels[0] });
       }
     }
 
@@ -924,7 +950,8 @@ router.get('/:shortname', async (req, res, next) => {
 
     // Fetch fans count and up to 6 fans for the block
     const [fansRows] = await pool.query(`
-      SELECT f.user_id, u.username, u.avatar 
+      SELECT f.user_id, u.username, u.avatar,
+             (u.last_active IS NOT NULL AND UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(u.last_active) <= 300) as is_online
       FROM channel_fans f 
       JOIN users u ON f.user_id = u.id 
       WHERE f.channel_id = ? 
@@ -1019,7 +1046,7 @@ router.get('/:shortname', async (req, res, next) => {
     let programsRows = [];
     let totalPrograms = 0;
     try {
-      const [pCountRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR', [channelId]);
+      const [pCountRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR AND (is_hidden = 0 OR is_hidden IS NULL)', [channelId]);
       totalPrograms = pCountRows[0].cnt;
       
       const progLimit = channels[0].is_live ? 2 : 3;
@@ -1028,7 +1055,7 @@ router.get('/:shortname', async (req, res, next) => {
                (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id) as bookmarks_count
                ${req.session.user ? `, (SELECT COUNT(*) FROM personal_schedules ps WHERE ps.program_id = p.id AND ps.user_id = ${req.session.user.id}) > 0 as is_bookmarked` : ', 0 as is_bookmarked'}
         FROM programs p
-        WHERE p.channel_id = ? AND p.start_time >= NOW() - INTERVAL 2 HOUR
+        WHERE p.channel_id = ? AND p.start_time >= NOW() - INTERVAL 2 HOUR AND (p.is_hidden = 0 OR p.is_hidden IS NULL)
         ORDER BY p.start_time ASC
         LIMIT ?
       `;
@@ -1312,7 +1339,7 @@ router.get('/api/channels/:id/autopilot_status', async (req, res) => {
 
     let totalPrograms = 0;
     try {
-      const [pCountRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR', [channelId]);
+      const [pCountRows] = await pool.query('SELECT COUNT(*) as cnt FROM programs WHERE channel_id = ? AND start_time >= NOW() - INTERVAL 2 HOUR AND (is_hidden = 0 OR is_hidden IS NULL)', [channelId]);
       totalPrograms = pCountRows[0].cnt;
     } catch (e) {
       console.error(e);

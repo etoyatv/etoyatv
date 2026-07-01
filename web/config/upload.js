@@ -9,7 +9,7 @@ if (!fs.existsSync(avatarsDir)) {
   fs.mkdirSync(avatarsDir, { recursive: true });
 }
 const imageFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/apng'];
   if (allowedMimes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -73,7 +73,7 @@ const recordsStorage = multer.diskStorage({
 const uploadRecord = multer({
   storage: recordsStorage,
   fileFilter: videoFilter,
-  limits: { fileSize: 200 * 1024 * 1024 } // 200MB limit for video records
+  limits: { fileSize: 256 * 1024 * 1024 } // 256MB limit for video records
 });
 
-module.exports = { upload, uploadDesign, uploadRecord };
+module.exports = { upload, uploadDesign, uploadRecord, recordsStorage, videoFilter };

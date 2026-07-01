@@ -741,6 +741,7 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
     player_link_color, 
     player_bg_fit,
     bg_fit,
+    logo_fit,
     delete_logo, 
     delete_banner, 
     delete_background,
@@ -773,6 +774,7 @@ router.post('/ru/panel,settings,design', panelMiddleware, designUploadMiddleware
   if (player_link_color !== undefined) { updates.push('player_link_color = ?'); params.push(player_link_color || null); }
   if (player_bg_fit !== undefined) { updates.push('player_bg_fit = ?'); params.push(player_bg_fit || 'stretch'); }
   if (bg_fit !== undefined) { updates.push('bg_fit = ?'); params.push(bg_fit || 'stretch'); }
+  if (logo_fit !== undefined) { updates.push('logo_fit = ?'); params.push(logo_fit || 'cover'); }
 
   if (delete_logo) {
     updates.push('logo_url = "/images/default_channel_logo.png"');
@@ -1342,10 +1344,10 @@ router.get('/ru/tv,studio', async (req, res) => {
       return res.render('panel/studio_select', { availableChannels, error: null, allowEveryone });
     }
 
-    if (!selectedChannel.is_premium && !allowEveryone) {
+    if (!selectedChannel.is_premium && !selectedChannel.is_verified && !allowEveryone) {
       return res.render('panel/studio_select', { 
         availableChannels, 
-        error: `Телеканал "${selectedChannel.name}" не имеет активного Premium статуса. Эфирная студия доступна только для премиум-каналов.`,
+        error: `Телеканал "${selectedChannel.name}" не имеет активного Premium/Verified статуса. Эфирная студия доступна только для премиум-каналов.`,
         allowEveryone
       });
     }

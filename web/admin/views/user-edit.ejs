@@ -86,6 +86,12 @@
               </div>
               
               <div class="status-action-btns" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <% if (u.is_verified === 0 && !u.deleted_at) { %>
+                  <form action="/users/<%= u.id %>/confirm" method="POST" style="margin: 0;" onsubmit="return confirm('Вы уверены, что хотите подтвердить аккаунт этого пользователя?')">
+                    <button type="submit" class="btn-black-border" style="background: rgba(46, 204, 113, 0.15); color: #2ecc71; border-color: rgba(46, 204, 113, 0.4); font-weight: 500;">Подтвердить</button>
+                  </form>
+                <% } %>
+
                 <% if (u.is_banned) { %>
                   <button type="button" class="btn-black-border" onclick="openBanModal()">Изменить бан / Разбан</button>
                 <% } else { %>
@@ -112,6 +118,7 @@
             
             <p><strong>Был приглашен:</strong> <%= inviter ? `Да (юзер: ${inviter})` : 'Нет' %></p>
             <p><strong>Последняя смена пароля:</strong> <%= u.last_password_change ? formatDate(u.last_password_change, userTimezone, 'DD.MM.YYYY') : 'Нет данных' %></p>
+            <p><strong>Последнее изменение E-mail:</strong> <%= u.last_email_change ? formatDate(u.last_email_change, userTimezone, 'DD.MM.YYYY') : 'Нет данных' %></p>
             <p style="display: flex; align-items: center; gap: 10px;">
               <strong>Двухфакторная аутентификация (2FA):</strong> 
               <% if (u.is_totp_enabled) { %>
