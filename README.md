@@ -11,226 +11,824 @@
 
 <p align="center">
   <a href="https://etoyatv.top">etoyatv.top</a> ·
-  <a href="#быстрый-старт-docker">Быстрый старт</a> ·
+  <a href="#карта-сервисов-что-поднимать">Карта сервисов</a> ·
+  <a href="#пошаговый-запуск-для-новичка">Пошаговый запуск</a> ·
+  <a href="#weblate-и-переводы-ui">Weblate</a> ·
   <a href="#подводные-камни">Подводные камни</a>
 </p>
 
 ---
 
-## О проекте
+## Оглавление
 
-**ЯTV** был культовым рунет-сервисом конца 2000-х / начала 2010-х: свой «телеканал», live + чат + соцсеть без тяжёлой корпоративной рамки. **ЭтоЯTV** воссоздаёт эту модель на современном стеке:
-
-- **Node.js / Express / EJS** — сайт и админка  
-- **MySQL 8** — пользователи, каналы, записи, модерация  
-- **MediaMTX** — ingest RTMP / WHIP → HLS  
-- **FFmpeg worker** — VOD HLS, снапшоты, фоновые задачи  
-- **Socket.io** — чат  
-- **i18n** — RU / EN / UA / BY (Weblate + опциональный MT для UGC)
-
-Репозиторий — **чистый снимок кода** без боевых `.env`, без `mysql_data`, без пользовательских загрузок. Образцы медиа-дерева — в [`samples/media`](samples/media).
+1. [О проекте](#о-проекте)
+2. [Карта сервисов: что поднимать](#карта-сервисов-что-поднимать)
+3. [Архитектура простыми словами](#архитектура-простыми-словами)
+4. [Что нужно установить заранее](#что-нужно-установить-заранее)
+5. [Пошаговый запуск для новичка](#пошаговый-запуск-для-новичка)
+6. [Проверка: что всё ожило](#проверка-что-всё-ожило)
+7. [Первый пользователь и админка](#первый-пользователь-и-админка)
+8. [Канал и первая трансляция (OBS)](#канал-и-первая-трансляция-obs)
+9. [Переменные окружения (подробно)](#переменные-окружения-подробно)
+10. [Медиа, CDN и samples](#медиа-cdn-и-samples)
+11. [Weblate и переводы UI](#weblate-и-переводы-ui)
+12. [LibreTranslate / машинный перевод UGC](#libretranslate--машинный-перевод-ugc)
+13. [Выход в интернет (Nginx + HTTPS)](#выход-в-интернет-nginx--https)
+14. [Студия в браузере (WHIP)](#студия-в-браузере-whip)
+15. [Подводные камни](#подводные-камни)
+16. [Частые ошибки и что делать](#частые-ошибки-и-что-делать)
+17. [Остановка и обновление](#остановка-и-обновление)
+18. [Ссылки](#ссылки)
 
 ---
 
-## Архитектура
+## О проекте
+
+**ЯTV** — культовый рунет-сервис конца 2000-х / начала 2010-х: свой «телеканал», live + чат + соцсеть. **ЭтоЯTV** воссоздаёт эту модель на современном стеке:
+
+| Часть | Технологии |
+|-------|------------|
+| Сайт и админка | Node.js, Express, EJS, Socket.io |
+| База | MySQL 8 |
+| Live-видео | **MediaMTX** (RTMP / WHIP → HLS) |
+| Фоновые задачи | FFmpeg worker (VOD HLS, снапшоты) |
+| Языки UI | RU / EN / UA / BY (`web/locales`) |
+
+Репозиторий — **чистый снимок**: без боевых `.env`, без дампа БД, без чужих загрузок. Для локального старта есть [`samples/media`](samples/media).
+
+Официальный основной инстанс: [etoyatv.top](https://etoyatv.top).
+
+---
+
+## Карта сервисов: что поднимать
+
+Чтобы ничего не забыть — полный чеклист. Всё из колонки **обязательно** есть в этом репозитории. Weblate и LibreTranslate — **отдельные** Docker-стеки (в репо только инструкция).
+
+### Обязательно (без этого сайт/эфир не живут)
+
+| # | Сервис | Где в репо | Порты | Зачем |
+|---|--------|------------|-------|--------|
+| 1 | **MySQL** | `db/` | `3306` | пользователи, каналы, записи, сессии |
+| 2 | **MediaMTX** | `rtmp/` | `1935`, `8000`, `8889`, `8189`, `9997` | приём эфира → HLS |
+| 3 | **Worker** | `rtmp/worker` (тот же compose) | — | VOD HLS, снапшоты, фоновые задачи |
+| 4 | **Web app** | `web/` → service `app` | `3001` | сайт, чат, студия, API |
+| 5 | **Admin** | `web/` → service `admin` | `3002` | модерация, жалобы, staff |
+| 6 | **Медиа-диск** | `samples/media/` или свой путь | — | аватары, записи, HLS, JS на CDN |
+
+Порядок запуска: **db → rtmp → web** (см. [пошаговый запуск](#пошаговый-запуск-для-новичка)).
+
+### Для нормального продакшена (очень желательно)
+
+| Сервис | Зачем | Как |
+|--------|--------|-----|
+| **Nginx (или Caddy) reverse proxy** | HTTPS, домены, WebSocket, отдача CDN | [раздел Nginx](#выход-в-интернет-nginx--https) |
+| **CDN vhost** | разгрузка Node от статики/видео | `root` = `MEDIA_STORAGE_PATH` |
+| **SMTP** | сброс пароля, письма | `SMTP_*` в `web/.env` |
+| **Открытые порты** | `443`, `1935`, ICE `8189/udp+tcp` | файрвол / роутер |
+| **Бэкапы** | `db/mysql_data` + медиа-диск | cron / снапшоты |
+
+### Опционально (сайт без них стартует)
+
+| Сервис | Зачем | Когда поднимать |
+|--------|--------|-----------------|
+| **Weblate** | веб-UI для перевода `web/locales/*.json` | если нужны community/переводчики; [инструкция](docs/weblate.md) |
+| **LibreTranslate** | безлимитный MT для UGC при смене языка | если не хотите квоты MyMemory |
+| **hCaptcha** | антибот на регистрации | публичный инстанс в интернете |
+| **Telegram-бот** | алерты персоналу | удобство модерации |
+| **Boosty** | подписки | если используете интеграцию |
+| **Live ABR** | второе качество live | только если хватает CPU (`LIVE_ABR_ENABLED=1`) |
+
+### Не входит в этот репозиторий
+
+На официальном инстансе ещё крутятся внутренние штуки (Forgejo/git, board и т.п.) — **для своего ЭтоЯTV они не нужны**. Достаточно таблицы выше.
+
+```text
+Минимум для «у себя дома»:
+  [MySQL] + [MediaMTX+worker] + [web+admin] + [samples/media]
+
+Полноценный публичный инстанс:
+  минимум
+  + Nginx/HTTPS + CDN
+  + SMTP (+ желательно hCaptcha)
+  + Weblate          ← переводы UI
+  + LibreTranslate   ← MT для UGC (или жить на MyMemory)
+```
+
+---
+
+## Архитектура простыми словами
+
+Проект — **три отдельных Docker Compose** (три папки). Их нужно поднимать **по очереди**:
+
+```text
+db/     →  MySQL на порту 3306
+rtmp/   →  MediaMTX (эфир) + worker (обработка записей)
+web/    →  сайт :3001 + админка :3002
+```
+
+Они **не в одной docker-сети**. Поэтому из контейнеров `web`/`rtmp` адрес MySQL — это не `localhost`, а **IP хоста** (машины, где крутится Docker). То же для связи MediaMTX → сайт (auth webhook).
 
 ```mermaid
 flowchart LR
-  OBS[OBS / Studio WHIP] -->|RTMP 1935 / WHIP 8889| MTX[MediaMTX]
-  MTX -->|HLS 8000| CDN[CDN / Nginx]
-  MTX -->|auth webhook| WEB[Web :3001]
+  OBS[OBS / Studio] -->|RTMP 1935 / WHIP 8889| MTX[MediaMTX]
+  MTX -->|HLS 8000| Player[Плеер / CDN]
+  MTX -->|auth HTTP| WEB[Web :3001]
   WEB --> DB[(MySQL :3306)]
   WRK[Worker] --> DB
   WRK --> DISK[(MEDIA_STORAGE_PATH)]
   MTX --> DISK
   WEB --> DISK
   ADM[Admin :3002] --> DB
-  ADM --> DISK
-  USER[Браузер] --> WEB
-  USER --> CDN
 ```
 
-| Каталог | Назначение | Порты |
-|--------|------------|-------|
+| Каталог | Что делает | Порты наружу |
+|---------|------------|--------------|
 | `db/` | MySQL 8 | `3306` |
-| `rtmp/` | MediaMTX + worker | `1935` RTMP, `8000` HLS, `8889` WebRTC/WHIP, `8189` ICE, `9997` API |
-| `web/` | Сайт (`app`) + админка (`admin`) | `3001`, `3002` |
-| `samples/media/` | Пример дерева CDN/диска | — |
-| `scripts/` | Сборка бандлов плеера/студии | — |
+| `rtmp/` | MediaMTX + worker | `1935`, `8000`, `8889`, `8189/udp+tcp`, `9997` |
+| `web/` | Сайт + админка | `3001`, `3002` |
+| `samples/media/` | Образец диска под медиа | — |
 
-> Раньше в публичном репо был Node-Media-Server. Сейчас ingest/HLS — **MediaMTX** (`rtmp/mediamtx.yml` + `entrypoint.sh` / `on_ready.sh`).
+> Старые версии репозитория использовали Node-Media-Server. Сейчас только **MediaMTX**.
 
 ---
 
-## Структура репозитория
+## Что нужно установить заранее
 
-```text
-├── db/                     # docker-compose MySQL + .env.example
-├── rtmp/
-│   ├── mediamtx.yml        # шаблон MediaMTX
-│   ├── entrypoint.sh
-│   ├── on_ready.sh         # hook при старте публикаций
-│   ├── worker/             # VOD / снапшоты / claim задач
-│   └── docker-compose.yml
-├── web/
-│   ├── app/                # Express: routes, views, jobs
-│   ├── admin/              # модерация, жалобы, transfers
-│   ├── public/             # UI-статика (css/js/images)
-│   ├── locales/            # переводы Weblate
-│   ├── docker-compose.yml
-│   └── .env.example
-├── samples/media/          # образец MEDIA_STORAGE_PATH
-├── scripts/                # bundle-player.js, bundle-studio.js
-├── .env.example            # сводный справочник переменных
-└── README.md
+### 1. Docker и Compose v2
+
+**Ubuntu / Debian:**
+
+```bash
+sudo apt update
+sudo apt install -y docker.io docker-compose-v2
+sudo usermod -aG docker "$USER"
+# выйдите из SSH/терминала и зайдите снова, чтобы группа docker применилась
+docker version
+docker compose version
 ```
 
+**Windows / macOS:** поставьте [Docker Desktop](https://www.docker.com/products/docker-desktop/), дождитесь зелёного статуса.
+
+Проверка:
+
+```bash
+docker run --rm hello-world
+```
+
+### 2. Git
+
+```bash
+sudo apt install -y git    # Linux
+# или Git for Windows / Xcode CLI на macOS
+```
+
+### 3. Свободные порты
+
+На машине не должны быть заняты: `3001`, `3002`, `3306`, `1935`, `8000`, `8889`, `8189`, `9997`.
+
+```bash
+# Linux: кто слушает порт (пример)
+ss -tulpn | grep -E '3001|3306|1935|8000' || true
+```
+
+### 4. Минимум железа
+
+Для теста хватит 2 CPU / 4 GB RAM. Live ABR (`LIVE_ABR_ENABLED=1`) жрёт CPU — новичкам оставьте `0`.
+
 ---
 
-## Требования
+## Пошаговый запуск для новичка
 
-- Docker + Docker Compose v2  
-- Для хоста без Docker (редко): Node.js 20+, MySQL 8, FFmpeg  
-- Открытые порты (или reverse proxy): `3001`, `3002`, `3306`, `1935`, `8000`, `8889`, `8189/udp+tcp`  
-- Диск/каталог под медиа (локально можно `samples/media`)
+Ниже — сценарий **«всё на одной машине, без CDN и без своего домена»**. Цель: открыть сайт в браузере на `http://localhost:3001`.
 
----
-
-## Быстрый старт (Docker)
-
-Порядок важен: сначала БД, потом медиа, потом web.
-
-### 1. Клон
+### Шаг 0. Клонируем репозиторий
 
 ```bash
 git clone https://github.com/etoyatv/etoyatv.git
 cd etoyatv
+pwd
+# запомните этот путь, например: /home/you/etoyatv
 ```
 
-### 2. База данных
+Дальше `REPO` = этот абсолютный путь.
 
 ```bash
-cd db
+export REPO="$(pwd)"
+echo "$REPO"
+```
+
+### Шаг 1. Узнаём IP хоста для Docker
+
+Контейнеры ходят в MySQL и друг к другу через **IP хоста**.
+
+**Linux (чаще всего):**
+
+```bash
+# IP docker-bridge (часто работает для контейнеров → сервисы на хосте)
+ip -4 addr show docker0 | awk '/inet /{print $2}' | cut -d/ -f1
+# часто: 172.17.0.1
+```
+
+Или LAN-IP машины:
+
+```bash
+hostname -I | awk '{print $1}'
+```
+
+**Docker Desktop (Windows/macOS):** обычно `host.docker.internal`.
+
+Запомните значение как `HOST_IP` (ниже в примерах — `172.17.0.1`).
+
+```bash
+export HOST_IP=172.17.0.1   # подставьте своё
+```
+
+### Шаг 2. Поднимаем MySQL (`db/`)
+
+```bash
+cd "$REPO/db"
 cp .env.example .env
-# отредактируйте пароли
+nano .env   # или code / vim
+```
+
+Минимальный `db/.env`:
+
+```env
+DB_HOST=localhost
+DB_USER=yatv_user
+DB_PASSWORD=MyStrongDbPass_ChangeMe
+DB_NAME=yatv
+MYSQL_ROOT_PASSWORD=MyStrongRootPass_ChangeMe
+```
+
+> Пароли придумайте сами и **запишите**. Те же `DB_USER` / `DB_PASSWORD` / `DB_NAME` потом скопируете в `web/.env` и `rtmp/.env`.
+
+Запуск:
+
+```bash
 docker compose up -d
+docker compose ps
+docker compose logs --tail=30 db
 ```
 
-Дождитесь готовности MySQL (`docker compose logs -f db`).
+Ждите строку вроде `ready for connections`. Данные лежат в `db/mysql_data/` (в git не коммитится).
 
-### 3. MediaMTX + worker
+Проверка с хоста (если есть клиент):
 
 ```bash
-cd ../rtmp
-cp .env.example .env
+docker compose exec db mysqladmin ping -uroot -p"$MYSQL_ROOT_PASSWORD" || true
 ```
 
-В `rtmp/.env` укажите:
+### Шаг 3. Готовим папку медиа
 
-- те же `DB_*`, что в `db/.env`  
-- `MEDIA_STORAGE_PATH` — абсолютный путь к `samples/media` (или своему диску)  
-- `WEB_SERVER_IP` / `AUTH_WEB_IP` — IP/hostname веб-приложения **с точки зрения контейнера MediaMTX**  
-- сильные `RTMP_API_USER` / `RTMP_API_PASS`
+Для локалки используйте образец:
+
+```bash
+ls "$REPO/samples/media"
+# images/, uploads/, js/, tvsnapshots/, private/, ...
+```
+
+Абсолютный путь к медиа:
+
+```bash
+export MEDIA="$REPO/samples/media"
+echo "$MEDIA"
+```
+
+Права на запись (если Docker ругается на permission denied):
+
+```bash
+chmod -R a+rwX "$MEDIA"
+```
+
+### Шаг 4. Поднимаем MediaMTX + worker (`rtmp/`)
+
+```bash
+cd "$REPO/rtmp"
+cp .env.example .env
+nano .env
+```
+
+Пример `rtmp/.env` для локалки:
+
+```env
+DB_HOST=172.17.0.1
+DB_USER=yatv_user
+DB_PASSWORD=MyStrongDbPass_ChangeMe
+DB_NAME=yatv
+
+MEDIA_STORAGE_PATH=/home/you/etoyatv/samples/media
+
+RTMP_API_USER=mediamtx_api
+RTMP_API_PASS=MyStrongRtmpApiPass_ChangeMe
+
+# IP сайта (web:3001) С ТОЧКИ ЗРЕНИЯ контейнера MediaMTX
+WEB_SERVER_IP=172.17.0.1
+AUTH_WEB_IP=172.17.0.1
+
+LIVE_ABR_ENABLED=0
+LIVE_ABR_THREADS=1
+MTX_WATCHDOG_INTERVAL=20
+MTX_WATCHDOG_TIMEOUT=3
+MTX_WATCHDOG_MAX_FAILS=3
+```
+
+Подставьте свои `HOST_IP` и абсолютный `MEDIA`.
+
+В `mediamtx.yml` для локалки можно оставить `kctv.yourdomain.com` или заменить на `127.0.0.1` / hostname машины в `webrtcAdditionalHosts` — для чистого RTMP через OBS это не критично; для браузерной студии (WHIP) — важно.
+
+Запуск:
 
 ```bash
 docker compose up -d --build
+docker compose ps
+docker compose logs --tail=50 rtmp
 ```
 
-### 4. Web + Admin
+Ожидание: контейнер `rtmp` healthy / без бесконечных рестартов. API:
 
 ```bash
-cd ../web
-cp .env.example .env
+curl -sS "http://127.0.0.1:9997/v3/config/global/get" | head
 ```
 
-Обязательно задайте **уникальный** `SESSION_SECRET` (приложение **упадёт**, если оставлен дефолт вроде `etoyatv_secret_key`).  
-Согласуйте `DB_*`, `MEDIA_STORAGE_PATH`, `RTMP_*`, `APP_URL`, `ADMIN_URL`.
+### Шаг 5. Поднимаем сайт и админку (`web/`)
+
+```bash
+cd "$REPO/web"
+cp .env.example .env
+nano .env
+```
+
+Сгенерируйте секрет сессии:
+
+```bash
+openssl rand -hex 32
+```
+
+Пример `web/.env` для локалки:
+
+```env
+PORT=3001
+TYPE=staging
+
+DB_HOST=172.17.0.1
+DB_USER=yatv_user
+DB_PASSWORD=MyStrongDbPass_ChangeMe
+DB_NAME=yatv
+
+SMTP_HOST=
+SMTP_PORT=465
+SMTP_USER=
+SMTP_PASS=
+
+RTMP_API_URL=http://127.0.0.1:9997
+RTMP_STREAM_URL=http://127.0.0.1:8000/live
+RTMP_LOCAL_STREAM_URL=http://127.0.0.1:8000/live
+RTMP_INGEST_URL=rtmp://127.0.0.1:1935/live
+RTMP_API_USER=mediamtx_api
+RTMP_API_PASS=MyStrongRtmpApiPass_ChangeMe
+RTMP_SERVER_IP=127.0.0.1
+RTMP_API_PORT=9997
+
+MEDIA_STORAGE_PATH=/home/you/etoyatv/samples/media
+CDN_BASE_URL=
+
+APP_URL=http://localhost:3001
+ADMIN_URL=http://localhost:3002
+
+SESSION_SECRET=вставьте_сюда_вывод_openssl_rand_hex_32
+SESSION_DOMAIN=
+ASSET_VERSION=dev1
+
+HCAPTCHA_SITEKEY=
+HCAPTCHA_SECRET=
+
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_BOT_USERNAME=
+
+LIVE_ABR_ENABLED=0
+```
+
+Важно:
+
+- `SESSION_SECRET` **обязателен** и не должен быть `etoyatv_secret_key` — иначе приложение упадёт при старте.
+- `DB_*` и `RTMP_API_*` должны совпадать с `db/.env` / `rtmp/.env`.
+- `CDN_BASE_URL` оставьте **пустым** для локалки.
+- hCaptcha / SMTP / Telegram можно пустыми на первом прогоне (регистрация без капчи может быть ограничена — см. логи; для теста часто достаточно).
+
+Запуск (сборка первый раз долгая):
 
 ```bash
 docker compose up -d --build
+docker compose ps
+docker compose logs --tail=80 app
 ```
 
-Откройте:
+Ищите в логах, что сервер слушает порт / нет `FATAL` про env / нет `ECONNREFUSED` к MySQL.
+
+Таблицы создаются **автоматически** при старте (`web/config/migrations.js` через `web/config/db.js`).
+
+Откройте в браузере:
 
 - сайт: http://localhost:3001  
-- админка: http://localhost:3002  
+- админка: http://localhost:3002 (пока без прав персонала — см. ниже)
 
-Схема БД поднимается миграциями при старте приложения (см. `web/config/migrations.js`).
+### Шаг 6 (опционально). Weblate и LibreTranslate
+
+Для первого «завелось?» можно **пропустить**. Имеющиеся `web/locales/*.json` уже дают UI на нескольких языках.
+
+Когда будете делать «как у взрослых»:
+
+1. Поднимите **Weblate** — см. [раздел Weblate](#weblate-и-переводы-ui) и [`docs/weblate.md`](docs/weblate.md).  
+2. Поднимите **LibreTranslate** (или оставьте MyMemory) — см. [раздел LibreTranslate](#libretranslate--машинный-перевод-ugc).  
+3. Пропишите `WEBLATE_URL` / `LIBRETRANSLATE_URL` в `web/.env` и пересоздайте `app`.
 
 ---
 
-## Переменные окружения
+## Проверка: что всё ожило
 
-Краткий обзор — в корневом [`.env.example`](.env.example). Рабочие файлы:
+Выполните с хоста:
 
-| Файл | Сервис |
-|------|--------|
-| `db/.env` | MySQL |
+```bash
+docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+```
+
+Должны быть roughly:
+
+- контейнер MySQL (`db-db-1` или похожее имя) — Up  
+- `…-rtmp-1`, `…-worker-1` — Up  
+- `…-app-1`, `…-admin-1` — Up  
+
+HTTP-проверки:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3001/
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3002/
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:9997/v3/config/global/get
+curl -sS -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8000/
+```
+
+Коды `200` / `301` / `302` / `404` на `/` у HLS — нормальны; главное — не `connection refused`.
+
+Связь web → БД: если в `docker compose logs app` нет ошибок MySQL и главная открывается — ок.
+
+---
+
+## Первый пользователь и админка
+
+### 1. Регистрация
+
+Откройте http://localhost:3001 и зарегистрируйте пользователя.
+
+Если регистрация требует hCaptcha — заполните `HCAPTCHA_*` в `web/.env` и пересоздайте app:
+
+```bash
+cd "$REPO/web"
+docker compose up -d --force-recreate app
+```
+
+### 2. Выдача прав персонала
+
+Админка пускает **только** пользователей из таблицы `staff`, и только с включённой **2FA**.
+
+Узнайте `id` пользователя:
+
+```bash
+cd "$REPO/db"
+docker compose exec db mysql -uyatv_user -p'yatv_pass_замените' yatv \
+  -e "SELECT id, username, email FROM users;"
+```
+
+Назначьте себя админом (подставьте свой `id`):
+
+```bash
+docker compose exec db mysql -uyatv_user -p'...' yatv -e "
+INSERT INTO staff (user_id, role, is_superadmin)
+VALUES (1, 'admin', 1)
+ON DUPLICATE KEY UPDATE role='admin', is_superadmin=1;
+"
+```
+
+### 3. Включите 2FA на сайте
+
+Зайдите на сайт под этим пользователем → настройки аккаунта → двухфакторка (`/account/2fa/setup`).  
+Без 2FA админка **специально** редиректит «мимо».
+
+### 4. Вход в админку
+
+http://localhost:3002 — тем же логином (сессия сайта) + 2FA.
+
+> Без строки в `staff` админка уведёт «не туда» — это защита, не баг.
+
+---
+
+## Канал и первая трансляция (OBS)
+
+1. На сайте создайте канал (панель каналов).  
+2. Откройте настройки вещания канала — там **ключ потока** (stream key).  
+3. В OBS → Настройки → Трансляция:
+
+| Поле | Значение для локалки |
+|------|----------------------|
+| Сервис | Custom |
+| Сервер | `rtmp://127.0.0.1:1935/live` |
+| Ключ потока | ключ из панели канала |
+
+4. Запустите трансляцию в OBS.  
+5. На странице канала должен появиться эфир (HLS с `http://127.0.0.1:8000/live/...`).
+
+Если эфир не стартует — смотрите логи:
+
+```bash
+cd "$REPO/rtmp" && docker compose logs --tail=100 rtmp
+cd "$REPO/web"  && docker compose logs --tail=100 app
+```
+
+Частые причины: неверный `AUTH_WEB_IP` / `WEB_SERVER_IP`, несовпадение `RTMP_API_PASS`, файрвол.
+
+---
+
+## Переменные окружения (подробно)
+
+Рабочие файлы (в git только `*.example`):
+
+| Файл | Кто читает |
+|------|------------|
+| `db/.env` | MySQL-контейнер |
 | `rtmp/.env` | MediaMTX + worker |
-| `web/.env` | app + (через mount) admin |
+| `web/.env` | сайт + (mount) админка |
+| [`.env.example`](.env.example) в корне | справочник «все ключи разом» |
 
-Критичные ключи:
+### Обязательные для старта
+
+| Ключ | Где | Зачем |
+|------|-----|--------|
+| `DB_PASSWORD` | все три | пароль MySQL |
+| `DB_HOST` | web, rtmp | IP хоста / gateway, **не** `127.0.0.1` внутри контейнера |
+| `SESSION_SECRET` | web | подпись cookie; уникальная длинная строка |
+| `RTMP_API_USER` / `RTMP_API_PASS` | web + rtmp | одинаковые; auth MediaMTX |
+| `MEDIA_STORAGE_PATH` | web + rtmp | **абсолютный** путь к общему диску |
+| `APP_URL` / `ADMIN_URL` | web | ссылки, редиректы, 2FA |
+
+### Важные опциональные
 
 | Ключ | Зачем |
 |------|--------|
-| `SESSION_SECRET` | Подпись сессий; слабый дефолт запрещён |
-| `DB_PASSWORD` | MySQL |
-| `RTMP_API_USER` / `RTMP_API_PASS` | API MediaMTX + auth |
-| `MEDIA_STORAGE_PATH` | Общий корень медиа |
-| `CDN_BASE_URL` | Пусто = раздача с приложения; иначе URL CDN |
-| `APP_URL` / `ADMIN_URL` | Cookie, редиректы, ссылки в письмах |
-| `LIVE_ABR_ENABLED` | Live ABR (по умолчанию `0`) |
+| `CDN_BASE_URL` | пусто = без CDN; иначе URL Nginx CDN |
+| `LIVE_ABR_ENABLED` | `0` по умолчанию; `1` = доп. нагрузка CPU |
+| `SMTP_*` | почта (сброс пароля и т.п.) |
+| `HCAPTCHA_*` | антибот на регистрации |
+| `TELEGRAM_*` | алерты персоналу |
+| `WEBLATE_URL` | ссылка на Weblate в футере (переводы UI) |
+| `LIBRETRANSLATE_URL` | свой MT для UGC при смене языка |
+| `TRANSLATE_EMAIL` | email для квоты MyMemory, если LibreTranslate нет |
+| `WEB_SERVER_IP` / `AUTH_WEB_IP` | куда MediaMTX стучится за auth / unpublish |
+| `ASSET_VERSION` | cache-bust статики (`?v=`) |
+
+Полный список комментариев — в корневом `.env.example`.
 
 ---
 
-## Медиа и CDN
+## Медиа, CDN и samples
 
-Два режима:
+### Локально (без CDN)
 
-| | Dev / один сервер | Production + CDN |
-|--|-------------------|------------------|
-| `MEDIA_STORAGE_PATH` | `.../samples/media` | `/mnt/smb_media/public` |
-| `CDN_BASE_URL` | пусто | `https://cdn.yourdomain.com` |
-| Раздача | Express / локальные volume | Nginx с `root` на диск |
+```env
+MEDIA_STORAGE_PATH=/absolute/path/to/etoyatv/samples/media
+CDN_BASE_URL=
+```
 
-Дерево каталогов описано в [`samples/media/README.md`](samples/media/README.md).
+Дерево описано в [`samples/media/README.md`](samples/media/README.md).
 
-**Важно:** UI-скрипты (`player.js`, `toast.js`, `studio.js`) в проде часто лежат **на CDN** (`{MEDIA}/js/`). После деплоя кода синхронизируйте их с диска репозитория, иначе браузер будет тянуть старую версию.
+### Production с CDN
 
----
-
-## OBS / Studio
-
-### Классический RTMP (OBS)
-
-- Сервер: значение `RTMP_INGEST_URL` без ключа, обычно `rtmp://kctv.yourdomain.com:1935/live`  
-- Ключ потока: выдаётся в панели канала  
-
-### Браузерная студия (WHIP)
-
-MediaMTX слушает WebRTC на `:8889`, ICE на `:8189` (в проде у вас может быть другой порт, например `8190` — смотрите `mediamtx.yml` и проброс в `docker-compose.yml`).  
-Пробросьте UDP/TCP ICE наружу, иначе WHIP «подключается», но медиа не идёт.
+1. Создайте на диске (SMB/NFS/локальный volume) те же каталоги, что в `samples/media`.  
+2. Укажите `MEDIA_STORAGE_PATH` на этот корень.  
+3. Отдайте корень через Nginx как `https://cdn.yourdomain.com`.  
+4. Пропишите `CDN_BASE_URL=https://cdn.yourdomain.com`.  
+5. После каждого деплоя **скопируйте** актуальные `web/public/js/player.js`, `toast.js`, `studio.js` в `{MEDIA}/js/` с правами `644` — иначе CDN будет отдавать старый JS.
 
 ---
 
-## Nginx (кратко)
+## Weblate и переводы UI
 
-Нужны минимум четыре vhost’а (HTTPS + Let’s Encrypt):
+### Нужен ли Weblate?
 
-1. **Сайт** → `proxy_pass` на `:3001`, **обязательно** WebSocket (`Upgrade` / `Connection`) для чата.  
-2. **Админка** → `:3002`.  
-3. **CDN** → `root` на `MEDIA_STORAGE_PATH`, CORS для плеера, запрет `private/` и бэкапов.  
-4. **HLS / MediaMTX HTTP** → `:8000` (и отдельно TCP 1935 для ingest, обычно без TLS на самом RTMP).
+| Задача | Нужен Weblate? |
+|--------|----------------|
+| Просто поднять сайт на RU/EN/UA/BY | **Нет** — файлы уже в `web/locales/*.json` |
+| Дать переводчикам удобный веб-UI | **Да** |
+| Принимать community-переводы | **Да** |
+| Ссылка «Weblate» в футере | Задайте `WEBLATE_URL` |
 
-Примеры конфигов из старой документации совместимы по идее; IP сервисов подставьте свои.
+Приложение **не ходит в Weblate по API** в рантайме. Оно читает JSON из `web/locales/` (и умеет hot-reload через `fs.watch`). Weblate — отдельный сервис для людей, который коммитит/пушит эти JSON в git.
+
+### Поднятие Weblate (кратко)
+
+Полная шпаргалка: [`docs/weblate.md`](docs/weblate.md).
+
+```bash
+git clone https://github.com/WeblateOrg/docker-compose.git weblate-docker
+cd weblate-docker
+# пропишите WEBLATE_SITE_DOMAIN, админа, SMTP в environment / override
+docker compose up -d
+```
+
+Повесьте Nginx на `weblate.yourdomain.com` → контейнер Weblate.  
+В Weblate создайте компонент на git-репо ЭтоЯTV, пути `web/locales/*.json`, базовый язык `ru`.
+
+В `web/.env`:
+
+```env
+WEBLATE_URL=https://weblate.yourdomain.com/
+```
+
+```bash
+cd "$REPO/web" && docker compose up -d --force-recreate app
+```
+
+После синка переводов в файлы на сервере — либо restart `app`, либо дождитесь hot-reload, если каталог смонтирован.
 
 ---
 
-## i18n
+## LibreTranslate / машинный перевод UGC
 
-- UI-строки: `web/locales/` (Weblate).  
-- Смена языка на сайте включает серверный перевод оставшегося кириллического UGC (где настроено).  
-- Ручные кнопки «Translate» в интерфейсе **не используются** — не возвращайте их в CDN-копию `toast.js`.
+Это **не** Weblate. Речь про автоперевод пользовательского контента (чат, комменты, бейджи и т.п.) при смене языка сайта. Код: `web/utils/translator.js` → `/api/translate`.
+
+Приоритет провайдеров:
+
+1. **`LIBRETRANSLATE_URL`** — свой LibreTranslate (без публичных квот)  
+2. Иначе **MyMemory** (бесплатный API; лимит выше, если задан `TRANSLATE_EMAIL`)
+
+### Вариант A — свой LibreTranslate (рекомендуется для публичного инстанса)
+
+Пример минимального запуска (отдельный compose, не в этом репо):
+
+```bash
+docker run -d --name libretranslate --restart unless-stopped \
+  -p 5000:5000 \
+  libretranslate/libretranslate
+```
+
+В `web/.env`:
+
+```env
+LIBRETRANSLATE_URL=http://172.17.0.1:5000
+# LIBRETRANSLATE_API_KEY=   # если включите ключи у себя
+TRANSLATE_EMAIL=no-reply@yourdomain.com
+```
+
+> Из контейнера `web` снова нужен IP хоста, не `127.0.0.1`, если LibreTranslate слушает на хосте.
+
+Пересоздайте app. В логах/ответе `/api/translate` провайдер будет `libretranslate`.
+
+### Вариант B — без своего MT (только MyMemory)
+
+Оставьте `LIBRETRANSLATE_URL` пустым:
+
+```env
+LIBRETRANSLATE_URL=
+TRANSLATE_EMAIL=no-reply@yourdomain.com
+```
+
+Хватит для теста; на проде с трафиком лучше LibreTranslate.
+
+### Что не путать
+
+| | Weblate | LibreTranslate / MyMemory |
+|--|---------|---------------------------|
+| Что переводит | строки интерфейса (`locales/*.json`) | UGC на лету |
+| Когда нужен | работа с переводчиками | смена языка пользователем |
+| Обязателен? | нет | нет (но без него UGC-MT хуже/с квотами) |
+
+---
+
+## Выход в интернет (Nginx + HTTPS)
+
+Для публичного инстанса обычно нужны домены, например:
+
+- `yourdomain.com` → сайт `:3001`  
+- `admin.yourdomain.com` → админка `:3002`  
+- `cdn.yourdomain.com` → файлы с диска  
+- `kctv.yourdomain.com` → HLS MediaMTX `:8000`  
+- RTMP ingest: `rtmp://kctv.yourdomain.com:1935/live` (порт 1935 наружу)
+
+### Сайт (обязателен WebSocket для чата)
+
+```nginx
+server {
+    server_name yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    listen 443 ssl;
+    # ssl_certificate ...;
+}
+```
+
+### Админка
+
+```nginx
+server {
+    server_name admin.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    listen 443 ssl;
+}
+```
+
+### CDN (статика с диска)
+
+```nginx
+server {
+    server_name cdn.yourdomain.com;
+    root /mnt/smb_media/public;  # = MEDIA_STORAGE_PATH
+
+    add_header Access-Control-Allow-Origin * always;
+
+    location /private/ { deny all; }
+    location / {
+        try_files $uri $uri/ =404;
+        expires 7d;
+    }
+    listen 443 ssl;
+}
+```
+
+### 4. HLS (MediaMTX HTTP)
+
+```nginx
+server {
+    server_name kctv.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    listen 443 ssl;
+}
+```
+
+### 5. Weblate (если подняли)
+
+```nginx
+server {
+    server_name weblate.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    listen 443 ssl;
+}
+```
+
+После Nginx обновите в `web/.env`:
+
+```env
+APP_URL=https://yourdomain.com
+ADMIN_URL=https://admin.yourdomain.com
+CDN_BASE_URL=https://cdn.yourdomain.com
+RTMP_STREAM_URL=https://kctv.yourdomain.com/live
+RTMP_INGEST_URL=rtmp://kctv.yourdomain.com:1935/live
+WEBLATE_URL=https://weblate.yourdomain.com/
+LIBRETRANSLATE_URL=http://172.17.0.1:5000
+TYPE=production
+```
+
+И пересоздайте web:
+
+```bash
+cd "$REPO/web" && docker compose up -d --force-recreate
+```
+
+Сертификаты: [Certbot](https://certbot.eff.org/) (`certbot --nginx`).
+
+---
+
+## Студия в браузере (WHIP)
+
+MediaMTX: WebRTC `:8889`, ICE `:8189` (UDP **и** TCP).
+
+1. Пробросьте `8189/udp` и `8189/tcp` на роутере/файрволе.  
+2. В `rtmp/mediamtx.yml` в `webrtcAdditionalHosts` укажите **публичный** hostname (`kctv.yourdomain.com`).  
+3. Пересоздайте контейнер rtmp.  
+
+Без ICE снаружи студия «подключается», но картинки/звука нет.
 
 ---
 
@@ -238,76 +836,147 @@ MediaMTX слушает WebRTC на `:8889`, ICE на `:8189` (в проде у 
 
 ### 1. `DB_HOST=127.0.0.1` внутри контейнера
 
-Из контейнера `127.0.0.1` — это **сам контейнер**, не хост. Укажите IP хоста, имя сервиса в общей docker-network или `host.docker.internal` (где поддерживается).
+`127.0.0.1` в контейнере — это **сам контейнер**. Нужен IP хоста (`172.17.0.1`, LAN-IP, `host.docker.internal`).
 
-### 2. Anonymous volume `node_modules`
+### 2. Относительный `MEDIA_STORAGE_PATH`
 
-В `web/docker-compose.yml` есть `- /app/node_modules`. После добавления npm-зависимостей (например `archiver`) **старый volume** может оставить контейнер без новых пакетов → `Cannot find module '...'`.
+Пишите **абсолютный** путь. Относительный часто монтируется «не туда».
 
-Лечение:
+### 3. Anonymous volume `node_modules`
+
+В compose есть `- /app/node_modules`. После обновления зависимостей возможна ошибка `Cannot find module '...'`.
 
 ```bash
+cd "$REPO/web"
 docker compose rm -sf app
-docker volume ls   # найти анонимный volume при необходимости
 docker compose up -d --build --force-recreate app
 ```
 
-### 3. Секреты без дефолтов
+При необходимости удалите старый anonymous volume (`docker volume ls` / `docker volume rm …`).
 
-`validateEnv` требует `SESSION_SECRET` и `DB_PASSWORD` и отвергает слабый `SESSION_SECRET=etoyatv_secret_key`. Не полагайтесь на старые дефолты в compose.
+### 4. Слабый `SESSION_SECRET`
 
-### 4. Устаревший CDN JS
+Значение `etoyatv_secret_key` запрещено кодом (`validateEnv`) — процесс завершится с FATAL.
 
-Симптом: на сайте «как будто старый код», кнопки Translate, баги плеера.  
-Проверка: сравните `web/public/js/player.js` с `{MEDIA_STORAGE_PATH}/js/player.js`. Скопируйте и выставьте права, читаемые nginx (`0644`).
+### 5. Устаревший JS на CDN
 
-### 5. ICE / WHIP порты
+Симптом: «на гите уже починили, на сайте старое». Сверьте и скопируйте `web/public/js/*.js` → `{MEDIA}/js/`, `chmod 644`.
 
-Не открыли `8189` (или ваш prod-порт) UDP/TCP → студия в браузере молчит. MediaMTX `webrtcAdditionalHosts` должен содержать публичный hostname.
+### 6. Админка без staff / без 2FA
 
-### 6. Mixed Content
+Без записи в `staff` и без TOTP вход в админку намеренно блокируется.
 
-Сайт по HTTPS, а `RTMP_STREAM_URL` на `http://` → браузер режет HLS. Только HTTPS для стрима в проде.
+### 7. Mixed Content
 
-### 7. Auth webhook MediaMTX → web
+Сайт по HTTPS + `RTMP_STREAM_URL=http://...` → браузер режет HLS. В проде только HTTPS для стрима.
 
-`AUTH_WEB_IP` / `WEB_SERVER_IP` должны быть достижимы **из контейнера rtmp**. Неверный IP → публикации отвергаются или не закрываются.
+### 8. Неверный `AUTH_WEB_IP` / `WEB_SERVER_IP`
 
-### 8. SSHFS / сетевой диск
+MediaMTX не может авторизовать публикацию → OBS пишет, сайт «не в эфире». Проверьте IP **из контейнера rtmp**:
 
-При зависаниях SSHFS MediaMTX может копить zombie ffmpeg. В образе включены `init: true` и watchdog; всё равно следите за здоровьем mount’а.
+```bash
+cd "$REPO/rtmp"
+docker compose exec rtmp wget -qO- "http://$AUTH_WEB_IP:3001/" | head
+```
 
-### 9. Live ABR
+### 9. Порты ICE / WHIP
 
-`LIVE_ABR_ENABLED=1` включает доп. транскод (CPU). По умолчанию выключен — так и оставляйте, пока не посчитаете нагрузку.
+Не открыт `8189` → браузерная студия молчит.
 
-### 10. Два контура staging/prod
+### 10. Права файлов на CDN
 
-Не копируйте staging `.env` в prod. Порты ICE, домены (`APP_URL`, CDN, `kctv.*`) и `MEDIA_STORAGE_PATH` у контуров **разные**.
+`0700` на `player.js` → nginx 403. Нужно `644` для файлов, `755` для каталогов.
 
-### 11. Права на файлы CDN
+### 11. Live ABR
 
-Файлы с `0700` nginx (`www-data`) не отдаст (403). После `cp` проверяйте `chmod 644` на публичные ассеты.
+`LIVE_ABR_ENABLED=1` включает доп. транскод. На слабом CPU не включайте.
+
+### 12. Staging ≠ prod
+
+Не копируйте `.env` между контурами. Домены, порты ICE, пути диска — разные.
+
+### 14. Путаете Weblate и LibreTranslate
+
+Weblate ≠ машинный перевод чата. Без Weblate сайт на EN всё равно работает из JSON. Без LibreTranslate UGC-MT идёт через MyMemory с квотой.
 
 ---
 
-## Разработка без полного CDN
+## Частые ошибки и что делать
+
+| Симптом | Что проверить |
+|---------|----------------|
+| `ECONNREFUSED` / Access denied MySQL | `DB_HOST`, пароль, MySQL Up, порт 3306 |
+| `Missing required environment variables` | `SESSION_SECRET`, `DB_PASSWORD` в `web/.env` |
+| `EADDRINUSE :::3001` | порт занят; `ss -tulpn \| grep 3001` |
+| Сайт пустой / 502 | `docker compose logs app`, recreate |
+| OBS не коннектится | порт 1935, ключ, логи `rtmp`, auth IP |
+| Эфир в OBS есть, на сайте нет | `RTMP_STREAM_URL`, auth webhook, CORS/HTTPS |
+| Админка «уводит» | есть ли вы в `staff`, включена ли 2FA |
+| `Cannot find module 'archiver'` | recreate app, сброс anonymous `node_modules` volume |
+| Картинки 404 | `MEDIA_STORAGE_PATH`, содержимое `samples/media`, права |
+
+Полезные команды:
 
 ```bash
-# web/.env и rtmp/.env
-MEDIA_STORAGE_PATH=/absolute/path/to/etoyatv/samples/media
-CDN_BASE_URL=
-APP_URL=http://localhost:3001
-ADMIN_URL=http://localhost:3002
+cd "$REPO/db"   && docker compose logs -f --tail=100
+cd "$REPO/rtmp" && docker compose logs -f --tail=100
+cd "$REPO/web"  && docker compose logs -f --tail=100 app
 ```
 
-Код `web/` монтируется в контейнер (`./:/app`) — правки views/js видны сразу; для `server.js` обычно нужен recreate контейнера.
+---
 
-Сборка клиентских бандлов (если меняли исходники плеера/студии):
+## Остановка и обновление
+
+### Остановить всё
 
 ```bash
+cd "$REPO/web"  && docker compose down
+cd "$REPO/rtmp" && docker compose down
+cd "$REPO/db"   && docker compose down    # данные в mysql_data сохранятся
+```
+
+### Обновить код с GitHub
+
+```bash
+cd "$REPO"
+git pull
+cd web  && docker compose up -d --build
+cd ../rtmp && docker compose up -d --build
+# db обычно без пересборки, если образ mysql не меняли
+```
+
+После обновления JS — синхронизируйте CDN/`samples/media/js` при необходимости.
+
+### Разработка
+
+Код `web/` смонтирован в контейнер (`./:/app`). Правки EJS/публичного JS часто видны сразу; для `server.js`:
+
+```bash
+cd "$REPO/web" && docker compose restart app
+```
+
+Сборка бандлов плеера/студии (если правили исходники в `public/js/player/` или `studio/`):
+
+```bash
+cd "$REPO"
 node scripts/bundle-player.js
 node scripts/bundle-studio.js
+```
+
+---
+
+## Структура репозитория
+
+```text
+├── db/                 # MySQL compose + .env.example
+├── rtmp/               # MediaMTX, hooks, worker
+├── web/                # сайт (app/) + админка (admin/)
+├── samples/media/      # образец MEDIA_STORAGE_PATH
+├── scripts/            # bundle-player / bundle-studio
+├── docs/weblate.md     # подробный гайд по Weblate
+├── .env.example        # сводный справочник ключей
+├── LICENSE
+└── README.md
 ```
 
 ---
@@ -321,6 +990,8 @@ node scripts/bundle-studio.js
 ## Ссылки
 
 - Официальный сайт (основной инстанс): [etoyatv.top](https://etoyatv.top)  
-- Репозиторий: [github.com/etoyatv/etoyatv](https://github.com/etoyatv/etoyatv)
+- Репозиторий: [github.com/etoyatv/etoyatv](https://github.com/etoyatv/etoyatv)  
+- Weblate (гайд): [docs/weblate.md](docs/weblate.md)  
+- Weblate Docker upstream: [WeblateOrg/docker-compose](https://github.com/WeblateOrg/docker-compose)
 
-Вопросы по развёртыванию и PR приветствуются.
+Нашли дыру в инструкции или улучшили запуск — PR или issue приветствуются.
