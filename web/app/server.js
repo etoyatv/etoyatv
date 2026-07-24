@@ -145,10 +145,16 @@ app.use((req, res, next) => {
   if (process.env.SESSION_DOMAIN) {
     allowedHosts.push(process.env.SESSION_DOMAIN.replace(/^\./, '').toLowerCase());
   }
-  allowedHosts.push('etoyatv.top', 'www.etoyatv.top', 'staging.etoyatv.top');
-  const hostOk = allowedHosts.some((h) => rawHost === h || rawHost.endsWith('.' + h));
-  const redirectHost = hostOk ? req.headers.host : (allowedHosts[0] || 'etoyatv.top');
-  res.redirect(301, 'https://' + redirectHost + req.originalUrl);
+  // Extra hosts: comma-separated hostnames in ALLOWED_HOSTS (optional)
+  if (process.env.ALLOWED_HOSTS) {
+    process.env.ALLOWED_HOSTS.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean)
+      .forEach((h) => allowedHosts.push(h));
+  }
+  const hostOk = allowedHosts.length === 0
+    || allowedHosts.some((h) => rawHost === h || rawHost.endsWith('.' + h));
+  const redirectHost = hostOk ? req.headers.host : (allowedHosts[0] || rawHost || 'localhost');
+  const proto = (req.headers['x-forwarded-proto'] === 'http') ? 'http' : 'https';
+  res.redirect(301, proto + '://' + redirectHost + req.originalUrl);
 });
 
 // Block old OS/browsers early and return HTTP 503
@@ -472,13 +478,11 @@ const sessionKey = process.env.TYPE === 'production' ? 'etoyatv_session_v2' : 'e
 const cookieConfig = {
   maxAge: 2592000000,
   sameSite: 'lax',
-  // Staging/prod sit behind HTTPS (nginx); mark Secure so cookies are not sent on plain HTTP.
+  // Cookie Secure when TYPE is production or staging (HTTPS reverse-proxy).
   secure: process.env.TYPE === 'production' || process.env.TYPE === 'staging'
 };
 if (process.env.SESSION_DOMAIN) {
   cookieConfig.domain = process.env.SESSION_DOMAIN;
-} else if (process.env.TYPE === 'production' || process.env.TYPE === 'staging') {
-  cookieConfig.domain = '.etoyatv.top';
 }
 
 const sessionMiddleware = session({
@@ -620,7 +624,7 @@ app.use(async (req, res, next) => {
   const baseCdn = process.env.CDN_BASE_URL || '';
   let appUrl = process.env.APP_URL || 'http://localhost:3001';
   let adminUrl = process.env.ADMIN_URL || 'http://localhost:3002';
-  const weblateUrl = process.env.WEBLATE_URL || 'https://weblate.etoyatv.top/';
+  const weblateUrl = process.env.WEBLATE_URL || '';
   if (!req.secure) {
     res.locals.CDN_BASE_URL = baseCdn.replace('https://', 'http://');
     res.locals.APP_URL = appUrl.replace('https://', 'http://');
@@ -631,6 +635,11 @@ app.use(async (req, res, next) => {
     res.locals.APP_URL = appUrl;
     res.locals.ADMIN_URL = adminUrl;
     res.locals.WEBLATE_URL = weblateUrl;
+  }
+  try {
+    res.locals.PUBLIC_HOST = new URL(res.locals.APP_URL).host;
+  } catch (e) {
+    res.locals.PUBLIC_HOST = 'localhost:3001';
   }
 
   const ua = req.headers['user-agent'] || '';

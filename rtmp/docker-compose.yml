@@ -23,7 +23,7 @@ services:
     environment:
       # on_ready.sh unpublish webhook target
       - WEB_SERVER_IP=${WEB_SERVER_IP:-127.0.0.1}
-      # MediaMTX authHTTPAddress target (staging web LXC)
+      # MediaMTX authHTTPAddress target (web app host)
       - AUTH_WEB_IP=${AUTH_WEB_IP:-127.0.0.1}
       - RTMP_API_USER=${RTMP_API_USER}
       - RTMP_API_PASS=${RTMP_API_PASS}

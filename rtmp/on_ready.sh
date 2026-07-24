@@ -2,8 +2,8 @@
 
 echo "[MediaMTX Hook] Stream started: $MTX_PATH from IP $MTX_CONN_IP"
 
-# Use WEB_SERVER_IP from environment or fallback to 192.168.90.100
-WEB_IP=${WEB_SERVER_IP:-192.168.90.100}
+# WEB_SERVER_IP: host reachable from this container (set in .env)
+WEB_IP=${WEB_SERVER_IP:-127.0.0.1}
 
 # Reject path values that could break shell/ffmpeg arguments
 case "$MTX_PATH" in

@@ -1075,7 +1075,7 @@ const escapeHtml = (str) => {
         window.CHANNEL_IS_VERIFIED = <%= !!locals.panelChannel.is_verified %>;
         window.CHANNEL_IS_PREMIUM = <%= !!locals.panelChannel.is_premium %>;
         window.STREAM_KEY = "<%= locals.streamKey %>";
-        window.RTMP_STREAM_URL = "<%= process.env.RTMP_STREAM_URL || 'https://kctv.etoyatv.top/live' %>";
+        window.RTMP_STREAM_URL = "<%= process.env.RTMP_STREAM_URL || 'http://127.0.0.1:8000/live' %>";
         window.CURRENT_USER = {
             id: "<%= locals.user ? locals.user.id : '' %>",
             username: "<%= locals.user ? locals.user.username : 'Гость' %>",

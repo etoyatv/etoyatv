@@ -57,8 +57,6 @@ const cookieConfig = {
 };
 if (process.env.SESSION_DOMAIN) {
   cookieConfig.domain = process.env.SESSION_DOMAIN;
-} else if (process.env.TYPE === 'production' || process.env.TYPE === 'staging') {
-  cookieConfig.domain = '.etoyatv.top';
 }
 
 // Sync with main app's session

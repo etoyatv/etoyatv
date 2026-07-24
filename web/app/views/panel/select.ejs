@@ -192,7 +192,7 @@
                           <div class="channel-role">
                             <%= roleName %>
                           </div>
-                          <div class="channel-url">https://etoyatv.top/<%= ch.shortname %>/</div>
+                          <div class="channel-url"><%= (typeof APP_URL !== 'undefined' ? APP_URL.replace(/\/$/,'') : '') %>/<%= ch.shortname %>/</div>
                         </div>
                         <% }) %>
                     </div>

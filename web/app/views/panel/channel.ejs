@@ -30,7 +30,7 @@
                 <div class="form-group" style="display: flex; align-items: center;">
                     <label style="width: 150px; color: #8c989e;">Короткое имя (URL):</label>
                     <div style="flex-grow: 1; display: flex; align-items: center;">
-                        <span style="color: #8c989e; margin-right: 5px;">https://etoyatv.top/</span>
+                        <span style="color: #8c989e; margin-right: 5px;"><%= typeof APP_URL !== 'undefined' ? APP_URL.replace(/\/$/,'') : '' %>/</span>
                         ${(() => {
                             if (locals.panelRole === 'owner') {
                                 if (locals.panelChannel && locals.panelChannel.shortname_changed_at) {

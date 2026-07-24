@@ -27,19 +27,20 @@ router.post('/api/internal/rtmp/on_publish', async (req, res) => {
     // 2. Disconnect stale publisher if active
     try {
       const axios = require('axios');
-      const response = await axios.get('http://192.168.90.5:8000/api/streams', {
+  const response = await axios.get(`http://${process.env.RTMP_SERVER_IP || '127.0.0.1'}:${process.env.RTMP_API_PORT || '9997'}/v3/paths/list`, {
         auth: {
           username: process.env.RTMP_API_USER,
           password: process.env.RTMP_API_PASS
         }
       });
-      const liveStreams = response.data.live;
+      // Legacy NMS-shaped handling below is best-effort; MediaMTX path list differs.
+      const liveStreams = (response.data && response.data.live) || {};
       if (liveStreams && liveStreams[shortname] && liveStreams[shortname].publisher) {
         const oldClientId = liveStreams[shortname].publisher.clientId;
         if (oldClientId !== streamId) {
           console.log(`[RTMP] Stale publisher detected for channel ${shortname} (Client: ${oldClientId}). Disconnecting...`);
           try {
-            await axios.delete(`http://192.168.90.5:8000/api/clients/${oldClientId}`, {
+            await axios.post(`http://${process.env.RTMP_SERVER_IP || '127.0.0.1'}:${process.env.RTMP_API_PORT || '9997'}/v3/paths/kick/${encodeURIComponent('live/' + shortname)}`, {}, {
               auth: {
                 username: process.env.RTMP_API_USER,
                 password: process.env.RTMP_API_PASS
@@ -48,17 +49,16 @@ router.post('/api/internal/rtmp/on_publish', async (req, res) => {
             console.log(`[RTMP] Disconnected stale client ${oldClientId} for channel ${shortname}`);
           } catch (delErr) {
             console.error(`[RTMP] Failed to disconnect stale client ${oldClientId}:`, delErr.message);
-            // Fallback: delete the entire stream if client delete fails
             try {
-              await axios.delete(`http://192.168.90.5:8000/api/streams/live/${shortname}`, {
+              await axios.post(`http://${process.env.RTMP_SERVER_IP || '127.0.0.1'}:${process.env.RTMP_API_PORT || '9997'}/v3/paths/kick/${encodeURIComponent('live/' + shortname)}`, {}, {
                 auth: {
                   username: process.env.RTMP_API_USER,
                   password: process.env.RTMP_API_PASS
                 }
               });
-              console.log(`[RTMP] Fallback: dropped stream for channel ${shortname}`);
+              console.log(`[RTMP] Fallback: kicked path for channel ${shortname}`);
             } catch (fallbackErr) {
-              console.error(`[RTMP] Fallback stream drop also failed:`, fallbackErr.message);
+              console.error(`[RTMP] Fallback path kick also failed:`, fallbackErr.message);
             }
           }
         }

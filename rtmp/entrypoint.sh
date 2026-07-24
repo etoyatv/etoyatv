@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-WEB_IP=${AUTH_WEB_IP:-${WEB_SERVER_IP:-192.168.90.100}}
+WEB_IP=${AUTH_WEB_IP:-${WEB_SERVER_IP:-127.0.0.1}}
 PASS=${RTMP_API_PASS:-}
 
 if [ -z "$PASS" ]; then

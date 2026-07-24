@@ -109,7 +109,7 @@
     <div style="margin-bottom: 25px;">
       <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Короткое имя (ссылка):</label>
       <div style="display: flex; align-items: center;">
-        <span style="color: #777; margin-right: 5px;">etoyatv.top/</span>
+        <span style="color: #777; margin-right: 5px;"><%= typeof PUBLIC_HOST !== 'undefined' ? PUBLIC_HOST : 'localhost' %>/</span>
         <input type="text" name="shortname" required pattern="[a-zA-Z0-9_-]+" title="Только латинские буквы, цифры, дефис and подчеркивание" style="flex: 1; padding: 8px; background: #222; border: 1px solid #444; color: #fff; box-sizing: border-box;">
       </div>
     </div>

@@ -155,7 +155,7 @@
                           <img src="<%= CDN_BASE_URL %><%= ch.logo_url || '/images/default_channel_logo.png' %>" class="channel-icon" style="object-fit: <%= ch.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= ch.logo_fit === 'contain' ? 'background: #000;' : '' %>" alt="Logo">
                           <div class="channel-info-block">
                             <span class="channel-name"><%= ch.name %></span>
-                            <span class="channel-role"><%= roleName %> &nbsp;|&nbsp; https://etoyatv.top/<%= ch.shortname %></span>
+                            <span class="channel-role"><%= roleName %> &nbsp;|&nbsp; <%= (typeof APP_URL !== 'undefined' ? APP_URL.replace(/\/$/,'') : '') %>/<%= ch.shortname %></span>
                           </div>
                         </div>
                         

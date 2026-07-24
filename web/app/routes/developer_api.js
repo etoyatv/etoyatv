@@ -289,8 +289,8 @@ router.get('/developer', async (req, res) => {
     res.render('developer_docs', {
       pageTitle: 'Документация API | ЭтоЯTV - Я есть телевидение!',
       hasChannel,
-      APP_URL: process.env.APP_URL || 'https://etoyatv.top',
-      CDN_BASE_URL: process.env.CDN_BASE_URL || 'https://cdn.etoyatv.top'
+      APP_URL: process.env.APP_URL || 'http://localhost:3001',
+      CDN_BASE_URL: process.env.CDN_BASE_URL || ''
     });
   } catch (e) {
     console.error('Error rendering developer docs:', e);

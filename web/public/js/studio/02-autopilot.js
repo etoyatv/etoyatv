@@ -51,7 +51,7 @@
                 if (idx === currentSelectedStudioStreamIndex) return;
                 currentSelectedStudioStreamIndex = idx;
                 
-                const baseUrl = window.RTMP_STREAM_URL || 'https://kctv.etoyatv.top/live';
+                const baseUrl = window.RTMP_STREAM_URL || 'http://127.0.0.1:8000/live';
                 let streamUrl = `${baseUrl}/${window.CHANNEL_SHORTNAME.toLowerCase()}/index.m3u8`;
                 if (idx > 1) {
                     streamUrl = `${baseUrl}/${window.CHANNEL_SHORTNAME.toLowerCase()}_${idx}/index.m3u8`;
@@ -142,7 +142,7 @@
                 
                 // If we are not locally streaming, we should play the live stream in the autopilot monitor
                 if (!state.isStreaming) {
-                    const baseUrl = window.RTMP_STREAM_URL || 'https://kctv.etoyatv.top/live';
+                    const baseUrl = window.RTMP_STREAM_URL || 'http://127.0.0.1:8000/live';
                     let streamUrl = `${baseUrl}/${window.CHANNEL_SHORTNAME.toLowerCase()}/index.m3u8`;
                     if (currentSelectedStudioStreamIndex > 1) {
                         const lowerShort = window.CHANNEL_SHORTNAME.toLowerCase();

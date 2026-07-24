@@ -1324,7 +1324,7 @@
                           <div class="channel_link" style="margin-top: 15px;">
                             <div class="label" style="color: #c0c0b2;">Прямая ссылка на телеканал:</div>
                             <input type="text" name="channelurl" id="channelurl" onfocus="$(this).select();"
-                              value="https://etoyatv.top/<%= channel.shortname %>" class="input-text"
+                              value="<%= (typeof APP_URL !== 'undefined' ? APP_URL.replace(/\/$/,'') : '') %>/<%= channel.shortname %>" class="input-text"
                               style="width: 310px; background: #333; color: #fff; border: 1px solid #555; padding: 4px;">
                           </div>
                         </div>

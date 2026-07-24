@@ -113,7 +113,7 @@
     var xE_mod = "tv";
     var xE_do = "";
     var xE_logged = false;
-    var xE_host = "etoyatv.top";
+    var xE_host = "<%= typeof PUBLIC_HOST !== 'undefined' ? PUBLIC_HOST : 'localhost' %>";
     //-->
   </script>
   <script type="text/javascript" src="<%= CDN_BASE_URL %>/js/jquery.js?v=<%= ASSET_VERSION %>"></script>

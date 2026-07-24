@@ -19,7 +19,7 @@ function runStartupHeal({ pool }) {
     .catch((err) => console.error('Error resetting viewers:', err));
 
   const axios = require('axios');
-  const RTMP_SERVER_IP = process.env.RTMP_SERVER_IP || '192.168.90.5';
+  const RTMP_SERVER_IP = process.env.RTMP_SERVER_IP || '127.0.0.1';
   const RTMP_API_PORT = process.env.RTMP_API_PORT || '9997';
   const BASE_URL = `http://${RTMP_SERVER_IP}:${RTMP_API_PORT}`;
 
