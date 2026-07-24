@@ -320,7 +320,7 @@ node scripts/bundle-studio.js
 
 ## Ссылки
 
-- Боевой сайт: [etoyatv.top](https://etoyatv.top)  
+- Официальный сайт (основной инстанс): [etoyatv.top](https://etoyatv.top)  
 - Репозиторий: [github.com/etoyatv/etoyatv](https://github.com/etoyatv/etoyatv)
 
 Вопросы по развёртыванию и PR приветствуются.
