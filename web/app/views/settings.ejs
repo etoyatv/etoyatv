@@ -1,0 +1,969 @@
+<%- include('partials/header') %>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+
+<div id="content">
+  <div style="margin-top: 20px;">
+    <!-- Стили для табов -->
+    <style>
+      /* Keep columns on the classic #content float grid (no centered 980 wrapper) */
+      #content .settings-left {
+        width: 650px !important;
+        float: left !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+      }
+      #content .settings-right {
+        width: 320px !important;
+        float: right !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box;
+      }
+      .settings-tabs {
+        list-style: none !important; padding: 0 !important; margin: 0 !important;
+        width: 100%;
+        height: 35px;
+        background: #232323; border: 1px solid #333; border-bottom: none;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
+        box-sizing: border-box;
+      }
+      .settings-tabs li {
+        list-style: none !important;
+        padding: 0 10px !important;
+        margin: 0 !important;
+        line-height: 35px; color: #7d7d7d; cursor: pointer;
+        border-right: 1px solid #333;
+        background: none !important;
+        background-image: none !important;
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+      .settings-tabs li:hover { color: #fff; }
+      .settings-tabs li.active {
+        color: #fff;
+        background: #333 !important;
+        background-image: none !important;
+      }
+      .settings-content {
+        background: #2b2b2b; border: 1px solid #333; padding: 20px; min-height: 300px;
+        box-sizing: border-box;
+      }
+      .settings-block { display: none; }
+      .settings-block.active { display: block; }
+      .forms-item-settings { margin-bottom: 15px; clear: both; overflow: hidden; }
+      .forms-item-settings .label { float: left; width: 140px; color: #c0c0b2; padding-top: 5px; text-align: right; padding-right: 15px; }
+      .forms-item-settings .input { float: left; width: 280px; }
+      .input-text-s { width: 100%; background: #1a1a1a; border: 1px solid #111; color: #fff; padding: 4px; box-sizing: border-box; }
+      .input-select { background: #1a1a1a; border: 1px solid #111; color: #fff; padding: 4px; }
+      .btn-save { background: #555; color: #fff; border: 1px solid #333; padding: 5px 20px; border-radius: 10px; cursor: pointer; }
+      .btn-save:hover { background: #666; }
+      .info-box { background: #232323; padding: 15px; border: 1px solid #333; color: #999; font-size: 12px; margin-bottom: 20px; }
+      .info-box h3 { color: #6fdeee; margin-top: 0; font-size: 14px; font-weight: normal; margin-bottom: 10px; }
+      .avatar-preview { width: 100px; height: 100px; background: #333; border: 1px solid #111; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+      .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
+      
+      /* Модалка для обрезки */
+      .cropper-modal-container {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;
+      }
+      .cropper-modal-box {
+        background: #2b2b2b; border: 1px solid #555; padding: 20px; width: 600px; max-width: 90%;
+        border-radius: 5px;
+      }
+      .cropper-image-container { width: 100%; max-height: 400px; margin-bottom: 20px; background: #1a1a1a; }
+      .cropper-image-container img { max-width: 100%; display: block; }
+    </style>
+
+    <!-- Модальное окно кроппера -->
+    <div class="cropper-modal-container" id="cropperModal">
+      <div class="cropper-modal-box">
+        <h3 style="color: #6fdeee; margin-top:0;">Обрезка аватара</h3>
+        <div class="cropper-image-container">
+          <img id="cropperImage" src="">
+        </div>
+        <div style="text-align: right;">
+          <button type="button" class="btn-save" id="btnCancelCrop" style="background:#555; margin-right: 10px;">Отмена</button>
+          <button type="button" class="btn-save" id="btnApplyCrop" style="background:#39b54a;">Применить</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="left_blocks settings-left">
+      <ul class="settings-tabs" id="settingsTabs">
+        <li class="active" data-tab="tab-profile">Профиль</li>
+        <li data-tab="tab-about">О себе</li>
+        <li data-tab="tab-privacy">Приватность</li>
+        <li data-tab="tab-password">Смена пароля</li>
+        <% if (typeof invite_system_enabled !== 'undefined' && invite_system_enabled) { %>
+        <li data-tab="tab-invites">Инвайты</li>
+        <% } %>
+        <li data-tab="tab-security">Безопасность</li>
+        <li data-tab="tab-boosty">Boosty подписка</li>
+        <li data-tab="tab-export">Перенос / архив</li>
+      </ul>
+
+      <div class="settings-content">
+        <!-- ТАБ: ПРОФИЛЬ -->
+        <div id="tab-profile" class="settings-block active">
+          <% if (typeof errorNick !== 'undefined') { %><div style="color:#ff6666;margin-bottom:10px;text-align:center;"><%= errorNick %></div><% } %>
+          <% if (typeof successNick !== 'undefined') { %><div style="color:#39b54a;margin-bottom:10px;text-align:center;"><%= successNick %></div><% } %>
+          <% if (typeof errorProfile !== 'undefined' && errorProfile) { %>
+            <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= errorProfile %></div>
+          <% } %>
+          <% if (typeof successProfile !== 'undefined' && successProfile) { %>
+            <div style="color: #39b54a; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= successProfile %></div>
+          <% } %>
+
+          <form action="/settings/nickname" method="POST">
+            <div class="forms-item-settings">
+              <div class="label">Никнейм:*</div>
+              <div class="input">
+                <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
+                  <input type="text" name="new_nickname" value="<%= profileUser.username %>" class="input-text-s" maxlength="13" pattern="[a-zA-Z0-9_-]+" title="Имя пользователя может содержать только латинские буквы, цифры, дефисы и нижние подчеркивания" required style="flex-grow: 1; width: auto;">
+                  <button type="submit" class="btn-save" style="margin: 0; padding: 4px 15px; flex-shrink: 0;">Сменить</button>
+                </div>
+              </div>
+            </div>
+          </form>
+
+          <form id="profileForm" action="/settings/profile" method="POST" enctype="multipart/form-data">
+            <div class="forms-item-settings">
+              <div class="label">E-Mail адрес:*</div>
+              <div class="input"><input type="email" name="email" id="inputEmail" value="<%= profileUser.email %>" class="input-text-s" required></div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Часовой пояс:</div>
+              <div class="input">
+                <% 
+                  const timezones = [
+                    { value: 'Pacific/Midway', label: '(GMT-11:00) Мидуэй' },
+                    { value: 'Pacific/Honolulu', label: '(GMT-10:00) Гавайи' },
+                    { value: 'America/Anchorage', label: '(GMT-09:00) Аляска' },
+                    { value: 'America/Los_Angeles', label: '(GMT-08:00) Тихоокеанское время (США и Канада)' },
+                    { value: 'America/Denver', label: '(GMT-07:00) Горное время (США и Канада)' },
+                    { value: 'America/Chicago', label: '(GMT-06:00) Центральное время (США и Канада)' },
+                    { value: 'America/New_York', label: '(GMT-05:00) Восточное время (США и Канада)' },
+                    { value: 'America/Caracas', label: '(GMT-04:00) Каракас, Ла-Пас' },
+                    { value: 'America/Argentina/Buenos_Aires', label: '(GMT-03:00) Буэнос-Айрес' },
+                    { value: 'Atlantic/South_Georgia', label: '(GMT-02:00) Среднеатлантическое время' },
+                    { value: 'Atlantic/Azores', label: '(GMT-01:00) Азорские острова' },
+                    { value: 'Europe/London', label: '(GMT+00:00) Лондон, Дублин, Лиссабон' },
+                    { value: 'Europe/Berlin', label: '(GMT+01:00) Берлин, Рим, Париж' },
+                    { value: 'Europe/Kiev', label: '(GMT+02:00) Киев, Афины, Иерусалим' },
+                    { value: 'Europe/Moscow', label: '(GMT+03:00) Москва, Минск, Багдад' },
+                    { value: 'Asia/Dubai', label: '(GMT+04:00) Дубай, Баку, Самара' },
+                    { value: 'Asia/Yekaterinburg', label: '(GMT+05:00) Екатеринбург, Ташкент' },
+                    { value: 'Asia/Omsk', label: '(GMT+06:00) Омск, Алматы, Дакка' },
+                    { value: 'Asia/Krasnoyarsk', label: '(GMT+07:00) Красноярск, Бангкок' },
+                    { value: 'Asia/Irkutsk', label: '(GMT+08:00) Иркутск, Пекин, Сингапур' },
+                    { value: 'Asia/Yakutsk', label: '(GMT+09:00) Якутск, Токио, Сеул' },
+                    { value: 'Asia/Vladivostok', label: '(GMT+10:00) Владивосток, Сидней' },
+                    { value: 'Asia/Magadan', label: '(GMT+11:00) Магадан, Соломоновы острова' },
+                    { value: 'Pacific/Auckland', label: '(GMT+12:00) Окленд, Фиджи' },
+                    { value: 'Pacific/Tongatapu', label: '(GMT+13:00) Нукуалофа' }
+                  ];
+                  let userTz = profileUser.timezone || 'Europe/Moscow';
+                  if (!timezones.find(t => t.value === userTz)) userTz = 'Europe/Moscow';
+                %>
+                <select name="timezone" class="input-text-s" style="width: 100%; max-width: 300px;">
+                  <% timezones.forEach(tz => { %>
+                    <option value="<%= tz.value %>" <%= userTz === tz.value ? 'selected' : '' %>><%= tz.label %></option>
+                  <% }); %>
+                </select>
+              </div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Дата рождения:</div>
+              <div class="input">
+                <input type="date" name="birthdate" id="inputBirthdate" class="input-text-s" value="<%= profileUser.birthdate ? new Date(profileUser.birthdate).toISOString().split('T')[0] : '' %>">
+              </div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Фотография:</div>
+              <div class="input">
+                <div class="avatar-preview" style="margin-bottom: 10px;">
+                  <img id="avatarPreviewImg" src="<%= CDN_BASE_URL %><%= profileUser.avatar || '/images/default_user_avatar.png'  %>" alt="Avatar">
+                </div>
+                <input type="file" name="avatar" id="avatarInput" accept="image/*" style="color: #fff;">
+                <div style="font-size: 11px; color: #777; margin-top: 5px;">Загружайте только JPG, PNG, GIF, WEBP, APNG. Макс размер исходника до 4МБ.</div>
+              </div>
+            </div>
+
+            <div class="forms-item-settings">
+              <div class="label">Язык интерфейса:</div>
+              <div class="input">
+                <select name="lang" id="langSelect" class="input-text-s" style="width: 100%; max-width: 300px;">
+                  <% if (typeof supportedLangs !== 'undefined') { %>
+                    <% const langNamesNative = { ru: 'Русский', en: 'English', uk: 'Українська', be: 'Беларуская' }; %>
+                    <% supportedLangs.forEach(function(lang) { %>
+                      <option value="<%= lang %>" <%= profileUser.lang === lang ? 'selected' : '' %>><%= langNamesNative[lang] || lang.toUpperCase() %></option>
+                    <% }); %>
+                  <% } else { %>
+                    <option value="ru" <%= profileUser.lang === 'ru' ? 'selected' : '' %>>Русский</option>
+                    <option value="en" <%= profileUser.lang === 'en' ? 'selected' : '' %>>English</option>
+                    <option value="uk" <%= profileUser.lang === 'uk' ? 'selected' : '' %>>Українська</option>
+                    <option value="be" <%= profileUser.lang === 'be' ? 'selected' : '' %>>Беларуская</option>
+                  <% } %>
+                </select>
+              </div>
+            </div>
+            
+            <div class="forms-item-settings" style="text-align: center; margin-top: 20px;">
+              <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+          </form>
+
+          <div style="font-size: 15px; color: #ff4d4d; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px solid #444; padding-bottom: 5px; font-weight: bold;">
+            Опасная зона
+          </div>
+
+          <div style="background-color: #1a1a1a; border: 1px solid #ff4d4d; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+            <p style="color: #999; margin-bottom: 15px; font-size: 12px; line-height: 1.5; text-align: left;">
+              Удаление аккаунта приведет к безвозвратному удалению всех ваших данных, включая созданные телеканалы, видео, новости и настройки. Это действие необратимо.
+            </p>
+            <% if (typeof hasBannedChannel !== 'undefined' && hasBannedChannel) { %>
+              <button type="button" class="btn-save" style="background:#cc0000; cursor: not-allowed; border-color: #aa0000;" onclick="yatvConfirm('Вы не можете удалить аккаунт, так как ваш телеканал заблокирован.', () => {});">Удалить аккаунт</button>
+            <% } else { %>
+              <button type="button" class="btn-save" style="background:#cc0000; border-color: #aa0000;" onclick="yatvConfirm('Вы уверены, что хотите удалить аккаунт? Ваш телеканал (если есть) также будет удален! Это действие необратимо.', () => { document.getElementById('deleteAccountForm').submit(); });">Удалить аккаунт</button>
+            <% } %>
+          </div>
+
+          <form id="deleteAccountForm" action="/settings/delete-account" method="POST" style="display:none;"></form>
+
+        </div>
+
+        <!-- ТАБ: О СЕБЕ -->
+        <div id="tab-about" class="settings-block">
+          <% if (typeof errorAbout !== 'undefined' && errorAbout) { %>
+            <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= errorAbout %></div>
+          <% } %>
+          <% if (typeof successAbout !== 'undefined' && successAbout) { %>
+            <div style="color: #39b54a; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= successAbout %></div>
+          <% } %>
+
+          <form action="/settings/about" method="POST">
+            <div class="forms-item-settings">
+              <div class="label">Telegram:</div>
+              <div class="input"><input type="text" name="telegram" value="<%= profileUser.telegram || '' %>" class="input-text-s"></div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Discord:</div>
+              <div class="input"><input type="text" name="discord" value="<%= profileUser.discord || '' %>" class="input-text-s"></div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">О себе:</div>
+              <div class="input"><textarea name="about" class="input-text-s" style="height: 100px; resize: vertical;" maxlength="200"><%= profileUser.about || '' %></textarea></div>
+            </div>
+            <div class="forms-item-settings" style="text-align: center; margin-top: 20px;">
+              <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+          </form>
+         </div>
+ 
+        <!-- ТАБ: ПРИВАТНОСТЬ -->
+        <div id="tab-privacy" class="settings-block">
+          <% if (typeof errorPrivacy !== 'undefined' && errorPrivacy) { %>
+            <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= errorPrivacy %></div>
+          <% } %>
+          <% if (typeof successPrivacy !== 'undefined' && successPrivacy) { %>
+            <div style="color: #39b54a; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= successPrivacy %></div>
+          <% } %>
+
+          <form action="/settings/privacy" method="POST">
+            <div class="forms-item-settings">
+              <div class="label">Видимость профиля:</div>
+              <div class="input">
+                <select name="privacy_profile" class="input-text-s" style="width: 100%; max-width: 300px;">
+                  <option value="public" <%= profileUser.privacy_profile === 'public' ? 'selected' : '' %>>Доступен всем (публичный)</option>
+                  <option value="only_friends" <%= profileUser.privacy_profile === 'only_friends' ? 'selected' : '' %>>Только для друзей</option>
+                  <option value="private" <%= profileUser.privacy_profile === 'private' ? 'selected' : '' %>>Скрыт от всех (профиль и поиск)</option>
+                </select>
+              </div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Личные сообщения:</div>
+              <div class="input">
+                <select name="privacy_messages" class="input-text-s" style="width: 100%; max-width: 300px;">
+                  <option value="all" <%= profileUser.privacy_messages === 'all' ? 'selected' : '' %>>Кто угодно может писать мне</option>
+                  <option value="only_friends" <%= profileUser.privacy_messages === 'only_friends' ? 'selected' : '' %>>Только мои друзья</option>
+                  <option value="nobody" <%= profileUser.privacy_messages === 'nobody' ? 'selected' : '' %>>Никто (кроме администрации)</option>
+                </select>
+              </div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Список друзей:</div>
+              <div class="input">
+                <select name="privacy_friends_list" class="input-text-s" style="width: 100%; max-width: 300px;">
+                  <option value="all" <%= profileUser.privacy_friends_list === 'all' ? 'selected' : '' %>>Виден всем</option>
+                  <option value="only_friends" <%= profileUser.privacy_friends_list === 'only_friends' ? 'selected' : '' %>>Виден только моим друзьям</option>
+                  <option value="nobody" <%= profileUser.privacy_friends_list === 'nobody' ? 'selected' : '' %>>Виден только мне</option>
+                </select>
+              </div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Уведомления на почту:</div>
+              <div class="input">
+                <select name="system_emails_enabled" class="input-text-s" style="width: 100%; max-width: 300px;">
+                  <option value="1" <%= !!profileUser.system_emails_enabled ? 'selected' : '' %>>Да, получать уведомления также на E-Mail</option>
+                  <option value="0" <%= !profileUser.system_emails_enabled ? 'selected' : '' %>>Нет, получать только в сообщениях на сайте</option>
+                </select>
+              </div>
+            </div>
+            <div class="forms-item-settings" style="text-align: center; margin-top: 20px;">
+              <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ТАБ: СМЕНА ПАРОЛЯ -->
+        <div id="tab-password" class="settings-block">
+          <% if (typeof errorPassword !== 'undefined' && errorPassword) { %>
+            <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= errorPassword %></div>
+          <% } %>
+          <% if (typeof successPassword !== 'undefined' && successPassword) { %>
+            <div style="color: #39b54a; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= successPassword %></div>
+          <% } %>
+          <form action="/settings/password" method="POST">
+            <div class="forms-item-settings">
+              <div class="label">Старый пароль:*</div>
+              <div class="input"><input type="password" name="oldPassword" class="input-text-s" required></div>
+            </div>
+            <div class="forms-item-settings">
+              <div class="label">Новый пароль:*</div>
+              <div class="input"><input type="password" name="newPassword" class="input-text-s" minlength="6" required></div>
+            </div>
+            <div class="forms-item-settings" style="text-align: center; margin-top: 20px;">
+              <button type="submit" class="btn-save">Сохранить</button>
+            </div>
+          </form>
+        </div>
+
+        <% if (typeof invite_system_enabled !== 'undefined' && invite_system_enabled) { %>
+        <!-- ТАБ: ИНВАЙТЫ -->
+        <div id="tab-invites" class="settings-block">
+          <% if (typeof errorInvite !== 'undefined' && errorInvite) { %><div style="color:#ff6666;margin-bottom:10px;text-align:center;"><%= errorInvite %></div><% } %>
+          <% if (typeof successInvite !== 'undefined' && successInvite) { %><div style="color:#39b54a;margin-bottom:10px;text-align:center;"><%= successInvite %></div><% } %>
+          <form action="/settings/invites/generate" method="POST" style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="color: #6fdeee; margin: 0 0 5px 0;">Ваши Инвайт-коды</h3>
+                <p style="color: #999; font-size: 12px; margin: 0;">Вы можете сгенерировать до 2 кодов в день.</p>
+              </div>
+              <button type="submit" class="btn-save" style="background: #0072ff; border-color: #00c6ff;">Сгенерировать код</button>
+            </div>
+          </form>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; color: #ccc;">
+            <thead>
+              <tr style="border-bottom: 1px solid #333;">
+                <th style="padding: 8px; text-align: left;">Код</th>
+                <th style="padding: 8px; text-align: left;">Статус</th>
+                <th style="padding: 8px; text-align: left;">Использовал</th>
+                <th style="padding: 8px; text-align: left;">Дата</th>
+                <th style="padding: 8px; text-align: left;">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (typeof invites !== 'undefined' && invites.length > 0) { %>
+                <% invites.forEach(inv => { %>
+                  <tr style="border-bottom: 1px solid #222;">
+                    <td style="padding: 8px; font-family: monospace;"><%= inv.code %></td>
+                    <td style="padding: 8px;">
+                      <% if (inv.used_at) { %>
+                        <span style="color: #f87171;">Использован</span>
+                      <% } else { %>
+                        <span style="color: #4ade80;">Активен</span>
+                      <% } %>
+                    </td>
+                    <td style="padding: 8px;">
+                      <%= inv.used_by_name ? inv.used_by_name : '-' %>
+                    </td>
+                    <td style="padding: 8px;"><%= typeof userTimezone !== 'undefined' ? formatDate(inv.created_at, userTimezone, 'DD.MM.YYYY') : formatDate(inv.created_at, profileUser.timezone, 'DD.MM.YYYY') %></td>
+                    <td style="padding: 8px;">
+                      <% if (!inv.used_at) { %>
+                        <form action="/account,profile/invites/delete/<%= inv.id %>" method="POST" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите удалить этот код?', () => { form.submit(); });" style="display:inline;">
+                          <button type="submit" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 11px;">Удалить</button>
+                        </form>
+                      <% } else { %>
+                        <span style="color: #666; font-size: 11px;">Недоступно</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } else { %>
+                <tr>
+                  <td colspan="5" style="padding: 15px; text-align: center; color: #777;">У вас еще нет инвайт-кодов.</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+
+          <% if (typeof totalInvitePages !== 'undefined' && totalInvitePages > 1) { %>
+            <div style="margin-top: 20px; text-align: center;">
+              <% for(let i=1; i<=totalInvitePages; i++) { %>
+                <a href="?invite_page=<%= i %>#tab-invites" style="display: inline-block; padding: 5px 10px; margin: 0 2px; background: <%= (typeof invitePage !== 'undefined' && invitePage === i) ? '#6fdeee' : '#333' %>; color: <%= (typeof invitePage !== 'undefined' && invitePage === i) ? '#000' : '#fff' %>; text-decoration: none; border-radius: 3px;"><%= i %></a>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+        <% } %>
+
+        <!-- ТАБ: БЕЗОПАСНОСТЬ -->
+        <div id="tab-security" class="settings-block">
+          <% if (typeof error2FA !== 'undefined' && error2FA) { %><div style="color:#ff6666;margin-bottom:10px;text-align:center;"><%= error2FA %></div><% } %>
+          <% if (typeof errorSession !== 'undefined' && errorSession) { %><div style="color:#ff6666;margin-bottom:10px;text-align:center;"><%= errorSession %></div><% } %>
+          <% if (typeof successSession !== 'undefined' && successSession) { %><div style="color:#39b54a;margin-bottom:10px;text-align:center;"><%= successSession %></div><% } %>
+          
+          <div class="info-box">
+            <h3>Двухфакторная аутентификация (2FA)</h3>
+            <p>Дополнительный уровень безопасности для вашего аккаунта. При входе потребуется вводить временный код из приложения (например, Google Authenticator).</p>
+            
+            <% if (profileUser.is_totp_enabled) { %>
+              <div style="margin-top: 15px; color: #39b54a; font-weight: bold;">
+                Статус: Включено
+              </div>
+              <div style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">
+                <p style="color: #ff6666; margin-bottom: 10px;">Для отключения 2FA введите текущий код из приложения или резервный код:</p>
+                <form action="/account/2fa/disable" method="POST" style="display: flex; align-items: center; gap: 10px;">
+                  <input type="text" name="code" class="input-text-s" placeholder="Код или резервный код" autocomplete="off" required style="width: 200px; text-align: center; letter-spacing: 1px;">
+                  <button type="submit" class="btn-save" style="background: #ff4d4d; border-color: #cc0000; margin: 0;">Отключить 2FA</button>
+                </form>
+              </div>
+            <% } else { %>
+              <div style="margin-top: 15px; color: #ff6666; font-weight: bold;">
+                Статус: Отключено
+              </div>
+              <div style="margin-top: 20px;">
+                <a href="/account/2fa/setup" class="btn-save" style="display: inline-block; text-decoration: none;">Настроить 2FA</a>
+              </div>
+            <% } %>
+          </div>
+
+          <div class="info-box" style="margin-top: 20px;">
+            <h3>Сессии аккаунта</h3>
+            <p>Вы можете завершить все другие сеансы (например, на других компьютерах или мобильных устройствах), кроме текущего.</p>
+            <div style="margin-top: 15px;">
+              <form action="/settings/sessions/terminate-others" method="POST" onsubmit="return confirm('Вы уверены, что хотите завершить все другие сеансы?');">
+                <button type="submit" class="btn-save" style="background: #ff4d4d; border-color: #cc0000; margin: 0;">Завершить все другие сеансы</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ТАБ: BOOSTY ПОДПИСКА -->
+        <div id="tab-boosty" class="settings-block">
+          <% if (typeof errorBoosty !== 'undefined' && errorBoosty) { %>
+            <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= errorBoosty %></div>
+          <% } %>
+          <% if (typeof successBoosty !== 'undefined' && successBoosty) { %>
+            <div style="color: #39b54a; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= successBoosty %></div>
+          <% } %>
+
+          <div class="info-box">
+            <h3>Boosty подписка</h3>
+            <p>Вы можете активировать Премиум-статус и галочку верификации на ваших каналах с помощью подписки на нашем Boosty.</p>
+          </div>
+
+          <% if (profileUser.boosty_email) { %>
+            <!-- State C: Already linked -->
+            <div style="background: #232323; padding: 15px; border: 1px solid #39b54a; color: #999; font-size: 12px; margin-bottom: 20px;">
+              <h3 style="color: #4ade80; margin-top: 0; font-size: 14px; font-weight: normal; margin-bottom: 10px;">Boosty подписка привязана!</h3>
+              <p style="margin-bottom: 15px; line-height: 1.5;">Ваш аккаунт успешно связан с почтой Boosty: <strong><%= profileUser.boosty_email %></strong>. Премиум-статус и верификация на каналах будут автоматически продлеваться, пока активна ваша подписка на Boosty.</p>
+              
+              <div style="display: flex; gap: 10px;">
+                <form action="/settings/boosty/sync" method="POST" style="display: inline-block;">
+                  <button type="submit" class="btn-save" style="background: #0072ff; border-color: #00c6ff; margin: 0;">Обновить статус</button>
+                </form>
+                <form action="/settings/boosty/unlink" method="POST" onsubmit="return confirm('Вы уверены, что хотите отвязать аккаунт Boosty? Вы потеряете Премиум-статус.');" style="display: inline-block;">
+                  <button type="submit" class="btn-save" style="background: #ff4d4d; border-color: #cc0000; margin: 0;">Отвязать аккаунт</button>
+                </form>
+              </div>
+            </div>
+          <% } else if (typeof pendingBoostyEmail !== 'undefined' && pendingBoostyEmail) { %>
+            <!-- State B: Pending request (verification code sent) -->
+            <div style="background: #232323; padding: 15px; border: 1px solid #333; color: #999; font-size: 12px; margin-bottom: 20px;">
+              <h3>Код подтверждения отправлен</h3>
+              <p style="line-height: 1.5;">Мы отправили 6-значный код подтверждения в ваши личные сообщения (DMs) на Boosty для аккаунта, связанного с почтой <strong><%= pendingBoostyEmail %></strong>. Пожалуйста, проверьте входящие сообщения на Boosty и введите код ниже.</p>
+            </div>
+
+            <form action="/settings/boosty/verify" method="POST">
+              <div class="forms-item-settings">
+                <div class="label">Код из Boosty:</div>
+                <div class="input">
+                  <input type="text" name="code" class="input-text-s" placeholder="123456" required pattern="[0-9]{6}" title="Введите 6-значный цифровой код" style="text-align: center; letter-spacing: 2px; font-weight: bold; font-size: 16px;">
+                </div>
+              </div>
+              
+              <div class="forms-item-settings" style="text-align: left; margin-top: 20px; padding-left: 155px; display: flex; gap: 10px;">
+                <button type="submit" class="btn-save" style="background: #39b54a; border-color: #2e963b; margin: 0;">Подтвердить</button>
+                <button type="button" onclick="document.getElementById('cancelBoostyForm').submit();" class="btn-save" style="background: #555; margin: 0;">Отмена</button>
+              </div>
+            </form>
+            <form id="cancelBoostyForm" action="/settings/boosty/cancel" method="POST" style="display: none;"></form>
+          <% } else { %>
+            <!-- State A: Not bound, no pending request -->
+            <form action="/settings/boosty/request" method="POST">
+              <div class="forms-item-settings">
+                <div class="label">E-Mail на Boosty:</div>
+                <div class="input">
+                  <input type="email" name="boosty_email" class="input-text-s" placeholder="your-boosty-email@example.com" required>
+                  <div style="font-size: 11px; color: #777; margin-top: 5px;">Укажите адрес почты вашего Boosty-профиля. Мы вышлем проверочный код вам в ЛС.</div>
+                </div>
+              </div>
+              
+              <div class="forms-item-settings" style="text-align: left; margin-top: 20px; padding-left: 155px;">
+                <button type="submit" class="btn-save" style="background: #0072ff; border-color: #00c6ff; margin: 0;">Получить код</button>
+              </div>
+            </form>
+          <% } %>
+        </div>
+
+        <!-- ТАБ: ПЕРЕНОС / АРХИВ -->
+        <div id="tab-export" class="settings-block">
+          <div class="info-box">
+            <h3>Архивы профиля</h3>
+            <p>Две разные кнопки — две разные цели. Размер может быть похожим (одни и те же видео), но содержимое и назначение другие.</p>
+            <p style="margin-top:10px;">Готовый zip хранится <strong>2 суток</strong>. Можно держать <strong>оба</strong> архива сразу. Повторный запуск того же типа <strong>безвозвратно удаляет</strong> предыдущий zip этого типа.</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+            <div style="background:#232323;border:1px solid #444;padding:16px;border-radius:4px;">
+              <div style="color:#fff;font-size:14px;margin-bottom:8px;">Скачать моё</div>
+              <p style="color:#999;font-size:12px;line-height:1.5;margin:0 0 12px;">
+                Личный бэкап <strong style="color:#ccc">себе на диск</strong>: папка «Мои записи» с MP4 по каналам, оформление, тексты.
+                <br>На другой инстанс <strong style="color:#ff8888">не загружается</strong>.
+              </p>
+              <button type="button" class="btn-save" id="btnExportPersonal" style="background:#555;margin:0;">Скачать моё</button>
+            </div>
+            <div style="background:#1a2430;border:1px solid #0072ff;padding:16px;border-radius:4px;">
+              <div style="color:#6fdeee;font-size:14px;margin-bottom:8px;">Архив для переноса</div>
+              <p style="color:#999;font-size:12px;line-height:1.5;margin:0 0 12px;">
+                Служебный zip <strong style="color:#ccc">для переезда</strong> на другой ЭтоЯTV: профиль, каналы, новости, программа, флаги premium/verified.
+                <br>Его потом жмут «Загрузить архив переноса» → заявка админу.
+              </p>
+              <button type="button" class="btn-save" id="btnExportTransfer" style="background:#0072ff;border-color:#00c6ff;margin:0;">Архив для переноса</button>
+            </div>
+          </div>
+          <div style="margin-bottom:20px;">
+            <a href="/account,transfer/" class="btn-save" style="display:inline-block;text-decoration:none;background:#333;margin:0;line-height:normal;padding:6px 16px;">Загрузить архив переноса с другого инстанса…</a>
+          </div>
+
+          <div id="exportPanels" style="display:flex;flex-direction:column;gap:12px;">
+            <div id="exportPanel-personal" class="export-job-panel" data-type="personal" style="display:none;background:#232323;border:1px solid #444;padding:18px;border-radius:4px;">
+              <div class="export-job-title" style="color:#ccc;font-size:14px;margin-bottom:10px;">Личный архив…</div>
+              <div style="height:10px;background:#111;border-radius:5px;overflow:hidden;margin-bottom:10px;">
+                <div class="export-job-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#666,#bbb);transition:width .3s;"></div>
+              </div>
+              <div class="export-job-meta" style="color:#999;font-size:12px;line-height:1.6;"></div>
+              <div class="export-job-actions" style="margin-top:14px;display:none;">
+                <button type="button" class="btn-save export-job-download" style="background:#39b54a;border-color:#2e963b;margin:0;padding:8px 22px;">Скачать личный архив</button>
+              </div>
+              <div class="export-job-skipped" style="margin-top:12px;color:#c9a227;font-size:11px;display:none;"></div>
+            </div>
+            <div id="exportPanel-transfer" class="export-job-panel" data-type="transfer" style="display:none;background:#1a2430;border:1px solid #0072ff;padding:18px;border-radius:4px;">
+              <div class="export-job-title" style="color:#6fdeee;font-size:14px;margin-bottom:10px;">Архив для переноса…</div>
+              <div style="height:10px;background:#111;border-radius:5px;overflow:hidden;margin-bottom:10px;">
+                <div class="export-job-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#0072ff,#6fdeee);transition:width .3s;"></div>
+              </div>
+              <div class="export-job-meta" style="color:#999;font-size:12px;line-height:1.6;"></div>
+              <div class="export-job-actions" style="margin-top:14px;display:none;">
+                <button type="button" class="btn-save export-job-download" style="background:#39b54a;border-color:#2e963b;margin:0;padding:8px 22px;">Скачать архив переноса</button>
+              </div>
+              <div class="export-job-skipped" style="margin-top:12px;color:#c9a227;font-size:11px;display:none;"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- RIGHT BLOCKS -->
+    <div class="right_blocks settings-right">
+      <div class="info-box">
+        <h3>Укажите Вашу контактную информацию!</h3>
+        <p><strong>Электронная почта</strong><br>
+        Указанный при регистрации адрес электронной почты не предназначен для публичного отображения, а будет использован администрацией ЭтоЯTV при необходимости срочного оповещения пользователей о нововведениях и изменениях, связанных с работой сайта и функционалом платформы.</p>
+        <p style="margin-top: 15px;"><strong>Фотография пользователя</strong><br>
+        Загруженное изображение будет отображаться в качестве аватара на Вашей личной странице и в Ваших сообщениях. Оригинальный размер изображения не должен превышать 100x100 пикселей.</p>
+      </div>
+    </div>
+    <div class="clear_both"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script>
+  // Cropper logic
+  const avatarInput = document.getElementById('avatarInput');
+  const cropperModal = document.getElementById('cropperModal');
+  const cropperImage = document.getElementById('cropperImage');
+  const btnCancelCrop = document.getElementById('btnCancelCrop');
+  const btnApplyCrop = document.getElementById('btnApplyCrop');
+  const avatarPreviewImg = document.getElementById('avatarPreviewImg');
+  let cropper;
+
+  avatarInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/apng'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.apng'];
+    const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+      alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp, apng).");
+      this.value = '';
+      return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+      alert("Размер файла превышает 4 МБ.");
+      this.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const arr = new Uint8Array(event.target.result);
+      let hasAcn = false;
+      for (let i = 0; i < arr.length - 4; i++) {
+        if (arr[i] === 0x61 && arr[i+1] === 0x63 && arr[i+2] === 0x54 && arr[i+3] === 0x4C) { // "acTL"
+          hasAcn = true;
+          break;
+        }
+      }
+
+      const isGif = file.type === 'image/gif' || extension === '.gif';
+      const isApng = file.type === 'image/apng' || extension === '.apng' || hasAcn;
+
+      if (isGif || isApng) {
+        // Bypass cropper, show preview directly
+        const dataReader = new FileReader();
+        dataReader.onload = function(e) {
+          const preview = document.getElementById('avatarPreviewImg');
+          if (preview) preview.src = e.target.result;
+        };
+        dataReader.readAsDataURL(file);
+      } else {
+        // Open cropper modal
+        const dataReader = new FileReader();
+        dataReader.onload = function(e) {
+          cropperImage.src = e.target.result;
+          cropperModal.style.display = 'flex';
+          
+          if (cropper) cropper.destroy();
+          cropper = new Cropper(cropperImage, {
+            aspectRatio: 1,
+            viewMode: 1
+          });
+        };
+        dataReader.readAsDataURL(file);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  btnCancelCrop.addEventListener('click', function() {
+    cropperModal.style.display = 'none';
+    if (cropper) cropper.destroy();
+    avatarInput.value = '';
+  });
+
+  btnApplyCrop.addEventListener('click', function() {
+    if (!cropper) return;
+    
+    const canvas = cropper.getCroppedCanvas({
+      width: 100,
+      height: 100,
+      imageSmoothingEnabled: true,
+      imageSmoothingQuality: 'high'
+    });
+    
+    canvas.toBlob(function(blob) {
+      const file = new File([blob], "avatar.jpg", { type: "image/jpeg" });
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      avatarInput.files = dataTransfer.files;
+      
+      avatarPreviewImg.src = canvas.toDataURL("image/jpeg");
+      
+      cropperModal.style.display = 'none';
+      cropper.destroy();
+    }, "image/jpeg", 0.9);
+  });
+
+  // Tabs logic
+  const tabs = document.querySelectorAll('#settingsTabs li');
+  const blocks = document.querySelectorAll('.settings-block');
+  
+  let activeTabId = window.location.hash ? window.location.hash.substring(1) : 'tab-profile';
+  if (!document.getElementById(activeTabId)) activeTabId = 'tab-profile';
+  
+  tabs.forEach(tab => {
+    if (tab.getAttribute('data-tab') === activeTabId) tab.classList.add('active');
+    else tab.classList.remove('active');
+    
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      blocks.forEach(b => b.classList.remove('active'));
+      
+      tab.classList.add('active');
+      const target = document.getElementById(tab.getAttribute('data-tab'));
+      target.classList.add('active');
+      window.location.hash = tab.getAttribute('data-tab');
+    });
+  });
+  
+  blocks.forEach(block => {
+    if (block.id === activeTabId) block.classList.add('active');
+    else block.classList.remove('active');
+  });
+
+  // Profile export / transfer job UI — two independent panels
+  (function() {
+    const panels = {
+      personal: document.getElementById('exportPanel-personal'),
+      transfer: document.getElementById('exportPanel-transfer')
+    };
+    const ticketUrls = { personal: null, transfer: null };
+    const pollTimers = { personal: null, transfer: null };
+
+    function csrfHeaders() {
+      const h = { 'Content-Type': 'application/json' };
+      if (window.csrfToken) h['X-CSRF-Token'] = window.csrfToken;
+      return h;
+    }
+
+    function els(type) {
+      const panel = panels[type];
+      if (!panel) return null;
+      return {
+        panel: panel,
+        title: panel.querySelector('.export-job-title'),
+        bar: panel.querySelector('.export-job-bar'),
+        meta: panel.querySelector('.export-job-meta'),
+        actions: panel.querySelector('.export-job-actions'),
+        downloadBtn: panel.querySelector('.export-job-download'),
+        skippedEl: panel.querySelector('.export-job-skipped')
+      };
+    }
+
+    function renderJob(job) {
+      if (!job || !job.type) return;
+      const ui = els(job.type);
+      if (!ui) return;
+      ui.panel.style.display = 'block';
+      const pct = job.progress_total > 0
+        ? Math.min(100, Math.round(100 * job.progress_current / job.progress_total))
+        : (job.status === 'ready' ? 100 : (job.status === 'zipping' ? 95 : 5));
+      ui.bar.style.width = pct + '%';
+
+      const sizeLabel = job.actual_label || job.estimated_label || '—';
+      const typeBit = job.type_label ? ('<span style="color:#777">' + job.type_label + '</span><br>') : '';
+
+      if (job.status === 'queued') {
+        ui.title.textContent = 'В очереди…';
+        ui.meta.innerHTML = typeBit + 'Ориентировочный размер: <strong style="color:#ccc">' + sizeLabel + '</strong><br>Примерное ожидание: ' + (job.eta_label || '—');
+        ui.actions.style.display = 'none';
+        ticketUrls[job.type] = null;
+      } else if (job.status === 'processing') {
+        ui.title.textContent = 'Готовим записи (MP4)…';
+        ui.meta.innerHTML = typeBit + 'Запись ' + job.progress_current + ' из ' + job.progress_total +
+          '<br>Ориентировочный размер: <strong style="color:#ccc">' + sizeLabel + '</strong>' +
+          '<br>Примерное ожидание: ' + (job.eta_label || '—') +
+          '<br><span style="color:#777">Можно закрыть вкладку и вернуться сюда позже.</span>';
+        ui.actions.style.display = 'none';
+        ticketUrls[job.type] = null;
+      } else if (job.status === 'zipping') {
+        ui.title.textContent = 'Упаковываем архив…';
+        ui.meta.innerHTML = typeBit + 'Ориентировочный размер: <strong style="color:#ccc">' + sizeLabel + '</strong>';
+        ui.actions.style.display = 'none';
+        ticketUrls[job.type] = null;
+      } else if (job.status === 'ready') {
+        ui.title.textContent = 'Архив готов';
+        const until = job.expires_label
+          ? ('до ' + job.expires_label + (job.remaining_label ? ', ' + job.remaining_label : ''))
+          : (job.remaining_label || '2 суток');
+        const purposeHint = job.type === 'transfer'
+          ? '<br><span style="color:#6fdeee">Архив для переноса — загрузите на другом инстансе через «Загрузить архив переноса».</span>'
+          : '<br><span style="color:#aaa">Личный бэкап — папка «Мои записи». На другой инстанс не подходит.</span>';
+        ui.meta.innerHTML = typeBit + 'Размер: <strong style="color:#ccc">' + (job.actual_label || sizeLabel) + '</strong>' +
+          '<br>Файл доступен <strong style="color:#ccc">' + until + '</strong>' +
+          '<br><span style="color:#777">Ссылка одноразовая, ~1 минута. Повторная сборка этого типа удалит текущий файл.</span>' +
+          purposeHint;
+        ui.actions.style.display = 'block';
+        ticketUrls[job.type] = job.ticket_url || null;
+        if (ui.downloadBtn) ui.downloadBtn.disabled = !ticketUrls[job.type];
+      } else if (job.status === 'failed') {
+        ui.title.textContent = 'Не удалось собрать архив';
+        ui.meta.innerHTML = '<span style="color:#ff6666">' + (job.error_text || 'Ошибка') + '</span>';
+        ui.actions.style.display = 'none';
+        ticketUrls[job.type] = null;
+      } else if (job.status === 'expired') {
+        ui.panel.style.display = 'none';
+        ticketUrls[job.type] = null;
+        return;
+      }
+
+      if (job.skipped && job.skipped.length) {
+        ui.skippedEl.style.display = 'block';
+        ui.skippedEl.textContent = 'Пропущено записей: ' + job.skipped.length +
+          ' (' + job.skipped.slice(0, 5).map(function(s) { return '#' + s.record_id; }).join(', ') +
+          (job.skipped.length > 5 ? '…' : '') + ')';
+      } else {
+        ui.skippedEl.style.display = 'none';
+      }
+    }
+
+    function stopPoll(type) {
+      if (pollTimers[type]) { clearInterval(pollTimers[type]); pollTimers[type] = null; }
+    }
+
+    function startPoll(type, jobId) {
+      stopPoll(type);
+      pollTimers[type] = setInterval(function() {
+        fetch('/api/account/export/' + jobId, { credentials: 'same-origin' })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (!data.ok || !data.job) return;
+            renderJob(data.job);
+            if (data.job.status === 'ready' || data.job.status === 'failed' || data.job.status === 'expired') {
+              stopPoll(type);
+              // refresh both panels so the other type stays visible
+              restoreLatest();
+            }
+          })
+          .catch(function() {});
+      }, 2000);
+    }
+
+    function restoreLatest() {
+      fetch('/api/account/export/latest', { credentials: 'same-origin' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!data.ok) return;
+          ['personal', 'transfer'].forEach(function(type) {
+            const job = data[type];
+            if (!job) {
+              if (panels[type]) panels[type].style.display = 'none';
+              ticketUrls[type] = null;
+              stopPoll(type);
+              return;
+            }
+            renderJob(job);
+            if (job.status === 'queued' || job.status === 'processing' || job.status === 'zipping') {
+              startPoll(type, job.id);
+            } else {
+              stopPoll(type);
+            }
+          });
+        })
+        .catch(function() {});
+    }
+
+    function startExport(type) {
+      const ui = els(type);
+      if (!ui) return;
+      ui.panel.style.display = 'block';
+      ui.title.textContent = 'Запускаем…';
+      ui.bar.style.width = '2%';
+      ui.meta.textContent = 'Предыдущий архив этого типа будет удалён. Ожидайте…';
+      ui.actions.style.display = 'none';
+      ticketUrls[type] = null;
+      fetch('/api/account/export', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: csrfHeaders(),
+        body: JSON.stringify({ type: type })
+      })
+        .then(function(r) { return r.json().then(function(data) { return { status: r.status, data: data }; }); })
+        .then(function(res) {
+          const data = res.data;
+          if (!data.ok || !data.job) {
+            ui.title.textContent = 'Ошибка';
+            ui.meta.innerHTML = '<span style="color:#ff6666">' + ((data && (data.message || data.error)) || 'не удалось') + '</span>';
+            return;
+          }
+          renderJob(data.job);
+          if (data.job.status !== 'ready' && data.job.status !== 'failed') {
+            startPoll(type, data.job.id);
+          }
+          // keep the other panel
+          restoreLatest();
+        })
+        .catch(function() {
+          ui.title.textContent = 'Ошибка сети';
+          ui.meta.innerHTML = '<span style="color:#ff6666">Попробуйте ещё раз</span>';
+        });
+    }
+
+    Object.keys(panels).forEach(function(type) {
+      const ui = els(type);
+      if (!ui || !ui.downloadBtn) return;
+      ui.downloadBtn.addEventListener('click', function() {
+        if (!ticketUrls[type] || ui.downloadBtn.disabled) return;
+        ui.downloadBtn.disabled = true;
+        const prev = ui.downloadBtn.textContent;
+        ui.downloadBtn.textContent = 'Секунду…';
+        fetch(ticketUrls[type], {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: csrfHeaders()
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            ui.downloadBtn.textContent = prev;
+            ui.downloadBtn.disabled = !ticketUrls[type];
+            if (!data.ok || !data.download_url) {
+              alert((data && data.error === 'unavailable')
+                ? 'Архив недоступен. Соберите заново.'
+                : 'Не удалось получить ссылку. Обновите страницу.');
+              return;
+            }
+            window.location.href = data.download_url;
+          })
+          .catch(function() {
+            ui.downloadBtn.textContent = prev;
+            ui.downloadBtn.disabled = !ticketUrls[type];
+            alert('Ошибка сети');
+          });
+      });
+    });
+
+    const btnP = document.getElementById('btnExportPersonal');
+    const btnT = document.getElementById('btnExportTransfer');
+    if (btnP) btnP.addEventListener('click', function() { startExport('personal'); });
+    if (btnT) btnT.addEventListener('click', function() { startExport('transfer'); });
+
+    restoreLatest();
+    tabs.forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        if (tab.getAttribute('data-tab') === 'tab-export') restoreLatest();
+      });
+    });
+  })();
+
+  const langSelect = document.getElementById('langSelect');
+  if (langSelect) {
+    langSelect.addEventListener('change', function() {
+      const lang = this.value;
+      fetch('/api/set-lang', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lang })
+      }).then(res => {
+        if (res.ok) {
+          window.location.reload();
+        }
+      });
+    });
+  }
+</script>
+
+<%- include('partials/footer') %>

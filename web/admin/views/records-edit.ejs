@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= pageTitle %></title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .edit-container {
+      background: #252a2e;
+      border: 1px solid #3a4247;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 800px;
+    }
+    .edit-header {
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #3a4247;
+    }
+    .form-control {
+      flex: 1;
+      background: #111;
+      border: 1px solid #333;
+      color: #fff;
+      padding: 12px;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    .form-control:focus {
+      border-color: #00c6ff;
+      outline: none;
+    }
+    .static-info {
+      background: #1a1e20;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: flex;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+    .info-label {
+      width: 150px;
+      color: #8c989e;
+      flex-shrink: 0;
+    }
+    .info-value {
+      color: #fff;
+    }
+    .action-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #3a4247;
+    }
+    .file-input-wrapper {
+      background: #1a1e20;
+      border: 1px dashed #4a5359;
+      padding: 20px;
+      border-radius: 6px;
+      text-align: center;
+      margin-top: 5px;
+    }
+    .file-input-note {
+      color: #ff4d4d;
+      font-size: 12px;
+      margin-top: 5px;
+      display: block;
+    }
+    
+    @media (max-width: 768px) {
+      .info-row { flex-direction: column; gap: 5px; }
+      .info-label { width: 100%; }
+      .form-group-horiz { flex-direction: column; align-items: flex-start; gap: 10px; }
+      .form-group-horiz label { width: 100%; }
+      .action-buttons { flex-direction: column; gap: 15px; }
+      .action-buttons button, .action-buttons a { width: 100%; text-align: center; }
+      .edit-container { padding: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar', { q: '' }) %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="edit-container">
+        <div class="edit-header">
+          Редактирование записи (id: <%= record.id %>)
+        </div>
+
+        <form action="/records/<%= record.id %>/edit" method="POST" enctype="multipart/form-data">
+          
+          <div class="form-group-horiz" style="margin-bottom: 20px;">
+            <label style="width: 150px; flex-shrink: 0;">Название</label>
+            <input type="text" name="title" class="form-control" value="<%= record.title %>" required>
+          </div>
+
+          <div class="form-group-horiz align-top" style="margin-bottom: 20px;">
+            <label style="width: 150px; flex-shrink: 0; margin-top: 10px;">Краткое описание</label>
+            <textarea name="description" class="form-control" rows="4" maxlength="200"><%= record.description || '' %></textarea>
+          </div>
+
+          <div class="form-group-horiz" style="margin-bottom: 20px;">
+            <div style="width: 150px; flex-shrink: 0;"></div>
+            <label style="display: flex; align-items: center; cursor: pointer; color: #fff; width: auto; font-weight: normal;">
+              <input type="checkbox" name="is_18_plus" style="margin-right: 10px; transform: scale(1.2);" <%= record.is_18_plus ? 'checked' : '' %>>
+              Метка 18+ (Только для взрослых)
+            </label>
+          </div>
+
+          <div class="static-info">
+            <div class="info-row">
+              <div class="info-label">Канал:</div>
+              <div class="info-value">
+                <% if (record.channel_id) { %>
+                  <a href="/channels/<%= record.channel_id %>/edit" style="color: #00c6ff; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= record.channel_name || 'Неизвестно' %></a>
+                <% } else { %>
+                  <span style="color: #00c6ff;"><%= record.channel_name || 'Неизвестно' %></span>
+                <% } %>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Дата создания:</div>
+              <div class="info-value"><%= formatDate(record.created_at, userTimezone, 'DD.MM.YYYY HH:mm:ss') %></div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Статус:</div>
+              <div class="info-value">
+                <% if (record.status === 'banned') { %>
+                  <span style="color: #ff4d4d; font-weight: bold;">Заблокированный (Скрыт)</span>
+                <% } else if (record.status === 'deleted') { %>
+                  <span style="color: #8c989e;">Удаленный</span>
+                <% } else { %>
+                  <span style="color: #4CAF50; font-weight: bold;">Активный</span>
+                <% } %>
+              </div>
+            </div>
+            <div class="info-row">
+              <div class="info-label">Место на CDN:</div>
+              <div class="info-value">
+                <strong>Размер до сжатии:</strong> <%= (record.size_bytes / (1024 * 1024)).toFixed(2) %> MB<br>
+                <% if (record.processing_status === 'pending') { %>
+                  <span style="color: #ff9800; font-size: 12px; font-weight: bold; margin-top: 5px; display: inline-block;">В обработке...</span>
+                <% } else if (record.processing_status === 'error') { %>
+                  <span style="color: #ff4d4d; font-size: 12px; font-weight: bold; margin-top: 5px; display: inline-block;">Ошибка обработки файла</span>
+                <% } else if (record.hls_url) { %>
+                  <span style="color: #8c989e; font-size: 11px; margin-top: 5px; display: inline-block;">
+                    <% if (sdSize > 0) { %>
+                      HLS (SD Quality): <%= (sdSize / (1024 * 1024)).toFixed(2) %> MB
+                    <% } else { %>
+                      HLS (High Quality): <%= (highSize / (1024 * 1024)).toFixed(2) %> MB<br>
+                      HLS (Low Quality): <%= (lowSize / (1024 * 1024)).toFixed(2) %> MB
+                    <% } %>
+                  </span>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group-horiz align-top" style="margin-bottom: 20px;">
+            <label style="width: 150px; flex-shrink: 0; margin-top: 10px;">Заменить видео</label>
+            <div class="file-input-wrapper" style="flex-grow: 1; margin-top: 0;">
+              <input type="file" name="video" accept="video/mp4,video/x-m4v,video/*" style="color: #fff;">
+              <div class="file-input-note">
+                Внимание: при загрузке нового файла старое видео и его HLS-версии будут безвозвратно удалены с сервера, а для нового файла начнется процесс обработки.
+              </div>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <a href="/records" class="btn-action" style="background: #3a4247; border: none; text-decoration: none;">Отменить</a>
+            <button type="submit" class="btn-action" style="background: #00c6ff; color: #000; font-weight: bold; border: none;">Сохранить</button>
+          </div>
+
+        </form>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>

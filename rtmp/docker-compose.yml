@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  rtmp:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    restart: unless-stopped
+    # tini as PID 1 — reaps zombie ffmpeg left by on_ready hooks / sshfs I/O fails
+    init: true
+    stop_grace_period: 20s
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    ports:
+      - "1935:1935"
+      - "8000:8000"
+      - "9997:9997"
+      - "8889:8889"
+      - "8189:8189/udp"
+      - "8189:8189/tcp"
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml.template:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - ./on_ready.sh:/on_ready.sh:ro
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}:/public
+    environment:
+      # on_ready.sh unpublish webhook target
+      - WEB_SERVER_IP=${WEB_SERVER_IP:-127.0.0.1}
+      # MediaMTX authHTTPAddress target (staging web LXC)
+      - AUTH_WEB_IP=${AUTH_WEB_IP:-127.0.0.1}
+      - RTMP_API_USER=${RTMP_API_USER}
+      - RTMP_API_PASS=${RTMP_API_PASS}
+      # Live ABR: soft-transcode one low ladder (ultrafast, capped threads)
+      - LIVE_ABR_ENABLED=${LIVE_ABR_ENABLED:-0}
+      - LIVE_ABR_THREADS=${LIVE_ABR_THREADS:-1}
+      # Watchdog: kill wedged MediaMTX so Docker restarts the container
+      - MTX_WATCHDOG_INTERVAL=${MTX_WATCHDOG_INTERVAL:-20}
+      - MTX_WATCHDOG_TIMEOUT=${MTX_WATCHDOG_TIMEOUT:-3}
+      - MTX_WATCHDOG_MAX_FAILS=${MTX_WATCHDOG_MAX_FAILS:-3}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9997/v3/config/global/get || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    init: true
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-yatv}
+    volumes:
+      - ${MEDIA_STORAGE_PATH:-/mnt/smb_media/public}:/app/public

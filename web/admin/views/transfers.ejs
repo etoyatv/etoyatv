@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Заявки на перенос | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .transfer-wire-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      margin-bottom: 20px;
+      display: flex;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      max-width: 900px;
+      min-height: 140px;
+      transition: background 0.2s;
+    }
+    .transfer-wire-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .transfer-wire-left {
+      width: 110px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 20px 12px;
+      flex-shrink: 0;
+    }
+    .transfer-id-badge {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #0072ff, #00c6ff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 18px;
+      color: #fff;
+    }
+    .transfer-id-label {
+      font-size: 11px;
+      color: #8899a6;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .transfer-wire-middle {
+      flex: 1;
+      min-width: 0;
+      padding: 20px 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 10px;
+    }
+    .transfer-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+    .transfer-title a {
+      color: #00c6ff;
+      text-decoration: none;
+    }
+    .transfer-title a:hover { text-decoration: underline; }
+    .transfer-line {
+      font-size: 13px;
+      color: #a1b0b8;
+      line-height: 1.45;
+    }
+    .transfer-line strong { color: #e8eef2; font-weight: 600; }
+    .transfer-flags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .transfer-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.25);
+      color: #c5d0d6;
+    }
+    .transfer-chip.premium {
+      color: #f5c542;
+      border-color: rgba(245, 197, 66, 0.35);
+      background: rgba(245, 197, 66, 0.08);
+    }
+    .transfer-chip.verified {
+      color: #6fdeee;
+      border-color: rgba(111, 222, 238, 0.35);
+      background: rgba(111, 222, 238, 0.08);
+    }
+    .transfer-channels {
+      margin: 0;
+      padding: 10px 12px;
+      list-style: none;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      max-height: 120px;
+      overflow: auto;
+    }
+    .transfer-channels li {
+      font-size: 12px;
+      color: #c5d0d6;
+      padding: 3px 0;
+      word-break: break-word;
+    }
+    .transfer-channels li + li {
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding-top: 6px;
+      margin-top: 3px;
+    }
+    .transfer-error {
+      color: #ff8a8a;
+      font-size: 12px;
+      background: rgba(255, 77, 77, 0.08);
+      border: 1px solid rgba(255, 77, 77, 0.25);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .transfer-wire-right {
+      width: 240px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 18px 16px;
+      flex-shrink: 0;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .transfer-opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #c5d0d6;
+      cursor: pointer;
+      user-select: none;
+    }
+    .transfer-opt input {
+      width: 15px;
+      height: 15px;
+      accent-color: #00c6ff;
+    }
+    .transfer-wire-right input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 9px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: inherit;
+    }
+    .transfer-wire-right input[type="text"]:focus {
+      outline: none;
+      border-color: #00c6ff;
+    }
+    .wire-btn {
+      background: transparent;
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 10px 15px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .wire-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+    .wire-btn.accept {
+      background: rgba(57, 181, 74, 0.15);
+      border-color: rgba(57, 181, 74, 0.55);
+      color: #7dff95;
+    }
+    .wire-btn.accept:hover {
+      background: rgba(57, 181, 74, 0.28);
+    }
+    .wire-btn.reject {
+      background: rgba(255, 77, 77, 0.12);
+      border-color: rgba(255, 77, 77, 0.45);
+      color: #ff9b9b;
+    }
+    .wire-btn.reject:hover {
+      background: rgba(255, 77, 77, 0.22);
+    }
+    .transfer-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 2px 0;
+    }
+
+    @media (max-width: 768px) {
+      .transfer-wire-card { flex-direction: column; }
+      .transfer-wire-left {
+        width: 100%;
+        flex-direction: row;
+        justify-content: flex-start;
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding: 14px 16px;
+      }
+      .transfer-wire-right {
+        width: 100%;
+        border-left: none;
+        border-top: 1px solid rgba(255,255,255,0.1);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <main class="main-content">
+      <div class="users-header-stats" style="max-width: 900px;">
+        <p>Заявок на перенос профиля в очереди: <strong><%= totalPending %></strong>
+          · <a href="/transfers/archive" style="color:#00c6ff;text-decoration:none;">Архив</a>
+        </p>
+      </div>
+
+      <% if (!requests.length) { %>
+        <p style="color: #a1b0b8; text-align: center; max-width: 900px;">Очередь пуста.</p>
+      <% } %>
+
+      <% requests.forEach(function(r) {
+        const channels = (r.manifest_preview && r.manifest_preview.channels) ? r.manifest_preview.channels : [];
+        const recordsCount = (r.records_count != null) ? r.records_count : ((r.manifest_preview && Array.isArray(r.manifest_preview.records)) ? r.manifest_preview.records.length : '—');
+        let createdLabel = r.created_label || '';
+        if (!createdLabel && r.created_at) {
+          const d = new Date(r.created_at);
+          if (!isNaN(d.getTime())) {
+            const pad = (n) => String(n).padStart(2, '0');
+            createdLabel = pad(d.getDate()) + '.' + pad(d.getMonth() + 1) + '.' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+          } else {
+            createdLabel = String(r.created_at);
+          }
+        }
+      %>
+        <div class="transfer-wire-card" id="transfer-<%= r.id %>">
+          <div class="transfer-wire-left">
+            <div class="transfer-id-badge">#<%= r.id %></div>
+            <div class="transfer-id-label">заявка</div>
+          </div>
+
+          <div class="transfer-wire-middle">
+            <div class="transfer-title">
+              От
+              <% if (r.submitter_name) { %>
+                <a href="<%= APP_URL %>/account,userinfo/?username=<%= encodeURIComponent(r.submitter_name) %>" target="_blank" rel="noopener noreferrer"><%= r.submitter_name %></a>
+              <% } else { %>
+                —
+              <% } %>
+              <% if (r.source_username) { %>
+                <span style="color:#8899a6;font-weight:500;"> · источник <%= r.source_username %></span>
+              <% } %>
+            </div>
+
+            <div class="transfer-line">
+              <strong>Создано:</strong> <%= createdLabel %>
+              <% if (r.source_email) { %> · <strong>email:</strong> <%= r.source_email %><% } %>
+            </div>
+
+            <div class="transfer-line">
+              <strong>В архиве:</strong> каналов <%= channels.length %>, записей <%= recordsCount %>
+            </div>
+
+            <% if (r.was_premium || r.was_verified) { %>
+              <div class="transfer-flags">
+                <% if (r.was_premium) { %><span class="transfer-chip premium">был premium</span><% } %>
+                <% if (r.was_verified) { %><span class="transfer-chip verified">был verified</span><% } %>
+              </div>
+            <% } %>
+
+            <% if (channels.length) { %>
+              <ul class="transfer-channels">
+                <% channels.slice(0, 8).forEach(function(c) { %>
+                  <li>
+                    <%= c.name || c.shortname || 'канал' %>
+                    <span style="color:#778896;">(<%= c.ownership || '?' %>)</span>
+                    <% if (c.was_premium) { %> · premium<% } %>
+                    <% if (c.was_verified) { %> · verified<% } %>
+                  </li>
+                <% }); %>
+                <% if (channels.length > 8) { %>
+                  <li style="color:#778896;">и ещё <%= channels.length - 8 %>…</li>
+                <% } %>
+              </ul>
+            <% } %>
+
+            <% if (r.error_text) { %>
+              <div class="transfer-error">Ошибка: <%= r.error_text %></div>
+            <% } %>
+          </div>
+
+          <div class="transfer-wire-right">
+            <% const canAccept = user && (user.is_superadmin || user.staff_role === 'admin'); %>
+            <% if (canAccept) { %>
+            <form method="POST" action="/transfers/<%= r.id %>/accept" style="display:flex;flex-direction:column;gap:10px;margin:0;">
+              <% if (r.was_premium) { %>
+                <label class="transfer-opt">
+                  <input type="checkbox" name="grant_premium" value="1">
+                  Выдать premium
+                </label>
+              <% } %>
+              <% if (r.was_verified) { %>
+                <label class="transfer-opt">
+                  <input type="checkbox" name="grant_verified" value="1">
+                  Выдать verified
+                </label>
+              <% } %>
+              <button type="submit" class="wire-btn accept">Принять перенос</button>
+            </form>
+
+            <div class="transfer-divider"></div>
+            <% } else { %>
+            <div style="font-size:12px;color:#8899a6;text-align:center;line-height:1.4;">Принять может только администратор</div>
+            <div class="transfer-divider"></div>
+            <% } %>
+
+            <form method="POST" action="/transfers/<%= r.id %>/reject" style="display:flex;flex-direction:column;gap:10px;margin:0;" onsubmit="return confirm('Отклонить заявку #<%= r.id %>?');">
+              <input type="text" name="note" placeholder="Причина отклонения (необяз.)" maxlength="500">
+              <button type="submit" class="wire-btn reject">Отклонить</button>
+            </form>
+          </div>
+        </div>
+      <% }); %>
+
+      <% if (totalPages > 1) { %>
+        <div class="pagination-section" style="margin-top: 30px; max-width: 900px;">
+          <div class="pagination">
+            <% if (page > 1) { %>
+              <a href="?page=<%= page - 1 %>" class="page-link">Предыдущая</a>
+            <% } %>
+            <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+            <% if (page < totalPages) { %>
+              <a href="?page=<%= page + 1 %>" class="page-link">Следующая</a>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </main>
+  </div>
+
+</body>
+</html>

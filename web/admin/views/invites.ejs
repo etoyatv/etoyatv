@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Инвайт-коды | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .btn-generate {
+      background: linear-gradient(135deg, #00c6ff, #0072ff);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+    .table-container {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    th {
+      font-weight: 600;
+      color: #9ca3af;
+      background: rgba(0,0,0,0.2);
+    }
+    tr:last-child td {
+      border-bottom: none;
+    }
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-active { background: rgba(74, 222, 128, 0.2); color: #4ade80; }
+    .status-used { background: rgba(248, 113, 113, 0.2); color: #f87171; }
+    .code-display {
+      font-family: monospace;
+      background: rgba(255,255,255,0.1);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    /* Toggle Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #00c6ff;
+    }
+    input:checked + .slider:before {
+      transform: translateX(26px);
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <!-- Main Content -->
+  <main class="main-content">
+      <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2 class="page-title">Инвайт-коды</h2>
+        <form action="/invites/generate" method="POST">
+          <button type="submit" class="btn-generate">Сгенерировать код</button>
+        </form>
+      </div>
+
+      <!-- Invite settings form removed -->
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Код</th>
+              <th>Статус</th>
+              <th>Создатель</th>
+              <th>Использовал</th>
+              <th>Дата создания</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (invites.length === 0) { %>
+              <tr><td colspan="5" style="text-align: center; color: #9ca3af;">Нет сгенерированных инвайт-кодов.</td></tr>
+            <% } else { %>
+              <% invites.forEach(inv => { %>
+                <tr>
+                  <td><span class="code-display"><%= inv.code %></span></td>
+                  <td>
+                    <% 
+                      let isCreatorBanned = false;
+                      if (inv.creator_deleted_at || inv.creator_wipe_date || (inv.creator_is_banned && (!inv.creator_banned_until || new Date(inv.creator_banned_until) > new Date()))) {
+                        isCreatorBanned = true;
+                      }
+                    %>
+                    <% if (inv.used_at) { %>
+                      <span class="status-badge status-used">Использован</span>
+                    <% } else if (isCreatorBanned) { %>
+                      <span class="status-badge status-used">Заблокирован</span>
+                    <% } else { %>
+                      <span class="status-badge status-active">Активен</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <%= inv.creator_name %> (ID: <%= inv.creator_id %>)
+                  </td>
+                  <td>
+                    <% if (inv.used_by_id) { %>
+                      <%= inv.used_by_name %> (ID: <%= inv.used_by_id %>)
+                      <div style="font-size: 12px; color: #9ca3af;"><%= formatDate(inv.used_at, userTimezone, 'DD.MM.YYYY HH:mm') %></div>
+                    <% } else { %>
+                      -
+                    <% } %>
+                  </td>
+                  <td><%= formatDate(inv.created_at, userTimezone, 'DD.MM.YYYY HH:mm') %></td>
+                  <td>
+                    <% if (inv.used_at) { %>
+                      <span style="color: #9ca3af; font-size: 12px;">Недоступно</span>
+                    <% } else { %>
+                      <form action="/invites/delete/<%= inv.id %>" method="POST" onsubmit="event.preventDefault(); const form = this; yatvConfirm('Вы уверены, что хотите удалить этот инвайт-код?', () => { form.submit(); });" style="display:inline;">
+                        <button type="submit" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; cursor: pointer; transition: 0.2s;">Удалить</button>
+                      </form>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+</body>
+</html>

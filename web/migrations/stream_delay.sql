@@ -1,0 +1,1 @@
+ALTER TABLE channels ADD COLUMN stream_delay INT DEFAULT 15;

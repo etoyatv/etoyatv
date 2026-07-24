@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+
+<div id="content">
+  <div style="margin-top: 20px; max-width: 700px;">
+    <div class="left_blocks" style="width:100%;float:none;">
+      <div style="background:#2b2b2b;border:1px solid #333;padding:24px;">
+        <h2 style="color:#6fdeee;margin-top:0;font-weight:normal;font-size:18px;">Перенос с другого инстанса</h2>
+        <p style="color:#999;font-size:13px;line-height:1.5;">
+          Загрузите <strong>архив для переноса</strong> (не личный бэкап). После загрузки создаётся заявка —
+          администрация примет или отклонит перенос. Premium и verified не выдаются автоматически.
+        </p>
+
+        <% if (error) { %>
+          <div style="color:#ff6666;margin:15px 0;font-weight:bold;"><%= error %></div>
+        <% } %>
+        <% if (success) { %>
+          <div style="color:#39b54a;margin:15px 0;font-weight:bold;"><%= success %></div>
+        <% } %>
+
+        <form method="POST" action="/account,transfer/" enctype="multipart/form-data" style="margin-top:20px;">
+          <input type="file" name="archive" accept=".zip,application/zip" required style="color:#ccc;margin-bottom:15px;display:block;">
+          <button type="submit" class="btn-save" style="background:#0072ff;border:1px solid #00c6ff;color:#fff;padding:8px 20px;border-radius:8px;cursor:pointer;">Отправить заявку</button>
+        </form>
+
+        <p style="margin-top:20px;font-size:12px;color:#777;">
+          Скачать архив переноса можно в <a href="/account,profile/#tab-export" style="color:#6fdeee;">настройках профиля → Перенос</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

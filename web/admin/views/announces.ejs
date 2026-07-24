@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= pageTitle %></title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .news-card {
+      background: #252a2e;
+      border: 1px solid #3a4247;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .news-card.hidden-news {
+      border-color: #ff4d4d;
+      background: rgba(255, 77, 77, 0.05);
+    }
+    .news-card-left {
+      width: 80px;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+    }
+    .news-card-left img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 1px solid #4a5359;
+    }
+    .news-card-middle {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .news-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .news-title span {
+      color: #8c989e;
+      font-size: 13px;
+      font-weight: normal;
+    }
+    .news-title-link {
+      color: #fff;
+      text-decoration: none;
+    }
+    .news-title-link:hover {
+      text-decoration: underline;
+    }
+    .news-channel {
+      color: #00c6ff;
+      font-size: 13px;
+    }
+    .news-desc {
+      color: #c0c0b2;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .news-date {
+      color: #8c989e;
+      font-size: 12px;
+      margin-top: auto;
+    }
+    .news-card-right {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 180px;
+      flex-shrink: 0;
+    }
+    .news-card-right form {
+      margin: 0;
+    }
+    .news-card-right button, .news-card-right a {
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    @media (max-width: 768px) {
+      .news-card {
+        flex-direction: column;
+        align-items: center;
+      }
+      .news-card-right {
+        width: 100%;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <main class="main-content">
+      
+      <div class="users-header-stats">
+        <p>На данный момент: <strong><%= totalCount %></strong> анонсов (из них: скрытых: <strong><%= hiddenCount %></strong>)</p>
+      </div>
+
+      <div class="news-list">
+        <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+        <% if (announcesItems.length === 0) { %>
+          <div style="text-align: center; color: #8c989e; padding: 40px; background: #252a2e; border-radius: 8px;">
+            Анонсы не найдены.
+          </div>
+        <% } else { %>
+          <% announcesItems.forEach(n => { 
+              const isHidden = n.is_hidden === 1;
+          %>
+            <div class="news-card <%= isHidden ? 'hidden-news' : '' %>">
+              <div class="news-card-left">
+                <a href="<%= APP_URL %>/<%= n.shortname %>" target="_blank" style="display: block;">
+                  <img src="<%= CDN_BASE_URL %><%= n.logo_url || '/images/default_user_avatar.png' %>" alt="avatar">
+                </a>
+              </div>
+              
+              <div class="news-card-middle">
+                <div class="news-title">
+                  <span class="news-title-link" style="font-size: 16px; font-weight: bold; color: #fff;"><%= n.title %></span> <span>(id: <%= n.id %>)</span>
+                  <% if (isHidden) { %>
+                    <span style="background: #ff4d4d; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-left: 5px;">Скрыт</span>
+                  <% } %>
+                </div>
+                <div class="news-channel">
+                  Телеканал: <a href="<%= APP_URL %>/<%= n.shortname %>" target="_blank" style="color: #00c6ff; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'"><%= n.channel_name %> (канал)</a>
+                </div>
+                <div class="news-desc"><strong>Описание:</strong> <span style="white-space: pre-wrap;"><%= n.description || 'Нет описания' %></span></div>
+                <div class="news-date" style="color: #6fdeee; font-weight: bold;">
+                  Начало эфира: <%= formatDateMsk(n.start_time) %>
+                </div>
+                <div class="news-date" style="font-size: 11px; margin-top: 5px;">
+                  Дата создания анонса: <%= formatDateMsk(n.created_at) %>
+                </div>
+              </div>
+              
+              <div class="news-card-right">
+                <% if (!isModOnly) { %>
+                <button class="btn-action edit-announce-btn" 
+                  data-id="<%= n.id %>" 
+                  data-title="<%= n.title %>" 
+                  data-description="<%= n.description || '' %>" 
+                  data-starttime="<%= new Date(new Date(n.start_time).getTime() - new Date().getTimezoneOffset()*60*1000).toISOString().slice(0, 16) %>">Редактировать</button>
+                <% } %>
+
+                <form action="/announces/<%= n.id %>/hide" method="POST">
+                  <% if (isHidden) { %>
+                    <button type="submit" class="btn-action" style="background: #4CAF50; color: #fff; border: none;">Показать</button>
+                  <% } else { %>
+                    <button type="submit" class="btn-action" style="background: #ff4d4d; color: #fff; border: none;" onclick="event.preventDefault(); const currentHideForm = this.closest('form'); yatvConfirm('Вы уверены, что хотите скрыть (заблокировать) этот анонс?', () => { currentHideForm.submit(); });">Скрыть (бан)</button>
+                  <% } %>
+                </form>
+
+                <% if (!isModOnly) { %>
+                <form action="/announces/<%= n.id %>/delete" method="POST" onsubmit="event.preventDefault(); const currentDeleteForm = this; yatvConfirm('Вы уверены, что хотите полностью удалить этот анонс?', () => { currentDeleteForm.submit(); });">
+                  <button type="submit" class="btn-action btn-danger">Удалить полностью</button>
+                </form>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+
+      <!-- Pagination & Limits -->
+      <% if (totalCount > 0 && totalPages > 1) { %>
+      <div class="pagination-section">
+        <form action="/announces" method="GET" class="limit-selector">
+          <% if (search) { %><input type="hidden" name="search" value="<%= search %>"><% } %>
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="10" <%= limit === 10 ? 'selected' : '' %>>10</option>
+            <option value="25" <%= limit === 25 ? 'selected' : '' %>>25</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/announces?page=<%= page - 1 %>&limit=<%= limit %><%= search ? '&search=' + encodeURIComponent(search) : '' %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/announces?page=<%= page + 1 %>&limit=<%= limit %><%= search ? '&search=' + encodeURIComponent(search) : '' %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+      <% } %>
+
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal-content" style="background: #1e1e1e;">
+      <h2 style="text-align: center; margin-bottom: 20px; font-weight: 700;">Редактирование анонса</h2>
+      <form id="editForm" method="POST" action="">
+        <div class="form-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 15px;">
+          <label style="margin-bottom: 8px;">Название:</label>
+          <input type="text" name="title" id="editTitle" class="form-control" required maxlength="150" style="width: 100%; box-sizing: border-box;">
+        </div>
+        
+        <div class="form-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 15px;">
+          <label style="margin-bottom: 8px;">Время начала эфира:</label>
+          <input type="datetime-local" name="start_time" id="editStartTime" class="form-control" required style="width: 100%; box-sizing: border-box;">
+        </div>
+        
+        <div class="form-group" style="flex-direction: column; align-items: flex-start; margin-bottom: 20px;">
+          <label style="margin-bottom: 8px;">Описание:</label>
+          <textarea name="description" id="editDescription" class="form-control" rows="5" style="width: 100%; box-sizing: border-box; resize: none;"></textarea>
+        </div>
+        
+        <div class="modal-footer" style="display: flex; justify-content: space-between; gap: 15px;">
+          <button type="submit" class="btn-black-border" style="flex: 1; background: #00c6ff; color: #000; border-color: #00c6ff;">Сохранить</button>
+          <button type="button" class="btn-black-border" style="flex: 1;" onclick="closeEditModal()">Отмена</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.edit-announce-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const id = this.getAttribute('data-id');
+        const title = this.getAttribute('data-title');
+        const description = this.getAttribute('data-description');
+        const startTime = this.getAttribute('data-starttime');
+        
+        document.getElementById('editForm').action = '/announces/' + id + '/edit';
+        document.getElementById('editTitle').value = title;
+        document.getElementById('editDescription').value = description;
+        document.getElementById('editStartTime').value = startTime;
+        document.getElementById('editModal').style.display = 'flex';
+        setTimeout(() => {
+          document.getElementById('editModal').classList.add('active');
+        }, 10);
+      });
+    });
+    
+    function closeEditModal() {
+      const modal = document.getElementById('editModal');
+      modal.classList.remove('active');
+      setTimeout(() => {
+        modal.style.display = 'none';
+      }, 200);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,647 @@
+<%
+  // Sanitize channel-controlled colors/URLs before they are interpolated raw into the panel body (XSS/CSS-injection hardening).
+  if (locals.panelChannel) {
+    locals.panelChannel.bg_color = safeColor(locals.panelChannel.bg_color, '');
+    locals.panelChannel.pinned_color = safeColor(locals.panelChannel.pinned_color, '');
+    locals.panelChannel.text_color = safeColor(locals.panelChannel.text_color, '');
+    locals.panelChannel.player_bg_color = safeColor(locals.panelChannel.player_bg_color, '');
+    locals.panelChannel.chat_color = safeColor(locals.panelChannel.chat_color, '');
+    locals.panelChannel.logo_url = safeUrlPath(locals.panelChannel.logo_url);
+    locals.panelChannel.bg_url = safeUrlPath(locals.panelChannel.bg_url);
+    locals.panelChannel.player_bg_url = safeUrlPath(locals.panelChannel.player_bg_url);
+  }
+%>
+<%- include('../panel_layout', { activeMenu: 'dashboard', activeSubmenu: '', breadcrumbs: 'Панель управления', body: `
+${locals.panelChannel && locals.panelChannel.status === 'banned' ? `
+<div style="background-color: #ffcccc; color: #cc0000; padding: 20px; text-align: center; border: 1px solid #cc0000; margin-bottom: 20px;">
+  <h2>Данный телеканал заблокирован администрацией.</h2>
+  <p>Весь функционал канала недоступен. Вещание остановлено.</p>
+</div>
+` : `
+<div class="dashboard-grid">
+    <!-- Channel Info -->
+    <div class="card" style="grid-column: 1 / -1;">
+        <div class="card-title">Ваш телеканал</div>
+        <div style="display: flex; gap: 15px;">
+            <div class="channel-logo">
+                <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel && locals.panelChannel.logo_url ? locals.panelChannel.logo_url : '/images/default_channel_logo.png')}" width="100" height="60" style="background:#fff; border: 1px solid #4a5359; object-fit: contain;" alt="Logo">
+            </div>
+            <div class="channel-details" style="font-size: 12px; line-height: 1.8;">
+                <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="font-size: 14px; font-weight: bold;">${locals.panelChannel ? escapeHtml(locals.panelChannel.name) : 'Без названия'}</a><br>
+                <div style="margin-top: 10px;">
+                    <span style="color:#8c989e; display:inline-block; width: 80px;">В эфире:</span> ${locals.panelChannel && locals.panelChannel.is_live ? '<span style="color:#ff6b6b;font-weight:bold;">Да</span>' : 'Нет'}<br>
+                    <span style="color:#8c989e; display:inline-block; width: 80px;">Владелец:</span> <a href="#">${locals.user ? escapeHtml(locals.user.username) : 'Гость'}</a><br>
+                    <span style="color:#8c989e; display:inline-block; width: 80px;">Записей:</span> ${locals.panelStats ? locals.panelStats.totalRecords : 0}<br>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px; padding: 0; background: transparent; border: none;">
+`}
+<div class="playerchat" style="display: flex; width: 100%; height: 331px; background: #000; font-family: Tahoma, sans-serif;">
+  <!-- Scoped player overrides -->
+  <style>
+    #etoyatv-offline-overlay {
+      ${locals.panelChannel && locals.panelChannel.player_bg_url ? `
+        background-image: url('${locals.CDN_BASE_URL || ''}${locals.panelChannel.player_bg_url}') !important;
+        background-size: cover !important;
+        background-position: center !important;
+        background-repeat: no-repeat !important;
+        ${locals.panelChannel.player_bg_color ? `background-color: ${locals.panelChannel.player_bg_color} !important;` : ''}
+      ` : `
+        background-image: none !important;
+        background-color: #000 !important;
+      `}
+    }
+    #container_swf .player-menu-bg, 
+    #container_swf .player-actions button, 
+    #container_swf .player-actions a, 
+    #container_swf .volume-slider-wrapper {
+      ${locals.panelChannel && locals.panelChannel.player_menu_color ? `background: ${locals.panelChannel.player_menu_color} !important;` : ''}
+    }
+    #container_swf .player-ui a, 
+    #container_swf .player-ui button, 
+    #container_swf .player-ui span, 
+    #container_swf #viewers-count-player {
+      ${locals.panelChannel && locals.panelChannel.player_link_color ? `color: ${locals.panelChannel.player_link_color} !important;` : ''}
+    }
+  </style>
+  
+  <!-- LEFT: PLAYER -->
+  <div id="container_swf" style="flex: 1; height: 331px; position: relative; background: #000; border-right: 1px solid #333;">
+    
+    <video id="etoyatv-video" width="100%" height="100%" style="width: 100%; height: 100%; background: #000; object-fit: contain; cursor: pointer;" playsinline webkit-playsinline disablePictureInPicture disableRemotePlayback></video>
+
+    <!-- Transition Canvas -->
+    <canvas id="etoyatv-transition-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.5s ease-out; object-fit: contain;"></canvas>
+
+    <!-- Overlays Canvas -->
+    <canvas id="etoyatv-overlays-canvas" width="1280" height="720"
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; object-fit: contain; display: none;"></canvas>
+
+    <!-- Loading Spinner -->
+    <div id="etoyatv-spinner" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" style="animation: etoyatv-spin 1s steps(8, end) infinite;">
+        <circle cx="12" cy="2" r="2.5" fill="rgba(255,255,255,1)" />
+        <circle cx="19.07" cy="4.93" r="2" fill="rgba(255,255,255,0.8)" />
+        <circle cx="22" cy="12" r="1.5" fill="rgba(255,255,255,0.6)" />
+        <circle cx="19.07" cy="19.07" r="1.5" fill="rgba(255,255,255,0.4)" />
+        <circle cx="12" cy="22" r="1.5" fill="rgba(255,255,255,0.2)" />
+        <circle cx="4.93" cy="19.07" r="1.5" fill="rgba(255,255,255,0.1)" />
+        <circle cx="2" cy="12" r="1.5" fill="rgba(255,255,255,0.1)" />
+        <circle cx="4.93" cy="4.93" r="1.5" fill="rgba(255,255,255,0.1)" />
+      </svg>
+    </div>
+    <style>@keyframes etoyatv-spin { to { transform: rotate(360deg); } }</style>
+ 
+    <!-- Offline Overlay -->
+    <div id="etoyatv-offline-overlay" style="display: ${locals.panelChannel && (locals.panelChannel.player_bg_url || locals.panelChannel.player_bg_color) ? 'flex' : 'none'}; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
+      ${locals.panelChannel && locals.panelChannel.player_bg_url ? '' : `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" fill="white" />
+            <line x1="15" y1="9" x2="9" y2="15" stroke="black" stroke-width="2.5" stroke-linecap="round" />
+            <line x1="9" y1="9" x2="15" y2="15" stroke="black" stroke-width="2.5" stroke-linecap="round" />
+          </svg>
+          <span style="font-size: 16px; font-weight: bold; color: #fff; font-family: Tahoma, sans-serif;">Нет трансляции</span>
+        </div>
+      `}
+    </div>
+
+    <!-- No Signal Overlay -->
+    <div id="etoyatv-nosignal-overlay" style="display: none; flex-direction: column; gap: 15px; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2.5;">
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 7H3C1.9 7 1 7.9 1 9v6c0 1.1.9 2 2 2h8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M17 8.5L22 5v14l-5-3.5v-7z" fill="white" />
+          <path d="M15 13l5 5M20 13l-5 5" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+        </svg>
+        <span style="font-size: 16px; font-weight: bold; color: #fff; font-family: Tahoma, sans-serif;">Нет сигнала</span>
+      </div>
+    </div>
+
+    ${locals.panelChannel && locals.panelChannel.is_18_plus ? `
+    <!-- 18+ Overlay -->
+    <div id="etoyatv-18plus-overlay" style="display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-family: Tahoma, sans-serif; z-index: 20;">
+      <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">Внимание! Контент 18+</div>
+      <div style="font-size: 16px; margin-bottom: 25px;">Подтвердите, что вам уже исполнилось 18 лет.</div>
+      <button onclick="confirm18Plus()" style="padding: 10px 20px; background: #3b9cd9; color: #fff; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;">Мне есть 18 лет</button>
+    </div>
+    <script>
+      function confirm18Plus() {
+        localStorage.setItem('etoyatv_global_18plus', 'true');
+        document.getElementById('etoyatv-18plus-overlay').style.display = 'none';
+        const video = document.getElementById('etoyatv-video');
+        if (video) video.play().catch(e => console.error('Play error after 18+ confirmation:', e));
+      }
+      if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+        document.getElementById('etoyatv-18plus-overlay').style.display = 'flex';
+      }
+      document.addEventListener('DOMContentLoaded', () => {
+        if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+          const video = document.getElementById('etoyatv-video');
+          if (video) video.pause();
+        }
+      });
+    </script>
+    ` : ''}
+
+    <!-- Logo and Title -->
+    <div class="player-ui" style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+      <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="display: block;">
+        <img src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel ? (locals.panelChannel.logo_url || '/images/default_channel_logo_50.png') : '/images/default_channel_logo_50.png')}" alt="Logo" style="width: 50px; height: 50px; background: ${locals.panelChannel && locals.panelChannel.player_bg_color ? locals.panelChannel.player_bg_color : '#000000'}; border: 1px solid #444; box-sizing: border-box; object-fit: ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'contain' : 'cover'};">
+      </a>
+      <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
+        <a href="/${locals.panelChannel ? locals.panelChannel.shortname : ''}" style="background: rgba(0,0,0,0.6); color: #00A3E0; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-block; text-decoration: none; white-space: nowrap;">
+          ${locals.panelChannel ? escapeHtml(locals.panelChannel.name) : ''}
+        </a>
+        <div class="live_label" id="player_live_label" style="display: none; position: relative; width: 32px; height: 17px; background: url(${(locals.CDN_BASE_URL || '')}/images/css_img_2_sprite1.png) no-repeat -124px -254px; top: 0; left: 0;"></div>
+      </div>
+    </div>
+    <style>
+      @keyframes rec-blink {
+        from { opacity: 1; }
+        to { opacity: 0.2; }
+      }
+    </style>
+
+    <!-- Right Action Bar -->
+    <div class="player-actions player-ui" style="position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+      <button onclick="copyShareLink('${locals.panelChannel ? locals.panelChannel.shortname : ''}')" title="Поделиться" style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></button>
+      <button title="Пожаловаться" style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></button>
+      <a href="/channel,records?shortname=${locals.panelChannel ? locals.panelChannel.shortname : ''}" title="Записи" style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; text-decoration: none; font-size: 16px;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="2" y="2" width="20" height="14" rx="2.18" ry="2.18"></rect><line x1="12" y1="20" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg></a>
+    </div>
+
+    <!-- Bottom Left Controls -->
+    <div class="player-ui player-menu-bg" style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s;">
+      <button id="btn-play-pause" title="Play/Pause" style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none; display: inline-flex; align-items: center; justify-content: center; padding: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button>
+    </div>
+
+    <!-- Bottom Right Controls -->
+    <div class="player-ui player-menu-bg" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 6px; transition: opacity 0.3s;">
+      <!-- Stream Selector Container -->
+      <div id="stream-selector-container" style="display: none; align-items: center; gap: 4px; margin: 0; padding: 0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; color: #fff; margin: 0;" title="Камера"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+        <div id="stream-buttons" style="display: flex; gap: 4px; margin: 0; padding: 0;"></div>
+      </div>
+      <div style="position: relative; display: flex; align-items: center; justify-content: center;" class="volume-container" onmouseenter="this.querySelector('.volume-slider-wrapper').style.display='block'" onmouseleave="this.querySelector('.volume-slider-wrapper').style.display='none'">
+        <button id="btn-volume" style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; padding: 0 5px; position: relative; z-index: 5;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg></button>
+        <div class="volume-slider-wrapper" style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
+          <div style="position: absolute; bottom: -25px; left: 0; width: 100%; height: 25px; background: transparent;"></div>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1" style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; color: #fff; font-size: 11px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: middle; margin-right: 3px; color: #fff;"><g transform="translate(16, 0) scale(-1, 1)"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></g></svg>
+        <span id="viewers-count-player" style="margin-left: 3px;">1</span>
+      </div>
+      <button id="btn-fullscreen" style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; display: flex; align-items: center; justify-content: center; padding: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg></button>
+      <a href="/" style="font-weight: bold; color: #fff; font-size: 12px; text-decoration: none;">ЭтоЯTV</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: CHAT (400px) -->
+  <div id="chat_body" style="width: 400px; height: 331px; background: #000; display: flex; flex-direction: column; position: relative;">
+    
+    <!-- Top section: Messages (left) and Users (right) -->
+    <div style="display: flex; height: 290px;">
+      
+      <!-- Messages List (270px) -->
+      <div style="width: 270px; height: 100%; position: relative; display: flex; flex-direction: column;">
+        <style>
+          .chat-message-row {
+            position: relative;
+          }
+          .chat-message-row .btn-pin-message {
+            display: none;
+            cursor: pointer;
+            margin-left: 5px;
+            opacity: 0.7;
+          }
+          .chat-message-row:hover .btn-pin-message {
+            display: inline;
+          }
+          .chat-message-row .btn-pin-message:hover {
+            opacity: 1;
+          }
+          .chat-message-row .btn-delete-message {
+            display: none;
+            cursor: pointer;
+            margin-left: 3px;
+            opacity: 0.7;
+          }
+          .chat-message-row:hover .btn-delete-message {
+            display: inline;
+          }
+          .chat-message-row .btn-delete-message:hover {
+            opacity: 1;
+          }
+          .emoji-tab {
+            opacity: 0.6;
+            transition: opacity 0.2s, background-color 0.2s;
+          }
+          .emoji-tab:hover {
+            opacity: 1;
+            background-color: #333;
+          }
+          .emoji-tab.active {
+            opacity: 1;
+            background-color: #444;
+          }
+          .emoji-item {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            text-align: center;
+            border-radius: 4px;
+            transition: background-color 0.15s;
+            outline: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 26px;
+            width: 100%;
+            min-width: 0;
+            box-sizing: border-box;
+          }
+          .emoji-item:hover {
+            background-color: #444;
+          }
+
+          #emoji-grid::-webkit-scrollbar {
+            width: 4px;
+          }
+          #emoji-grid::-webkit-scrollbar-track {
+            background: #222;
+          }
+          #emoji-grid::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 2px;
+          }
+          #emoji-grid::-webkit-scrollbar-thumb:hover {
+            background: #777;
+          }
+          /* Custom scrollbar for WebKit (Chrome, Safari, Edge) */
+          #chat_text_field::-webkit-scrollbar,
+          #chat_users::-webkit-scrollbar,
+          #chat_pinned_box::-webkit-scrollbar {
+            width: 6px;
+          }
+          #chat_text_field::-webkit-scrollbar-track,
+          #chat_users::-webkit-scrollbar-track,
+          #chat_pinned_box::-webkit-scrollbar-track {
+            background: #000;
+          }
+          #chat_text_field::-webkit-scrollbar-thumb,
+          #chat_users::-webkit-scrollbar-thumb,
+          #chat_pinned_box::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+          }
+          #chat_text_field::-webkit-scrollbar-thumb:hover,
+          #chat_users::-webkit-scrollbar-thumb:hover,
+          #chat_pinned_box::-webkit-scrollbar-thumb:hover {
+            background: #666;
+          }
+          /* Standard scrollbar for Firefox */
+          #chat_text_field,
+          #chat_users,
+          #chat_pinned_box {
+            scrollbar-width: thin;
+            scrollbar-color: #444 #000;
+          }
+        </style>
+
+        <!-- Pinned Message -->
+        <div id="chat_pinned_box" style="display: ${locals.panelChannel && locals.panelChannel.pinned_message ? 'flex' : 'none'}; align-items: flex-start; justify-content: space-between; background: rgba(50, 108, 186, 0.2); border-bottom: 1px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; padding: 4px 6px; font: 10px Verdana, Geneva, sans-serif; color: #fff; box-sizing: border-box; width: 100%; max-height: 75px; overflow-y: auto; gap: 4px; flex-shrink: 0;">
+          <span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; flex-shrink: 0; margin-top: 1px; color: #fff;" title="Закрепленное сообщение"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.15.85-.44 1.18L5.78 14a2 2 0 0 0-.44 1.24z"></path></svg></span>
+          <div style="flex-grow: 1; word-wrap: break-word; overflow-wrap: break-word; word-break: break-all; white-space: normal; font-size: 10px; line-height: 1.3;" id="chat_pinned_content">
+            ${locals.panelChannel && locals.panelChannel.pinned_message ? `
+              <span style="color: ${locals.panelChannel.pinned_color || '#3b9cd9'}; font-weight: bold;">${escapeHtml(locals.panelChannel.pinned_username || locals.panelChannel.pinned_guest_name)}</span>: ${escapeHtml(locals.panelChannel.pinned_message)}
+            ` : ''}
+          </div>
+          <button id="btn-chat-unpin" style="background: transparent; border: none; cursor: pointer; color: #aaa; font-size: 11px; padding: 0 2px; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;" title="Открепить"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+        </div>
+ 
+        <!-- Chat Tabs Container -->
+        <div id="chat-tabs-container" style="display: none; background: #111; border-bottom: 1px solid #333; padding: 4px; gap: 4px; flex-shrink: 0; align-items: center;">
+          <!-- Tabs will be rendered here by player.js -->
+        </div>
+
+        <div id="chat_text_field" style="width: 100%; flex: 1; overflow-y: auto; padding: 5px; box-sizing: border-box; display: ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'flex' : 'none'}; flex-direction: column; gap: 2px;">
+          ${(locals.chatMessages && locals.chatMessages.length > 0) ? locals.chatMessages.map(msg => {
+            const displayNick = msg.username || msg.guest_name;
+            const timeZone = locals.userTimezone || "Europe/Moscow";
+            const timeStr = formatDate(msg.created_at, timeZone, "HH:mm");
+            const userColor = safeColor(msg.color, "#3b9cd9");
+            const role = msg.role || "guest";
+            return "<div class=\"chat-message-row\" data-msg-id=\"" + msg.id + "\" data-stream-index=\"" + (msg.stream_index !== null && msg.stream_index !== undefined ? msg.stream_index : "") + "\" style=\"font: 11px Verdana, Geneva, sans-serif; color: #fff; margin: 1px; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;\">" +
+                   "<span style=\"color: #666;\">" + timeStr + "</span> " +
+                   "<span style=\"color: " + userColor + "; font-weight: bold;\">" +
+                     "<span class=\"chat-username\" data-username=\"" + escapeHtml(displayNick) + "\" data-color=\"" + escapeHtml(userColor) + "\" data-role=\"" + escapeHtml(role) + "\" style=\"cursor: pointer;\">" + escapeHtml(displayNick) + "</span>:" +
+                   "</span> " +
+                   escapeHtml(msg.message) +
+                   " <span class=\"btn-pin-message\" data-msg-id=\"" + msg.id + "\" title=\"Закрепить\" style=\"display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 5px;\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"12\" y1=\"17\" x2=\"12\" y2=\"22\"></line><path d=\"M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.15.85-.44 1.18L5.78 14a2 2 0 0 0-.44 1.24z\"></path></svg></span>" +
+                   " <span class=\"btn-delete-message\" data-msg-id=\"" + msg.id + "\" title=\"Удалить\" style=\"display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 3px;\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"3 6 5 6 21 6\"></polyline><path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\"></path><line x1=\"10\" y1=\"11\" x2=\"10\" y2=\"17\"></line><line x1=\"14\" y1=\"11\" x2=\"14\" y2=\"17\"></line></svg></span>" +
+                   "</div>";
+          }).join("") : ""}
+        </div>
+        <div id="chat_disabled_msg" style="display: ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'none' : 'flex'}; position: absolute; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; text-align: center; padding: 0 10px;">
+          ${locals.panelChannel && locals.panelChannel.chat_disabled ? 'Чат выключен администрацией платформы' : 'Чат выключен'}
+        </div>
+      </div>
+
+      <!-- Users List (130px) -->
+      <div id="chat_users" style="width: 130px; height: 100%; overflow-y: auto; padding: 5px; box-sizing: border-box; border-left: 1px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; font: 11px Verdana, Geneva, sans-serif; color: #F2FFF9;">
+        <div style="padding-bottom: 5px; color: #aaa;"><span id="chat-viewers-prefix" style="display: none;">В чате: </span><span id="chat-viewers-count">Загрузка...</span></div>
+        <div id="chat-users-list">
+          <!-- Users will be injected here via JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Input Area -->
+    ${(locals.panelChannel && locals.panelChannel.status !== 'banned') ? `
+    <div style="height: 41px; background: #000; padding: 5px; box-sizing: border-box; display: flex; align-items: center; width: 100%;">
+      <!-- Chat Input -->
+      <div class="inputs" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'flex' : 'none'}; align-items: center; width: 100%; height: 30px; background-color: ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border: 4px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#1a1a1a') : '#1a1a1a'}; border-radius: 5px; box-sizing: border-box;">
+        <input type="text" id="chat-input" maxlength="400" placeholder="${locals.panelChannel && locals.panelChannel.chat_enabled ? 'Написать...' : 'Чат выключен'}" ${locals.panelChannel && locals.panelChannel.chat_enabled ? '' : 'disabled'} style="flex-grow: 1; min-width: 50px; height: 100%; background: rgba(0,0,0,0.6); color: #F2FFF9; font: 12px Verdana, Geneva, sans-serif; border: 1px solid #000; padding: 0 5px; outline: none; border-radius: 2px; box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5);">
+        
+        <div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 4px; gap: 3px; flex-shrink: 0;">
+          <!-- Submit Button -->
+          <button id="btn-chat-submit" style="background: transparent; border: none; cursor: pointer; color: #fff; font-size: 20px; font-weight: bold; outline: none; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; padding: 0; line-height: 1; margin-top: -2px;" title="Отправить">↵</button>
+
+          <!-- Color Picker -->
+          <div style="position: relative; display: flex; align-items: center;">
+            <button id="chat-color-btn" style="width: 16px; height: 16px; padding: 0; border: 2px solid #fff; cursor: pointer; background-color: ${locals.user ? (locals.user.chat_color || '#3b9cd9') : '#3b9cd9'}; box-shadow: 0 0 0 1px #000;" title="Цвет ника"></button>
+            <input type="hidden" id="chat-color-picker" value="${locals.user ? (locals.user.chat_color || '#3b9cd9') : '#3b9cd9'}">
+            
+            <div id="chat-color-palette" style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 8px; width: 195px; flex-direction: row; gap: 8px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box;">
+              <canvas class="chat-color-spectrum" width="150" height="80" style="cursor: crosshair; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+              <canvas class="chat-color-slider" width="16" height="80" style="cursor: row-resize; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+            </div>
+          </div>
+
+          <!-- Emoji Picker -->
+          <div style="position: relative; display: flex; align-items: center;">
+            <button id="chat-emoji-btn" type="button" style="background: transparent; border: none; cursor: pointer; font-size: 14px; padding: 0; outline: none; line-height: 1;" title="Эмодзи">😊</button>
+            <div id="chat-emoji-panel" style="display: none; position: absolute; bottom: 30px; right: 0; background: #222; border: 1px solid #444; padding: 6px; width: 195px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-radius: 5px; box-sizing: border-box; flex-direction: column; gap: 6px;">
+              <!-- Tabs -->
+              <div style="display: flex; gap: 2px; border-bottom: 1px solid #444; padding-bottom: 4px; justify-content: space-between;">
+                <button type="button" class="emoji-tab active" data-tab="smileys" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Смайлики">😄</button>
+                <button type="button" class="emoji-tab" data-tab="gestures" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Жесты и люди">👍</button>
+                <button type="button" class="emoji-tab" data-tab="animals" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Природа">🐱</button>
+                <button type="button" class="emoji-tab" data-tab="food" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Еда">🍏</button>
+                <button type="button" class="emoji-tab" data-tab="symbols" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Символы">🔥</button>
+              </div>
+              <!-- Grid Container -->
+              <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-height: 150px; overflow-y: auto; overflow-x: hidden; padding: 2px; box-sizing: border-box; width: 100%;">
+                <!-- Emojis will be dynamically loaded here by active tab -->
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-chat-menu" style="background: transparent; border: none; cursor: pointer; outline: none; color: #fff; font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; padding: 0; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;">Меню</button>
+        </div>
+      </div>
+
+      <!-- Guest Not Authorized Box -->
+      <div class="login" style="display: ${(locals.user || (locals.panelChannel && locals.panelChannel.guests_allowed)) ? 'none' : 'flex'}; align-items: center; justify-content: center; width: 100%; height: 25px; background-color: rgba(0,0,0,0.4); border: 5px solid ${locals.panelChannel ? (locals.panelChannel.bg_color || '#326CBA') : '#326CBA'}; border-radius: 5px; box-sizing: border-box; font: 13px Verdana, Geneva, sans-serif; color: #F2FFF9; padding: 0 5px;">
+        Вы не <a href="/login" target="_blank" style="color: #F2FFF9; margin-left: 4px; text-decoration: underline;">авторизованы</a>
+      </div>
+    </div>
+
+    <!-- Chat Overlay Menu -->
+    <div id="chat-menu" style="display: none; position: absolute; bottom: 45px; right: 10px; background: #222; border: 1px solid #444; padding: 5px; z-index: 20; font-size: 11px; font-family: Verdana, sans-serif;">
+        <div class="menu-item" id="btn-clear-chat" style="padding: 5px 10px; color: #fff; cursor: pointer;">Очистить чат</div>
+        <div class="menu-item" id="btn-ban-guests" style="padding: 5px 10px; color: #fff; cursor: pointer;">${locals.panelChannel && locals.panelChannel.guests_allowed ? 'Запретить гостей' : 'Разрешить гостей'}</div>
+        ${locals.panelChannel && locals.panelChannel.chat_disabled ? '' : '<div class="menu-item" id="btn-toggle-chat" style="padding: 5px 10px; color: #3b9cd9; cursor: pointer;">' + (locals.panelChannel && locals.panelChannel.chat_enabled ? 'Выключить чат' : 'Включить чат') + '</div>'}
+    </div>
+    ` : `
+    <div style="height: 41px; background: #000; padding: 3px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; color: #ff6b6b; font-size: 12px; font-weight: bold;">
+        Чат недоступен: канал заблокирован.
+    </div>
+    `}
+    
+  </div>
+</div>
+</div> <!-- /card playerchat -->
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-title">Коды для встраивания</div>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fff;">Код для встраивания плеера:</div>
+            <textarea readonly onclick="this.select()" style="width: 100%; height: 60px; background: #1a1e20; border: 1px solid #4a5359; color: #c0c0b2; font-family: monospace; font-size: 11px; padding: 8px; resize: none; box-sizing: border-box; border-radius: 4px; outline: none; cursor: pointer;"><iframe id="player" src="${locals.APP_URL}/widget/player/${locals.panelChannel ? locals.panelChannel.shortname : ''}" width="640" height="360" frameborder="0" allowfullscreen></iframe></textarea>
+        </div>
+        <div style="flex: 1; min-width: 250px;">
+            <div style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #fff;">Код для встраивания чата:</div>
+            <textarea readonly onclick="this.select()" style="width: 100%; height: 60px; background: #1a1e20; border: 1px solid #4a5359; color: #c0c0b2; font-family: monospace; font-size: 11px; padding: 8px; resize: none; box-sizing: border-box; border-radius: 4px; outline: none; cursor: pointer;"><iframe id="chat" src="${locals.APP_URL}/widget/chat/${locals.panelChannel ? locals.panelChannel.shortname : ''}" width="400" height="331" frameborder="0" scrolling="no"></iframe></textarea>
+        </div>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-title" style="border:none; padding-bottom: 0;">Количество одновременных зрителей за 24 часа <a href="/panel,stat,viewers" style="font-size: 12px; font-weight: normal; color: #00a0e3; text-decoration: none;">(Вся статистика)</a></div>
+    <div style="height: 150px; background: #2b3135; border: 1px solid #1a1e20; margin-top: 15px; position: relative; padding: 5px;">
+        <canvas id="dashboardViewersChart"></canvas>
+    </div>
+</div>
+
+<!-- Context Menu for Chat Usernames -->
+<div id="user-context-menu" style="display: none; position: absolute; background: #222; border: 1px solid #444; padding: 5px; z-index: 999999; font-size: 11px; font-family: Verdana, sans-serif;">
+  <!-- Content dynamically populated by JS -->
+</div>
+
+<div id="yatv-clear-chat-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; align-items: center; justify-content: center; font-family: Tahoma, sans-serif;">
+  <div style="background: #1e1e1e; width: 400px; border-radius: 6px; border: 1px solid #333; box-shadow: 0 4px 12px rgba(0,0,0,0.5); overflow: hidden; color: #fff;">
+    <div style="background: #2a2a2a; border-bottom: 1px solid #333; color: #fff; padding: 12px 15px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+      <span>Очистить чат</span>
+      <span style="cursor: pointer; font-size: 18px; line-height: 1; color: #aaa;" onclick="window.closeClearChatModal()">&times;</span>
+    </div>
+    <div style="padding: 15px;">
+      <p style="margin: 0 0 15px; font-size: 13px; color: #ccc;">Вы уверены, что хотите очистить чат?</p>
+      <div style="text-align: right;">
+        <button onclick="window.closeClearChatModal()" style="padding: 6px 15px; border: 1px solid #555; background: transparent; color: #fff; cursor: pointer; border-radius: 4px; margin-right: 5px; font-size: 12px; transition: background 0.2s;">Отмена</button>
+        <button onclick="window.submitClearChat()" style="padding: 6px 15px; border: none; background: #cc3333; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 12px; transition: background 0.2s;">Очистить</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  window.CHANNEL_ID = ${locals.panelChannel ? locals.panelChannel.id : 0};
+  window.CURRENT_USER = ${locals.user ? JSON.stringify({ id: locals.user.id, username: locals.user.username, role: (locals.panelRole || 'guest'), chat_color: locals.user.chat_color }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') : 'null'};
+  window.CURRENT_USER_TOKEN = '${locals.user ? locals.encryptUser({ id: locals.user.id, username: locals.user.username, role: (locals.panelRole || 'guest'), chat_color: locals.user.chat_color, mask_mode: locals.user.mask_mode }) : ""}';
+  window.CHANNEL_OWNER_ID = ${locals.panelChannel ? locals.panelChannel.user_id : 0};
+  window.CHAT_ENABLED = ${locals.panelChannel && locals.panelChannel.chat_enabled ? 'true' : 'false'};
+  window.IS_MODERATOR = true; // Dashboard user is at least editor/moderator
+  window.USER_TIMEZONE = '${locals.userTimezone || 'Europe/Moscow'}';
+  window.PINNED_MESSAGES = ${locals.panelChannel && locals.panelChannel.pinnedMessages ? JSON.stringify(locals.panelChannel.pinnedMessages).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') : 'null'};
+</script>
+<script src="/js/player.js?v=${locals.ASSET_VERSION || ''}"></script>
+<script>
+(function() {
+  function initEmojiPicker() {
+    const chatEmojiBtn = document.getElementById('chat-emoji-btn');
+    const chatEmojiPanel = document.getElementById('chat-emoji-panel');
+    const emojiGrid = document.getElementById('emoji-grid');
+    const chatInput = document.getElementById('chat-input');
+
+    if (!chatEmojiBtn || !chatEmojiPanel || !emojiGrid) return;
+
+    const emojiCategories = {
+      smileys: [
+        '😄', '😂', '😊', '🤣', '😍', '😉', '😏', '😒', '😭', '😱', '😡', '🤯', '😴', '🤓', '😎',
+        '🤔', '🙄', '😋', '😜', '😇', '🥺', '💩', '🤡', '👽', '👾', '👻', '💀', '🎃', '😺'
+      ],
+      gestures: [
+        '👍', '👎', '👏', '🙌', '🙏', '🤝', '✌️', '👌', '✊', '🖐', '🧠', '💬', '👀', '✍️',
+        '💪', '🤘', '👋', '💅', '👄', '👅', '👂', '👃', '👤', '👥', '🫂', '❤️', '💔', '💖'
+      ],
+      animals: [
+        '🐱', '🐶', '🐻', '🦊', '🦁', '🐯', '🐨', '🐼', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧',
+        '🐦', '🦆', '🦅', '🦉', '🦄', '🐝', '🐛', '🦋', '🐞', '🕷', '🐙', '🐠', '🐬', '🐳'
+      ],
+      food: [
+        '🍏', '🍉', '🍓', '🍕', '🍔', '🍟', '🌭', '🍿', '🍦', '🍰', '🍩', '🍪', '🍺', '🍷', '☕️',
+        '🍎', '🍇', '🍒', '🥑', '🌮', '🍜', '🍣', '🍫', '🍬', '🥤', '🍼', '🧉', '🍾'
+      ],
+      symbols: [
+        '🔥', '❤️', '💥', '🎉', '🌟', '✨', '💯', '💡', '📌', '🚀', '🚗', '🎮', '🛡️', '⚠️',
+        '☀️', '🌙', '⭐', '🌈', '⚡', '❄️', '💤', '🎵', '🔔', '📢', '🎁', '🎈', '⚙️', '💎'
+      ]
+    };
+
+    const loadTabEmojis = (tabName) => {
+      const list = emojiCategories[tabName] || [];
+      emojiGrid.innerHTML = '';
+      list.forEach(emoji => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'emoji-item';
+        btn.textContent = emoji;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (chatInput && !chatInput.disabled) {
+            const startPos = chatInput.selectionStart;
+            const endPos = chatInput.selectionEnd;
+            const text = chatInput.value;
+            chatInput.value = text.substring(0, startPos) + emoji + text.substring(endPos);
+            chatInput.focus();
+            const newCursorPos = startPos + emoji.length;
+            chatInput.setSelectionRange(newCursorPos, newCursorPos);
+          }
+        });
+        emojiGrid.appendChild(btn);
+      });
+    };
+
+    const newBtn = chatEmojiBtn.cloneNode(true);
+    chatEmojiBtn.parentNode.replaceChild(newBtn, chatEmojiBtn);
+
+    newBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = chatEmojiPanel.style.display === 'none' || chatEmojiPanel.style.display === '';
+      if (isHidden) {
+        const activeTab = chatEmojiPanel.querySelector('.emoji-tab.active');
+        const defaultTab = activeTab ? activeTab.getAttribute('data-tab') : 'smileys';
+        loadTabEmojis(defaultTab);
+        
+        const colorPalette = document.getElementById('chat-color-palette');
+        if (colorPalette) colorPalette.style.display = 'none';
+        const chatMenu = document.getElementById('chat-menu');
+        if (chatMenu) chatMenu.style.display = 'none';
+
+        chatEmojiPanel.style.display = 'flex';
+      } else {
+        chatEmojiPanel.style.display = 'none';
+      }
+    });
+
+    chatEmojiPanel.querySelectorAll('.emoji-tab').forEach(tabBtn => {
+      tabBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        chatEmojiPanel.querySelectorAll('.emoji-tab').forEach(b => b.classList.remove('active'));
+        tabBtn.classList.add('active');
+        const tabName = tabBtn.getAttribute('data-tab');
+        loadTabEmojis(tabName);
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (chatEmojiPanel.style.display === 'flex' && !chatEmojiPanel.contains(e.target) && e.target !== newBtn) {
+        chatEmojiPanel.style.display = 'none';
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initEmojiPicker);
+  } else {
+    initEmojiPicker();
+  }
+})();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    fetch('/api/panel/stat/viewers?period=24h')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const ctx = document.getElementById('dashboardViewersChart').getContext('2d');
+                
+                const labels = data.data.map(d => {
+                    const date = new Date(d.created_at);
+                    return date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');
+                });
+                const values = data.data.map(d => d.viewer_count);
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Зрители',
+                            data: values,
+                            borderColor: '#00a0e3',
+                            backgroundColor: 'rgba(0, 160, 227, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#3a4247' },
+                                ticks: { color: '#8c989e', maxTicksLimit: 5 }
+                            },
+                            x: {
+                                grid: { color: '#3a4247' },
+                                ticks: { color: '#8c989e', maxTicksLimit: 8 }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+            }
+        });
+});
+</script>
+
+
+` }) %>

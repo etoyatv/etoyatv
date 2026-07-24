@@ -1,0 +1,50 @@
+# MediaMTX Configuration File (EtoYaTV Low-Latency Streaming)
+
+
+
+# API server
+api: yes
+apiAddress: :9997
+
+# RTSP server (disabled to save resources)
+rtsp: no
+
+# RTMP server (enabled for OBS ingestion)
+rtmp: yes
+rtmpAddress: :1935
+
+# WebRTC/WHIP: browser encodes once (HW when available), MediaMTX only remuxes → HLS.
+# No server-side re-encode. ICE media uses UDP/TCP 8189 (must be reachable by publishers).
+webrtc: yes
+webrtcAddress: :8889
+webrtcEncryption: no
+webrtcAllowOrigins: ["*"]
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+webrtcIPsFromInterfaces: yes
+webrtcAdditionalHosts:
+  - kctv.yourdomain.com
+webrtcICEServers2:
+  - url: stun:stun.l.google.com:19302
+
+srt: no
+
+# HLS server — fMP4 as before (stable for this stack)
+hls: yes
+hlsAddress: :8000
+hlsAlwaysRemux: no
+hlsVariant: fmp4
+hlsSegmentCount: 15
+hlsSegmentDuration: 2s
+hlsMuxerCloseAfter: 15s
+hlsCDNSecret: "etoyatv_cdn_secret_982347"  # nginx must send Authorization: Bearer <secret>
+
+# External authentication URL (points to Node.js app).
+# Placeholder is substituted by entrypoint.sh with ?internal=<RTMP_API_PASS>.
+authMethod: http
+authHTTPAddress: __AUTH_HTTP_ADDRESS__
+
+# Paths configurations
+paths:
+  all:
+    runOnReady: /on_ready.sh

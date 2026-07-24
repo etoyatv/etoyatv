@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Логи системы | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="users-header-stats">
+        <p>Всего логов в системе: <strong><%= total %></strong></p>
+      </div>
+
+      <div class="logs-filter-container">
+        <form action="/logs" method="GET" class="logs-filter-form">
+          <input type="text" name="search" placeholder="Поиск по юзеру, IP или тексту..." value="<%= search %>" class="form-control" style="max-width: 300px; display: inline-block;">
+          <% const isModOnly = user && !user.is_superadmin && user.staff_role === 'moderator'; %>
+          <select name="category" class="custom-select" style="max-width: 200px; display: inline-block;">
+            <option value="">Все категории</option>
+            <option value="user" <%= category === 'user' ? 'selected' : '' %>>Пользователь</option>
+            <option value="team" <%= category === 'team' ? 'selected' : '' %>>Команда канала</option>
+            <% if (!isModOnly) { %>
+            <option value="admin" <%= category === 'admin' ? 'selected' : '' %>>Администраторы</option>
+            <% } %>
+            <option value="system" <%= category === 'system' ? 'selected' : '' %>>Система</option>
+            <option value="rtmp" <%= category === 'rtmp' ? 'selected' : '' %>>RTMP</option>
+          </select>
+          <button type="submit" class="btn-black-border">Фильтр</button>
+          <% if (search || category) { %>
+            <a href="/logs" class="btn-black-border" style="text-decoration: none;">Сбросить</a>
+          <% } %>
+        </form>
+      </div>
+
+      <div class="logs-table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th style="width: 80px;">ID</th>
+              <th style="width: 160px;">Дата и Время</th>
+              <th style="width: 120px;">Категория</th>
+              <th style="width: 150px;">Пользователь</th>
+              <th style="width: 150px;">IP Адрес</th>
+              <th>Сообщение</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (logs && logs.length > 0) { %>
+              <% logs.forEach(log => { %>
+                <tr>
+                  <td><%= log.id %></td>
+                  <td><%= formatDate(log.created_at, userTimezone, 'DD.MM.YYYY HH:mm:ss') %></td>
+                  <td>
+                    <% if (log.log_type === 'user') { %>
+                      <span class="status-active">Юзер</span>
+                    <% } else if (log.log_type === 'team') { %>
+                      <span class="status-banned" style="color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); background: rgba(96, 165, 250, 0.1);">Канал</span>
+                    <% } else if (log.log_type === 'admin') { %>
+                      <span class="status-banned">Админ</span>
+                    <% } else if (log.log_type === 'system') { %>
+                      <span class="status-deleted">Система</span>
+                    <% } else if (log.log_type === 'rtmp') { %>
+                      <span class="status-active" style="color: #a855f7; border-color: rgba(168, 85, 247, 0.3); background: rgba(168, 85, 247, 0.1);">RTMP</span>
+                    <% } else { %>
+                      <%= log.log_type %>
+                    <% } %>
+                  </td>
+                  <td><%= log.username || '-' %></td>
+                  <td style="font-family: monospace; color: #a1a1aa;"><%= log.ip_address || '-' %></td>
+                  <td style="color: #e4e4e7;"><%= log.action_text %></td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="6" style="text-align: center; color: #71717a; padding: 30px;">Ничего не найдено</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination & Limits -->
+      <div class="pagination-section">
+        <form action="/logs" method="GET" class="limit-selector">
+          <input type="hidden" name="search" value="<%= search %>">
+          <input type="hidden" name="category" value="<%= category %>">
+          <label>На страницу: </label>
+          <select name="limit" class="custom-select" onchange="this.form.submit()">
+            <option value="20" <%= limit === 20 ? 'selected' : '' %>>20</option>
+            <option value="50" <%= limit === 50 ? 'selected' : '' %>>50</option>
+            <option value="100" <%= limit === 100 ? 'selected' : '' %>>100</option>
+            <option value="500" <%= limit === 500 ? 'selected' : '' %>>500</option>
+          </select>
+        </form>
+
+        <div class="pagination">
+          <% if (page > 1) { %>
+            <a href="/logs?page=<%= page - 1 %>&limit=<%= limit %>&search=<%= search %>&category=<%= category %>" class="page-link">Предыдущая</a>
+          <% } %>
+          
+          <span class="page-current">Страница <%= page %> из <%= totalPages %></span>
+          
+          <% if (page < totalPages) { %>
+            <a href="/logs?page=<%= page + 1 %>&limit=<%= limit %>&search=<%= search %>&category=<%= category %>" class="page-link">Следующая</a>
+          <% } %>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>

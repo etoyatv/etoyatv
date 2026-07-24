@@ -1,0 +1,308 @@
+<%
+  const isPremiumOrVerified = locals.panelChannel && (locals.panelChannel.is_premium === 1 || locals.panelChannel.is_verified === 1 || locals.panelChannel.is_premium === true || locals.panelChannel.is_verified === true);
+  const maxMbText = isPremiumOrVerified ? '2 ГБ' : '256 Мб';
+%>
+<%- include('../panel_layout', { activeMenu: 'records', activeSubmenu: 'all', breadcrumbs: '<a href="/panel,dashboard">Панель управления</a> &gt; <a href="/panel,records">Медиа-архив</a> &gt; ' + escapeHtml(record.title) + ' &gt; Редактирование', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/panel,dashboard" style="margin-right: 15px; color: #888;">Панель управления</a>
+        <a href="/panel,records" style="margin-right: 15px; color: #888;">Медиа-архив</a>
+        <a href="#" style="margin-right: 15px; color: #888;">${escapeHtml(record.title)}</a>
+        <span style="color: #333;">Редактирование</span>
+    </div>
+    <div>
+        <input type="text" placeholder="Поиск по записям..." style="padding: 5px; border: 1px solid #ccc; width: 200px;">
+        <button class="btn" style="padding: 5px; height: 26px;">&#128269;</button>
+    </div>
+</div>
+<div style="text-align: right; margin-bottom: 15px;">
+    <button class="btn" style="font-size: 11px;" onclick="window.location.href='/panel,records,upload'">Добавить видео</button> 
+    <span style="font-size: 11px; color:#8c989e; margin-left: 10px;">Загружайте любые видео файлы. Максимальный размер ${maxMbText}.</span>
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        <div style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            ${escapeHtml(record.title)}
+        </div>
+        
+        <form action="/panel,records,edit" method="POST">
+            <input type="hidden" name="id" value="${record.id}">
+            
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Название:*</label>
+                <input type="text" name="title" class="form-control" value="${escapeHtml(record.title)}" required style="flex-grow: 1;">
+            </div>
+            
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Описание:</label>
+                <div style="flex-grow: 1;">
+                    <textarea name="description" class="form-control" rows="8" style="resize: vertical;" maxlength="200">${escapeHtml(record.description || '')}</textarea>
+                    <div style="font-size: 10px; color: #8c989e; margin-top: 5px; text-align: right;">Максимальная длина описания 200 символов.</div>
+                </div>
+            </div>
+            
+
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Ограничение:</label>
+                <div style="flex-grow: 1; color: #c0c0b2; font-size: 12px; display: flex; align-items: center;">
+                    <input type="checkbox" name="is_18_plus" style="margin-right: 5px;" ${record.is_18_plus ? 'checked' : ''}> Только для взрослых
+                </div>
+            </div>
+
+            <div class="form-group" style="display: flex; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Уровень доступа:*</label>
+                <select name="access_level" id="access_level" class="form-control" style="flex-grow: 1; background-color: #2b3135; color: #fff; border: 1px solid #4a5359; padding: 5px; border-radius: 4px;">
+                    <option value="public" ${record.access_level === 'public' ? 'selected' : ''}>Публичный (доступен всем и в поиске)</option>
+                    <option value="unlisted" ${record.access_level === 'unlisted' ? 'selected' : ''}>Доступ по ссылке (не в поиске)</option>
+                    <option value="private" ${record.access_level === 'private' ? 'selected' : ''}>Ограниченный доступ (только выбранным)</option>
+                </select>
+            </div>
+
+            <div id="private-users-section" style="display: ${record.access_level === 'private' ? 'flex' : 'none'}; margin-bottom: 15px;">
+                <label style="width: 150px; color: #8c989e;">Разрешенные пользователи:</label>
+                <div style="flex-grow: 1;">
+                    <div id="allowed-users-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
+                        <!-- Здесь будут отображаться добавленные пользователи -->
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; position: relative;">
+                        <input type="text" id="add-user-username" placeholder="Найти пользователя..." class="form-control" style="width: 250px; background-color: #2b3135; color: #fff; border: 1px solid #4a5359; padding: 5px; border-radius: 4px;" autocomplete="off">
+                        <div id="add-user-list" style="display: none; position: absolute; top: 100%; left: 0; width: 250px; background: #fff; border: 1px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                        <button type="button" id="add-user-btn" class="btn" style="padding: 5px 12px; height: 32px; font-size: 12px; line-height: normal;">Добавить</button>
+                    </div>
+                    <div id="add-user-error" style="color: #e06c75; font-size: 11px; margin-top: 5px; display: none;"></div>
+                    <input type="hidden" name="allowed_users" id="allowed-users-hidden">
+                </div>
+            </div>
+            
+            <div class="form-group" style="display: flex; margin-top: 20px;">
+                <div style="width: 150px;"></div>
+                <button type="submit" class="btn">Сохранить</button>
+            </div>
+        </form>
+
+        <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var accessLevelSelect = document.getElementById("access_level");
+            var privateUsersSection = document.getElementById("private-users-section");
+            var allowedUsersContainer = document.getElementById("allowed-users-container");
+            var usernameInput = document.getElementById("add-user-username");
+            var usersList = document.getElementById("add-user-list");
+            var addUserBtn = document.getElementById("add-user-btn");
+            var addUserError = document.getElementById("add-user-error");
+            var allowedUsersHidden = document.getElementById("allowed-users-hidden");
+
+            // Инициализация списка пользователей из Node/EJS
+            var allowedUsers = ${JSON.stringify(allowedUsers).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')}; // [{ user_id: 1, username: 'test' }]
+            var selectedUser = null;
+            var debounceTimeout;
+            
+            function updateAllowedUsersHidden() {
+                var ids = allowedUsers.map(function(u) { return u.user_id; });
+                allowedUsersHidden.value = ids.join(",");
+            }
+
+            function renderAllowedUsers() {
+                allowedUsersContainer.innerHTML = "";
+                if (allowedUsers.length === 0) {
+                    allowedUsersContainer.innerHTML = "<span style='color: #8c989e; font-style: italic; font-size: 11px;'>Список пуст. Добавьте пользователей через поиск.</span>";
+                    return;
+                }
+                
+                allowedUsers.forEach(function(user) {
+                    var chip = document.createElement("div");
+                    chip.style.display = "inline-flex";
+                    chip.style.alignItems = "center";
+                    chip.style.background = "#2b3135";
+                    chip.style.border = "1px solid #4a5359";
+                    chip.style.borderRadius = "4px";
+                    chip.style.padding = "3px 8px";
+                    chip.style.fontSize = "11px";
+                    chip.style.color = "#fff";
+                    
+                    var nameSpan = document.createElement("span");
+                    nameSpan.textContent = user.username + " (ID: " + user.user_id + ")";
+                    nameSpan.style.marginRight = "8px";
+                    chip.appendChild(nameSpan);
+                    
+                    var removeBtn = document.createElement("span");
+                    removeBtn.innerHTML = "&times;";
+                    removeBtn.style.cursor = "pointer";
+                    removeBtn.style.fontWeight = "bold";
+                    removeBtn.style.color = "#e06c75";
+                    removeBtn.style.fontSize = "14px";
+                    removeBtn.onclick = function() {
+                        allowedUsers = allowedUsers.filter(function(u) { return u.user_id !== user.user_id; });
+                        renderAllowedUsers();
+                        updateAllowedUsersHidden();
+                    };
+                    chip.appendChild(removeBtn);
+                    allowedUsersContainer.appendChild(chip);
+                });
+            }
+
+            accessLevelSelect.addEventListener("change", function() {
+                if (accessLevelSelect.value === "private") {
+                    privateUsersSection.style.display = "flex";
+                } else {
+                    privateUsersSection.style.display = "none";
+                }
+            });
+
+            usernameInput.addEventListener("input", function(e) {
+                clearTimeout(debounceTimeout);
+                selectedUser = null;
+                debounceTimeout = setTimeout(async function() {
+                    var q = e.target.value.trim();
+                    if (q.length < 1) {
+                        usersList.style.display = "none";
+                        return;
+                    }
+                    try {
+                        var res = await fetch("/api/users/search?q=" + encodeURIComponent(q));
+                        var data = await res.json();
+                        usersList.innerHTML = "";
+                        if (data.length > 0) {
+                            var escapeHTML = function(str) {
+                                return str.replace(/[&<>'"]/g, function(tag) {
+                                    return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag;
+                                });
+                            };
+                            data.forEach(function(user) {
+                                var item = document.createElement("div");
+                                item.style.padding = "8px 10px";
+                                item.style.cursor = "pointer";
+                                item.style.borderBottom = "1px solid #eee";
+                                item.style.color = "#333";
+                                item.style.display = "flex";
+                                item.style.alignItems = "center";
+                                var safeAvatar = user.avatar ? escapeHTML(user.avatar) : "/images/default-avatar.png";
+                                var safeUsername = escapeHTML(user.username);
+                                item.innerHTML = '<img src="' + safeAvatar + '" style="width: 20px; height: 20px; border-radius: 50%; margin-right: 10px;"> ' + safeUsername;
+                                
+                                item.addEventListener("mouseover", function() { item.style.backgroundColor = "#f0f0f0"; });
+                                item.addEventListener("mouseout", function() { item.style.backgroundColor = "transparent"; });
+                                item.addEventListener("click", function() {
+                                    usernameInput.value = user.username;
+                                    selectedUser = { id: user.id, username: user.username };
+                                    usersList.style.display = "none";
+                                    addUserError.style.display = "none";
+                                });
+                                usersList.appendChild(item);
+                            });
+                            usersList.style.display = "block";
+                        } else {
+                            usersList.style.display = "none";
+                        }
+                    } catch(err) {
+                        usersList.style.display = "none";
+                    }
+                }, 300);
+            });
+
+            document.addEventListener("click", function(e) {
+                if (e.target !== usernameInput && e.target !== usersList && !usersList.contains(e.target)) {
+                    usersList.style.display = "none";
+                }
+            });
+
+            addUserBtn.addEventListener("click", async function() {
+                var inputVal = usernameInput.value.trim();
+                addUserError.style.display = "none";
+                addUserError.textContent = "";
+
+                if (!inputVal) {
+                    return;
+                }
+
+                var userId = null;
+                var username = null;
+
+                if (selectedUser && selectedUser.username.toLowerCase() === inputVal.toLowerCase()) {
+                    userId = selectedUser.id;
+                    username = selectedUser.username;
+                }
+
+                if (!userId) {
+                    var numericId = parseInt(inputVal, 10);
+                    if (!isNaN(numericId) && numericId.toString() === inputVal) {
+                        addUserBtn.disabled = true;
+                        try {
+                            var res = await fetch("/api/users/find_by_id?id=" + numericId);
+                            if (res.ok) {
+                                var data = await res.json();
+                                if (data && data.username) {
+                                    userId = numericId;
+                                    username = data.username;
+                                }
+                            }
+                        } catch(err) {
+                            console.error(err);
+                        } finally {
+                            addUserBtn.disabled = false;
+                        }
+                    } else {
+                        addUserBtn.disabled = true;
+                        try {
+                            var res = await fetch("/api/users/find_by_username?username=" + encodeURIComponent(inputVal));
+                            if (res.ok) {
+                                var data = await res.json();
+                                if (data && data.id) {
+                                    userId = data.id;
+                                    username = data.username;
+                                }
+                            }
+                        } catch(err) {
+                            console.error(err);
+                        } finally {
+                            addUserBtn.disabled = false;
+                        }
+                    }
+                }
+
+                if (!userId || !username) {
+                    addUserError.textContent = "Пользователь не найден";
+                    addUserError.style.display = "block";
+                    return;
+                }
+
+                var exists = allowedUsers.some(function(u) { return u.user_id === userId; });
+                if (exists) {
+                    addUserError.textContent = "Пользователь уже добавлен";
+                    addUserError.style.display = "block";
+                    return;
+                }
+
+                allowedUsers.push({ user_id: userId, username: username });
+                renderAllowedUsers();
+                updateAllowedUsersHidden();
+                usernameInput.value = "";
+                selectedUser = null;
+            });
+
+            // Первоначальный рендер
+            renderAllowedUsers();
+            updateAllowedUsersHidden();
+        });
+        </script>
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Редактирование записи</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Измените название, описание и теги записи. Укажите уровень доступа к записи. Выберите превью записи. Превью отображается в списках записей на сайте ЭтоЯTV и в плеере записи до начала воспроизведения.
+            </div>
+        </div>
+        
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">А знаете ли вы?</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Вы можете добавлять записи Вашего телеканала в Альбомы, что упрощает навигацию по ним.
+            </div>
+        </div>
+    </div>
+</div>
+
+` }) %>

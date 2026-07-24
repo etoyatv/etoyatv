@@ -1,0 +1,254 @@
+<%- include('partials/header') %>
+
+<div id="content"> 
+<!-- LEFT COLUMN>> -->
+<div class="left_blocks"> 
+
+
+<!-- FAVORITES RECORDS>> -->
+<div class="block_item">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Избранные записи пользователя <%= profileUser.username %> (<a href="/account,favrecords?username=<%= encodeURIComponent(profileUser.username) %>" class="darkblue"><%= typeof totalRecords !== "undefined" ? totalRecords : records.length %></a>)</div>
+<div class="block-buttons">
+<a href="/account,favrecords?username=<%= encodeURIComponent(profileUser.username) %>" class="block-buttons-bg-last"><span class="block-head-icon-archive"></span></a>
+</div>
+</div> 
+</div>
+<div class="block-content">
+  <div id="records_list">
+  <div class="records_list" style="padding: 10px;">
+  <% if (records && records.length > 0) { %>
+    <% records.forEach(function(rec, index) { %>
+        <div class="item <%= index === 0 ? 'first' : '' %> <%= index === records.length - 1 ? 'last item_end' : '' %>"> 
+            <div class="record_item" style="position: relative;" style="position: relative;"> 
+                <a href="/tv,viewrecord,<%= rec.id %>" class="thumb" style="background: #000 url('<%= CDN_BASE_URL %><%= rec.thumbnail_url || '/images/default_record_thumb.png' %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden;">
+                    <% if (rec.is_18_plus) { %>
+                    <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(5px); background: rgba(0,0,0,0.1); z-index: 1;"></div>
+                    <% } %>
+                    <span class="border_thumb" style="position: relative; z-index: 2;">
+                        <div class="record_time"><%= ('0' + Math.floor(rec.duration / 3600)).slice(-2) %>:<%= ('0' + Math.floor((rec.duration % 3600) / 60)).slice(-2) %>:<%= ('0' + (rec.duration % 60)).slice(-2) %></div> 
+                    </span>
+                </a> 
+                <div class="info">
+                    <div class="title"><a class="translatable" data-ugc="1" href="/tv,viewrecord,<%= rec.id %>"><%= rec.title %></a><% if(rec.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div> 
+                    <div class="channel"><span class="label">Телеканал:</span> <a class="translatable" data-ugc="1" href="/<%= rec.shortname %>"><%= rec.channel_name %></a></div> 
+                    <div class="date"><span class="label">Дата:</span> <span class="white"><%= formatDate(rec.created_at, userTimezone) %></span></div> 
+                    <div class="views"><span class="label">Просмотров:</span> <span class="white"><%= rec.views || 0 %></span></div> 
+                </div>
+                                <div style="position: absolute; right: 0; top: 0;">
+                                  <% if (locals.user) { %>
+                                  <div class="likes-badge">
+                                    <span id="record_fans_count_<%= rec.id %>" style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;"><%= rec.fans_count || 0 %></span>
+                                    <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;" style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>" id="record_fan_icon_<%= rec.id %>" style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                  </div>
+                                  <% } %>
+                                </div>
+
+            </div> 
+            <div class="clear_both"></div> 
+        </div> 
+    <% }); %>
+  <% } else { %>
+    <p style="color: #c0c0b2;">Нет записей</p>
+  <% } %>
+  </div>
+  </div>
+
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <div class="dottedline clear_both"></div>
+    <div class="pager">
+      <% for (let p = 1; p <= totalPages; p++) { %>
+        <% if (p === currentPage) { %>
+          <div class="item active"><%= p %></div>
+        <% } else { %>
+          <div class="item">
+            <a href="/account,favrecords?username=<%= encodeURIComponent(profileUser.username) %>&page=<%= p %>"><%= p %></a>
+          </div>
+        <% } %>
+      <% } %>
+      
+      <div style="float:right;">
+        <% if (currentPage > 1) { %>
+          <div class="item prev">
+            <a href="/account,favrecords?username=<%= encodeURIComponent(profileUser.username) %>&page=<%= currentPage - 1 %>">предыдущая</a>
+          </div>
+        <% } else { %>
+          <div class="item prev">предыдущая</div>
+        <% } %>
+        
+        <% if (currentPage < totalPages) { %>
+          <div class="item next">
+            <a href="/account,favrecords?username=<%= encodeURIComponent(profileUser.username) %>&page=<%= currentPage + 1 %>">следующая</a>
+          </div>
+        <% } else { %>
+          <div class="item next">следующая</div>
+        <% } %>
+      </div>
+      <div class="clear_both"></div>
+    </div>
+  <% } %>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<!-- << FAVORITES RECORDS -->
+
+
+
+</div>
+<!-- << LEFT COLUMN --> 
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks"> 
+<%- include('partials/profile_user_sidebar', { profileUser, user, friendshipStatus: typeof friendshipStatus !== 'undefined' ? friendshipStatus : 'none', showFriendIcons: true, showFriendship: true, canSeeFriendsList: locals.canSeeFriendsList }) %>
+
+
+<% if (typeof profileChannel !== 'undefined' && profileChannel) { %>
+<!-- CHANNEL INFO BLOCK>> -->
+<div class="blocks"> 
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Информация о телеканале</div>
+</div> 
+</div>
+<div class="block-content">
+<div class="channelinfoblock">
+<div class="left">
+                    <a class="logo" href="/<%= profileChannel.shortname %>"
+                      style="background: #000 url(<%= profileChannel.logo_url || '/images/default_channel_logo.png' %>) no-repeat center center; display: block; width: 100px; height: 100px; background-size: cover; position: relative; overflow: hidden;">
+                      <% if (profileChannel.is_18_plus) { %>
+                      <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(15px); background: rgba(0,0,0,0.3); z-index: 1;"></div>
+                      <% } %>
+                      <span class="border_logo" style="display: block; width: 100px; height: 100px; position: relative; z-index: 2;">
+ 
+                      </span>
+                    </a>
+</div>
+<div class="right"> 
+<h1 class="title darkblue"><a href="/<%= profileChannel.shortname %>"><%= profileChannel.name %></a><% if (profileChannel.is_verified) { %><span class="verified_icon <%= profileChannel.is_premium ? 'blue' : '' %>" title="<%= profileChannel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>"></span><% } %><% if(profileChannel.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></h1> 
+<div class="description_small clear_both">
+<div class="readmore">
+<div class="teaser" style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; line-height: 1.3; white-space: pre-wrap; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;"><%= profileChannel.description || 'Описание отсутствует.' %></div>
+</div> 
+</div>
+</div> 
+<div class="clear_both"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div><div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div> 
+<!-- << CHANNEL INFO BLOCK -->
+<% } %>
+
+<% if (locals.canSeeFriendsList !== false) { %>
+<!-- FRIENDS BLOCK>> -->
+<div class="blocks">
+<div class="blackbox" id="friends_block" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Друзья (<a href="/account,friends?username=<%= encodeURIComponent(profileUser.username) %>" class="darkblue"><%= friends.length %></a>)</div>
+<div class="block-buttons">
+<a href="/account,friends?username=<%= encodeURIComponent(profileUser.username) %>" title="Все друзья" class="block-buttons-bg-last"><span class="block-head-icon-users"></span></a>
+</div>
+</div> 
+</div>
+<div class="block-content" style="padding: 10px;">
+
+<% if (friends.length === 0) { %>
+  <div style="color: #c0c0b2;">Список пуст</div>
+<% } else { %>
+  <div class="users" style="display: flex; flex-wrap: wrap; gap: 15px 7px;">
+    <% friends.slice(0, 6).forEach(function(friendUser, index) { %>
+      <div class="item" style="margin-right: 0;"> 
+        <a class="logo" href="/account,userinfo/?username=<%= encodeURIComponent(friendUser.username) %>" style="background: url('<%= CDN_BASE_URL %><%= friendUser.avatar || '/images/default_user_avatar.png' %>') no-repeat center center; background-size: cover; width: 100px; height: 100px; display: block;"><span class="border_logo"></span></a>
+        <a href="/account,userinfo/?username=<%= encodeURIComponent(friendUser.username) %>" class="<%= friendUser.is_online ? 'green' : '' %>" style="font-size: 11px; display: block; word-break: break-all; margin-top: 5px;">
+          <%= friendUser.username %>
+        </a>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<!-- << FRIENDS BLOCK -->
+<% } %>
+
+<%- include('partials/sidebar_ad_320x240') %>
+</div>
+<!-- << RIGHT COLUMN -->
+<div class="clear_both"></div>
+</div>
+
+
+<script>
+window.toggleFavoriteRecord = async function(recordId) {
+  try {
+    const res = await fetch(`/api/records/${recordId}/favorite`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const countEl = document.getElementById('record_fans_count_' + recordId);
+      const iconEl = document.getElementById('record_fan_icon_' + recordId);
+      if (countEl) countEl.innerText = data.count;
+      if (iconEl) {
+        if (data.isFan) {
+          iconEl.classList.add('active');
+        } else {
+          iconEl.classList.remove('active');
+        }
+      }
+    } else {
+      alert(data.error || 'Ошибка');
+    }
+  } catch (e) {
+    alert('Ошибка соединения');
+  }
+};
+</script>
+
+<%- include('partials/footer') %>

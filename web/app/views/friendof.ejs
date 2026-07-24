@@ -1,0 +1,78 @@
+<%- include('partials/header') %>
+
+<div id="content"> 
+<!-- LEFT COLUMN>> -->
+<div class="left_blocks" style="width: 60%; float: left;">
+
+<% if (locals.isRestricted) { %>
+<div class="block_item">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Доступ ограничен</div>
+</div> 
+</div>
+<div class="block-content" style="padding: 25px; line-height: 1.8;">
+  <p style="color: #ccc; font-size: 13px; margin: 0 0 12px 0;"><%= locals.restrictionMessage || 'Владелец этого профиля ограничил доступ к списку друзей.' %></p>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<% } else { %>
+<div class="block_item">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">В друзьях у пользователей</div>
+</div> 
+</div>
+<div class="block-content">
+<%- include('partials/friends_list', { friends, profileUser, user, emptyMessage: 'Никто не добавил пользователя в друзья.' }) %>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="clear_both"></div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<% } %>
+</div>
+<!-- << LEFT COLUMN --> 
+
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks" style="width: 36%; float: right; padding: 0;"> 
+<%- include('partials/profile_user_sidebar', { profileUser, user, activeProfileNav: 'friendof', canSeeFriendsList: true }) %>
+<%- include('partials/sidebar_ad_320x240') %>
+</div>
+<!-- << RIGHT COLUMN -->
+<div class="clear_both"></div>
+</div>
+
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,81 @@
+<%- include('partials/header') %>
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+
+<div id="content">
+<div class="left_blocks" style="width: 500px; margin: 50px auto; float: none;">
+<div class="blackbox" id="registration_block" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Регистрация</div>
+</div>
+</div>
+<div class="block-content">
+<% if (typeof systemSettings !== 'undefined' && systemSettings['registration_disabled'] === '1') { %>
+  <div style="padding: 40px 20px; text-align: center;">
+    <h3 style="color: #ff6666; font-size: 16px; margin-bottom: 10px;">Регистрация временно отключена администратором.</h3>
+    <p style="color: #aaa;">Пожалуйста, попробуйте зайти позже.</p>
+  </div>
+<% } else if (typeof is_ip_banned !== 'undefined' && is_ip_banned) { %>
+  <div style="padding: 40px 20px; text-align: center;">
+    <h3 style="color: #ff6666; font-size: 16px; margin-bottom: 10px;"><%= error %></h3>
+  </div>
+<% } else { %>
+<form action="/register" method="post" style="padding: 20px 0 20px 10px;">
+<% if (typeof error !== 'undefined' && error) { %>
+  <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= error %></div>
+<% } %>
+  <div class="forms-item">
+    <div class="label">Логин:<span class="blue">*</span></div>
+    <input type="text" name="username" class="input-text" maxlength="13" required>
+    <div class="clear_both"></div>
+  </div>
+  <div class="forms-item">
+    <div class="label">E-Mail:<span class="blue">*</span></div>
+    <input type="email" name="email" class="input-text" required>
+    <div class="clear_both"></div>
+  </div>
+  <div class="forms-item">
+    <div class="label">Пароль:<span class="blue">*</span></div>
+    <input type="password" name="password" class="input-text" required>
+    <div class="clear_both"></div>
+  </div>
+<% if (typeof invite_system_enabled !== 'undefined' && invite_system_enabled) { %>
+  <div class="forms-item">
+    <div class="label">Инвайт-код:<span class="blue">*</span></div>
+    <input type="text" name="invite_code" class="input-text" required>
+    <div class="clear_both"></div>
+  </div>
+<% } %>
+  <div class="forms-item" style="margin-bottom: 15px;">
+    <div class="label"></div>
+    <div class="h-captcha" data-sitekey="<%= HCAPTCHA_SITEKEY %>" data-theme="dark"></div>
+    <div class="clear_both"></div>
+  </div>
+  <div class="forms-item" style="margin-top: 15px;">
+    <div class="label">&nbsp;</div>
+    <button type="submit" style="background: #333; border: 1px solid #555; padding: 5px 15px; color: #fff; font-weight: bold; cursor: pointer; border-radius: 3px;">Зарегистрироваться</button>
+    <div class="clear_both"></div>
+  </div>
+</form>
+<% } %>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

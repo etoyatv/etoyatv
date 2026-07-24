@@ -1,0 +1,254 @@
+<%- include('../panel_layout', { activeMenu: 'settings', activeSubmenu: 'design', breadcrumbs: '<a href="/panel,dashboard">Панель управления</a> &gt; Настройки &gt; Дизайн', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #888;">Настройки</span>
+        <span style="color: #333;">Дизайн</span>
+    </div>
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        <div style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            Настройка дизайна канала
+        </div>
+        
+        ${ locals.panelChannel.design_disabled ? `
+            <div style="background-color: #5a1a1a; border: 1px solid #c0392b; color: #ffdddd; padding: 15px; margin-bottom: 20px; border-radius: 4px; font-weight: bold; text-align: center;">
+                ⚠️ Администрация платформы поставила запрет на изменение дизайна телеканала
+            </div>
+        ` : `
+            <form action="/panel,settings,design" method="POST" enctype="multipart/form-data">
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Логотип канала:</label>
+                    <div style="flex-grow: 1; display: flex; gap: 15px; align-items: center;">
+                        <div style="width: 80px; height: 80px; background: #000; border: 1px solid #444; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 4px; flex-shrink: 0;">
+                            <img id="logoPreviewImg" src="${(locals.CDN_BASE_URL || '') + (locals.panelChannel && locals.panelChannel.logo_url ? locals.panelChannel.logo_url : '/images/default_channel_logo.png')}" style="width: 100%; height: 100%; object-fit: ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'contain' : 'cover'}; ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'background: #000;' : ''}">
+                        </div>
+                        <div>
+                            <input type="file" name="logo" class="form-control" accept="image/*" style="margin-bottom: 5px;"><br>
+                            ${locals.panelChannel && locals.panelChannel.logo_url ? '<label style="font-size: 12px; color: #ff4d4d;"><input type="checkbox" name="delete_logo" value="1"> Удалить текущий логотип</label>' : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Формат отображения логотипа:</label>
+                    <div style="flex-grow: 1;">
+                        <select name="logo_fit" class="form-control" style="width: 200px;" onchange="updateLogoPreviewFit(this.value)">
+                            <option value="cover" ${!locals.panelChannel || locals.panelChannel.logo_fit !== 'contain' ? 'selected' : ''}>Обрезка</option>
+                            <option value="contain" ${locals.panelChannel && locals.panelChannel.logo_fit === 'contain' ? 'selected' : ''}>Вписать</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Шапка (Баннер):</label>
+                    <div style="flex-grow: 1; display: flex; gap: 15px; align-items: center;">
+                        ${locals.panelChannel && locals.panelChannel.banner_url ? '<img src="' + (locals.CDN_BASE_URL || '') + locals.panelChannel.banner_url + '" style="max-height: 50px; max-width: 150px;">' : ''}
+                        <div>
+                            <input type="file" name="banner" class="form-control" accept="image/*" style="margin-bottom: 5px;"><br>
+                            ${locals.panelChannel && locals.panelChannel.banner_url ? '<label style="font-size: 12px; color: #ff4d4d;"><input type="checkbox" name="delete_banner" value="1"> Удалить текущую шапку</label>' : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Фон канала:</label>
+                    <div style="flex-grow: 1; display: flex; gap: 15px; align-items: center;">
+                        ${locals.panelChannel && locals.panelChannel.bg_url ? '<img src="' + (locals.CDN_BASE_URL || '') + locals.panelChannel.bg_url + '" style="max-height: 50px; max-width: 150px;">' : ''}
+                        <div>
+                            <input type="file" name="background" class="form-control" accept="image/*" style="margin-bottom: 5px;"><br>
+                            ${locals.panelChannel && locals.panelChannel.bg_url ? '<label style="font-size: 12px; color: #ff4d4d;"><input type="checkbox" name="delete_background" value="1"> Удалить текущий фон</label>' : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Размещение фона канала:</label>
+                    <div style="flex-grow: 1;">
+                        <select name="bg_fit" class="form-control" style="width: 200px;">
+                            <option value="stretch" ${locals.panelChannel && locals.panelChannel.bg_fit === 'stretch' ? 'selected' : ''}>Растянутый</option>
+                            <option value="fit_width" ${locals.panelChannel && locals.panelChannel.bg_fit === 'fit_width' ? 'selected' : ''}>По ширине экрана</option>
+                            <option value="tile" ${locals.panelChannel && locals.panelChannel.bg_fit === 'tile' ? 'selected' : ''}>Замостить</option>
+                            <option value="center" ${locals.panelChannel && locals.panelChannel.bg_fit === 'center' ? 'selected' : ''}>В центре</option>
+                        </select>
+                    </div>
+                </div>
+
+                <script src="https://cdnjs.cloudflare.com/ajax/libs/jscolor/2.5.1/jscolor.min.js"></script>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Цвет фона:</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                        <input type="text" name="bg_color" class="form-control" data-jscolor="{preset:'dark', position:'right', width: 180, height: 120, padding: 10, shadow: true, borderWidth: 0, backgroundColor: '#333'}" value="${locals.panelChannel && locals.panelChannel.bg_color ? locals.panelChannel.bg_color : '#262626'}" style="width: 100px; font-family: monospace;">
+                        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="resetColor('bg_color', '#262626')">Сбросить</button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Цвет текста:</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                        <input type="text" name="text_color" class="form-control" data-jscolor="{preset:'dark', position:'right', width: 180, height: 120, padding: 10, shadow: true, borderWidth: 0, backgroundColor: '#333'}" value="${locals.panelChannel && locals.panelChannel.text_color ? locals.panelChannel.text_color : '#ffffff'}" style="width: 100px; font-family: monospace;">
+                        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="resetColor('text_color', '#ffffff')">Сбросить</button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Фон плеера:</label>
+                    <div style="flex-grow: 1; display: flex; gap: 15px; align-items: center;">
+                        ${locals.panelChannel && locals.panelChannel.player_bg_url ? '<img src="' + (locals.CDN_BASE_URL || '') + locals.panelChannel.player_bg_url + '" style="max-height: 50px; max-width: 150px;">' : ''}
+                        <div>
+                            <input type="file" name="player_background" class="form-control" accept="image/*" style="margin-bottom: 5px;"><br>
+                            ${locals.panelChannel && locals.panelChannel.player_bg_url ? '<label style="font-size: 12px; color: #ff4d4d;"><input type="checkbox" name="delete_player_background" value="1"> Удалить текущий фон плеера</label>' : ''}
+                        </div>
+                    </div>
+                </div>
+
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Цвет фона плеера:</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                        <input type="text" name="player_bg_color" class="form-control" data-jscolor="{preset:'dark', position:'right', width: 180, height: 120, padding: 10, shadow: true, borderWidth: 0, backgroundColor: '#333'}" value="${locals.panelChannel && locals.panelChannel.player_bg_color ? locals.panelChannel.player_bg_color : '#000000'}" style="width: 100px; font-family: monospace;">
+                        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="resetColor('player_bg_color', '#000000')">Сбросить</button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Цвет меню плеера:</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                        <input type="text" name="player_menu_color" class="form-control" data-jscolor="{preset:'dark', position:'right', width: 180, height: 120, padding: 10, shadow: true, borderWidth: 0, backgroundColor: '#333'}" value="${locals.panelChannel && locals.panelChannel.player_menu_color ? locals.panelChannel.player_menu_color : 'rgba(0,0,0,0.7)'}" style="width: 100px; font-family: monospace;">
+                        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="resetColor('player_menu_color', 'rgba(0,0,0,0.7)')">Сбросить</button>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 20px;">
+                    <label style="width: 180px; flex-shrink: 0; color: #8c989e;">Цвет ссылок плеера:</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center; gap: 10px;">
+                        <input type="text" name="player_link_color" class="form-control" data-jscolor="{preset:'dark', position:'right', width: 180, height: 120, padding: 10, shadow: true, borderWidth: 0, backgroundColor: '#333'}" value="${locals.panelChannel && locals.panelChannel.player_link_color ? locals.panelChannel.player_link_color : '#ffffff'}" style="width: 100px; font-family: monospace;">
+                        <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="resetColor('player_link_color', '#ffffff')">Сбросить</button>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="display: flex; margin-top: 30px;">
+                    <div style="width: 180px; flex-shrink: 0;"></div>
+                    <button type="submit" class="btn btn-blue">Сохранить дизайн</button>
+                    <button type="button" class="btn" style="margin-left: 10px; background: #5a6268; border-color: #545b62; color: white;" onclick="resetAllColors()">Сбросить все цвета</button>
+                </div>
+            </form>
+            <script>
+                function updateLogoPreviewFit(fit) {
+                    const img = document.getElementById('logoPreviewImg');
+                    if (img) {
+                        if (fit === 'contain') {
+                            img.style.objectFit = 'contain';
+                            img.style.background = '#000';
+                        } else {
+                            img.style.objectFit = 'cover';
+                            img.style.background = 'none';
+                        }
+                    }
+                }
+
+                function resetColor(inputName, defaultValue) {
+                    const input = document.querySelector('input[name="' + inputName + '"]');
+                    if (input) {
+                        if (input.jscolor) {
+                            input.jscolor.fromString(defaultValue);
+                        } else {
+                            input.value = defaultValue;
+                        }
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                }
+                function resetAllColors() {
+                    resetColor('bg_color', '#262626');
+                    resetColor('text_color', '#ffffff');
+                    resetColor('player_bg_color', '#000000');
+                    resetColor('player_menu_color', 'rgba(0,0,0,0.7)');
+                    resetColor('player_link_color', '#ffffff');
+                }
+
+                document.querySelectorAll('input[type="file"]').forEach(input => {
+                    input.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/apng'];
+                        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.apng'];
+                        const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+                        if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+                            alert("Неподдерживаемый формат файла. Разрешена загрузка только изображений (jpeg, jpg, png, gif, webp, apng).");
+                            this.value = '';
+                            return;
+                        }
+
+                        if (file.size > 4 * 1024 * 1024) {
+                            alert("Размер файла превышает лимит 4 МБ.");
+                            this.value = '';
+                            return;
+                        }
+
+                        const inputEl = this;
+                        const isPremiumOrVerified = ${locals.panelChannel && (locals.panelChannel.is_premium || locals.panelChannel.is_verified) ? 'true' : 'false'};
+
+                        const reader = new FileReader();
+                        reader.onload = function(event) {
+                            const arr = new Uint8Array(event.target.result);
+                            let hasAcn = false;
+                            for (let i = 0; i < arr.length - 4; i++) {
+                                if (arr[i] === 0x61 && arr[i+1] === 0x63 && arr[i+2] === 0x54 && arr[i+3] === 0x4C) { // "acTL"
+                                    hasAcn = true;
+                                    break;
+                                }
+                            }
+
+                            const isGif = file.type === 'image/gif' || extension === '.gif';
+                            const isApng = file.type === 'image/apng' || extension === '.apng' || hasAcn;
+
+                            if ((isGif || isApng) && !isPremiumOrVerified) {
+                                alert("Анимации (APNG, GIF) в дизайне доступны только для премиум или подтвержденных каналов.");
+                                inputEl.value = '';
+                                return;
+                            }
+
+                            if (inputEl.name === 'logo') {
+                                const img = document.getElementById('logoPreviewImg');
+                                if (img) {
+                                    const dataReader = new FileReader();
+                                    dataReader.onload = function(e) {
+                                        img.src = e.target.result;
+                                    };
+                                    dataReader.readAsDataURL(file);
+                                }
+                            }
+                        };
+                        reader.readAsArrayBuffer(file);
+                    });
+                });
+            </script>
+        `}
+
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Дизайн</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Здесь вы можете изменить внешний вид своего телеканала. Загрузите свой логотип, шапку или фон.
+            </div>
+        </div>
+        
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">А знаете ли вы?</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                Каналы с уникальным и красивым дизайном привлекают больше внимания зрителей.
+            </div>
+        </div>
+    </div>
+</div>
+
+` }) %>

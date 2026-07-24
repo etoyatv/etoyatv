@@ -1,0 +1,10 @@
+const express = require('express');
+const router = express.Router();
+router.use(require('./select'));
+router.use(require('./dashboard'));
+router.use(require('./records'));
+router.use(require('./albums-autopilot'));
+router.use(require('./settings'));
+router.use(require('./content'));
+router.use(require('./studio-page'));
+module.exports = router;

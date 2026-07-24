@@ -1,0 +1,105 @@
+    <!-- Ban Modal -->
+    <div id="banModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3 class="modal-title" id="banModalTitle">Выдача блокировки</h3>
+        <form action="" method="POST" id="banForm">
+          <div class="modal-body">
+            <div class="radio-group" id="banRadioGroup">
+              <label>
+                <input type="radio" name="ban_type" id="banTypeTemp" value="temporary" checked onchange="toggleBanDate(true)"> Временный
+              </label>
+              <label>
+                <input type="radio" name="ban_type" id="banTypePerm" value="permanent" onchange="toggleBanDate(false)"> Бессрочный
+              </label>
+              <label id="banTypeUnbanLabel" style="color: #ff4d4d; display: none;">
+                <input type="radio" name="ban_type" id="banTypeUnban" value="unban" onchange="toggleBanDate(false)"> Снять блокировку
+              </label>
+            </div>
+            
+            <div class="form-group" id="banDateGroup">
+              <label>Срок бана:</label>
+              <input type="date" name="banned_until" id="banDateInput" class="form-control" value="">
+            </div>
+            
+            <div id="ipBanGroup" style="display: none; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+              <label class="checkbox-group" style="margin-top: 0; color: #ff4d4d; font-weight: bold;">
+                <input type="checkbox" name="ban_ip" id="banIpInput" value="1" onchange="toggleIpBanType(this.checked)">
+                Блокировка по IP-адресу
+              </label>
+              <div id="ipBanTypeGroup" style="display: none; margin-top: 10px; margin-left: 20px;">
+                <label>
+                  <input type="radio" name="ip_ban_type" value="account" checked> Только аккаунт (режим зрителя)
+                </label>
+                <br>
+                <label style="margin-top: 5px; display: inline-block;">
+                  <input type="radio" name="ip_ban_type" value="full"> Полный бан (запрет доступа к сайту)
+                </label>
+              </div>
+            </div>
+            
+            <div class="form-group" style="width: 100%;">
+              <label>Причина:</label>
+              <textarea name="reason" id="banReasonInput" class="form-control" style="min-height: 120px; width: 100%; resize: none; box-sizing: border-box;" maxlength="200"></textarea>
+            </div>
+            
+            <label class="checkbox-group">
+              <input type="checkbox" name="show_reason" id="banShowReasonInput" value="1">
+              Показать причину блокировки пользователю
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn-black-border">Выдать</button>
+            <button type="button" class="btn-black-border" onclick="closeBanModal()">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      function openBanModal(id, username, isBanned, bannedUntil, reason, showReason) {
+        document.getElementById('banModalTitle').innerText = `Выдача блокировки пользователю ${username} (ID: ${id})`;
+        document.getElementById('banForm').action = `/users/${id}/ban`;
+        
+        document.getElementById('banDateInput').value = bannedUntil || '';
+        document.getElementById('banReasonInput').value = reason || '';
+        document.getElementById('banShowReasonInput').checked = !!showReason;
+        
+        const unbanLabel = document.getElementById('banTypeUnbanLabel');
+        const unbanInput = document.getElementById('banTypeUnban');
+        
+        if (isBanned) {
+          unbanLabel.style.display = 'block';
+          if (!bannedUntil) {
+            document.getElementById('banTypePerm').checked = true;
+          } else {
+            document.getElementById('banTypeTemp').checked = true;
+          }
+        } else {
+          unbanLabel.style.display = 'none';
+          document.getElementById('banTypeTemp').checked = true;
+        }
+        
+        document.getElementById('banModal').classList.add('active');
+        toggleBanDate(document.getElementById('banTypeTemp').checked);
+      }
+      
+      function closeBanModal() {
+        document.getElementById('banModal').classList.remove('active');
+      }
+      
+      function toggleBanDate(isTemporary) {
+        document.getElementById('banDateGroup').style.display = isTemporary ? 'flex' : 'none';
+        
+        // Show IP ban option only if permanent ban is selected
+        const isPermanent = document.querySelector('input[name="ban_type"]:checked').value === 'permanent';
+        document.getElementById('ipBanGroup').style.display = isPermanent ? 'block' : 'none';
+        if (!isPermanent) {
+          document.getElementById('banIpInput').checked = false;
+          toggleIpBanType(false);
+        }
+      }
+
+      function toggleIpBanType(isChecked) {
+        document.getElementById('ipBanTypeGroup').style.display = isChecked ? 'block' : 'none';
+      }
+    </script>

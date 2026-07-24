@@ -1,0 +1,47 @@
+<% if (friends.length === 0) { %>
+  <div style="color: #c0c0b2; padding: 15px;"><%= emptyMessage %></div>
+<% } else { %>
+  <div id="users_list">
+    <div class="users">
+      <% friends.forEach(function(friendUser, index) { %>
+        <div class="item <%= (index % 2 === 1 || index === friends.length - 1) ? 'item_end' : '' %>"> 
+          <a class="logo" href="/account,userinfo/?username=<%= encodeURIComponent(friendUser.username) %>" style="background: url('<%= CDN_BASE_URL %><%= friendUser.avatar || '/images/default_user_avatar.png' %>') no-repeat center center; background-size: cover;"><span class="border_logo"></span></a>
+          <div class="info"> 
+            <div class="username">
+              <a href="/account,userinfo/?username=<%= encodeURIComponent(friendUser.username) %>" class="<%= friendUser.is_online ? 'green' : '' %>">
+                <%= friendUser.username %>
+              </a>
+            </div> 
+            <div class="online">
+              <% if (friendUser.is_online) { %>
+                <span class="white">Сейчас на сайте</span>
+              <% } else { %>
+                Не в сети
+              <% } %>
+            </div>
+            <div class="channel">
+              <% if (friendUser.telegram || friendUser.discord) { %>
+                <% if (friendUser.telegram) { %>TG: <%= friendUser.telegram %><br><% } %>
+                <% if (friendUser.discord) { %>DC: <%= friendUser.discord %><% } %>
+              <% } else { %>
+                Зритель
+              <% } %>
+            </div>
+            <% if (typeof user !== 'undefined' && user && user.id === profileUser.id) { %>
+              <div style="margin-top: 5px;">
+                <% if (friendUser.is_hidden_by_owner === 1 || friendUser.is_hidden_by_owner === true) { %>
+                  <a href="#" onclick="event.preventDefault(); friendsPost('/friends/unhide', <%= JSON.stringify(friendUser.username) %>);" style="color: #6fdeee; font-size: 11px; text-decoration: underline;">Показать в списке</a>
+                <% } else { %>
+                  <a href="#" onclick="event.preventDefault(); friendsPost('/friends/hide', <%= JSON.stringify(friendUser.username) %>);" style="color: #ff6666; font-size: 11px; text-decoration: underline;">Скрыть из списка</a>
+                <% } %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+        <% if (index % 2 === 1 || index === friends.length - 1) { %>
+          <div class="clear_both" style="height:20px;"></div> 
+        <% } %>
+      <% }) %>
+    </div>
+  </div>
+<% } %>

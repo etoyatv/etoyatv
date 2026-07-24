@@ -1,0 +1,83 @@
+<%- include('partials/header') %>
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+
+<div id="content">
+<div class="left_blocks" style="width: 500px; margin: 50px auto; float: none;">
+<div class="blackbox" id="unverified_block" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Подтверждение E-Mail</div>
+</div>
+</div>
+<div class="block-content" style="padding: 20px;">
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div style="color: #ff6666; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= error %></div>
+  <% } %>
+  <% if (typeof success !== 'undefined' && success) { %>
+    <div style="color: #6fdeee; margin-bottom: 15px; font-weight: bold; text-align: center;"><%= success %></div>
+  <% } %>
+
+  <p style="color:#c0c0b2; margin-bottom: 20px; line-height: 1.5;">
+    Письмо с подтверждением было отправлено на ваш E-Mail: <strong style="color: #6fdeee;"><%= email %></strong>.
+  </p>
+  <p style="color:#c0c0b2; margin-bottom: 20px; line-height: 1.5;">
+    Пожалуйста, перейдите по ссылке в письме, чтобы активировать вашу учетную запись.
+  </p>
+  
+  <div style="border-top: 1px solid #333; margin-top: 20px; padding-top: 20px;">
+    <form action="/unverified/resend" method="post" style="margin-bottom: 20px;">
+      <p style="color:#c0c0b2; margin-bottom: 15px;">Не получили письмо?</p>
+      <div class="forms-item" style="margin-bottom: 15px; margin-left: 130px; width: auto;">
+        <div class="h-captcha" data-sitekey="<%= HCAPTCHA_SITEKEY %>" data-theme="dark"></div>
+      </div>
+      <div style="margin-left: 130px;">
+        <button type="submit" style="background: #333; border: 1px solid #555; padding: 6px 15px; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold;">
+          Отправить письмо повторно
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div style="border-top: 1px solid #333; margin-top: 20px; padding-top: 20px;">
+    <form action="/unverified/change-email" method="post">
+      <p style="color:#c0c0b2; margin-bottom: 15px;">Ошиблись в адресе E-Mail при регистрации?</p>
+      <div class="forms-item" style="margin-bottom: 15px;">
+        <div class="label">Новый E-Mail:<span class="blue">*</span></div>
+        <input type="email" name="email" class="input-text" required>
+        <div class="clear_both"></div>
+      </div>
+      <div class="forms-item" style="margin-bottom: 15px; margin-left: 130px; width: auto;">
+        <div class="h-captcha" data-sitekey="<%= HCAPTCHA_SITEKEY %>" data-theme="dark"></div>
+      </div>
+      <div style="margin-left: 130px;">
+        <button type="submit" style="background: #333; border: 1px solid #555; padding: 6px 15px; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold;">
+          Изменить E-Mail и отправить заново
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <div style="border-top: 1px solid #333; margin-top: 20px; padding-top: 15px; text-align: right;">
+    <a href="/logout" style="color: #ff6666; text-decoration: none;">Выйти из аккаунта</a>
+  </div>
+</div>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

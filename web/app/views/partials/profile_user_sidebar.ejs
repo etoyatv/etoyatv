@@ -1,0 +1,77 @@
+<!-- USER INFO>> -->
+<div class="blocks"> 
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Пользователь → <span class="darkblue"><%= profileUser.username %></span>
+<% if (typeof showFriendIcons !== 'undefined' && showFriendIcons && user && user.id !== profileUser.id) { %>
+  <% if (friendshipStatus === 'none') { %>
+    <a href="#" onclick="event.preventDefault(); friendsPost('/friends/request', <%= JSON.stringify(profileUser.username) %>);" class="addfriend-icon" title="Добавить в друзья" style="display:inline-block; width:16px; height:16px; background: url('<%= CDN_BASE_URL %>/images/css_img_28_iconcollection.png') no-repeat -160px -32px; vertical-align: middle; margin-left: 10px;"></a>
+  <% } else if (friendshipStatus === 'pending_sent') { %>
+    <span class="addfriend-icon" title="Запрос отправлен (ожидание подтверждения)" style="display:inline-block; width:16px; height:16px; background: url('<%= CDN_BASE_URL %>/images/css_img_28_iconcollection.png') no-repeat -160px -32px; vertical-align: middle; margin-left: 10px; opacity: 0.5; cursor: default;"></span>
+  <% } else if (friendshipStatus === 'pending_received') { %>
+    <a href="#" onclick="event.preventDefault(); friendsPost('/friends/accept', <%= JSON.stringify(profileUser.username) %>);" class="acceptfriend-icon" title="Принять запрос в друзья" style="display:inline-block; width:16px; height:16px; background: url('<%= CDN_BASE_URL %>/images/css_img_28_iconcollection.png') no-repeat -160px -32px; vertical-align: middle; margin-left: 10px;"></a>
+  <% } else if (friendshipStatus === 'accepted') { %>
+    <a href="#" onclick="event.preventDefault(); friendsPost('/friends/remove', <%= JSON.stringify(profileUser.username) %>);" class="removefriend-icon" title="Удалить из друзей" style="display:inline-block; width:16px; height:16px; background: url('<%= CDN_BASE_URL %>/images/css_img_28_iconcollection.png') no-repeat -176px -32px; vertical-align: middle; margin-left: 10px;"></a>
+  <% } %>
+<% } %>
+</div>
+</div> 
+</div>
+<div class="block-content">
+<div class="channelinfoblock userinfoblock">
+<div class="left">
+<a class="logo" href="#"><span class="border_logo">
+  <% if (profileUser.avatar && profileUser.avatar !== '/images/default_user_avatar.png') { %>
+    <img src="<%= CDN_BASE_URL %><%= profileUser.avatar  %>" style="width: 100px; height: 100px; object-fit: cover; position: relative; top: -1px; left: -1px;">
+  <% } else { %>
+    <img src="<%= CDN_BASE_URL %>/images/default_user_avatar.png" style="width: 100px; height: 100px; object-fit: cover; position: relative; top: -1px; left: -1px;">
+  <% } %>
+</span></a> 
+</div> 
+<div class="right"> 
+<div class="info">
+<div class="params">
+<div class="label" style="width: auto; margin-right: 10px;">Telegram:</div>
+<div class="value white" style="width: auto; margin-left: 0;"><%= profileUser.telegram || 'не указано' %></div>
+<div class="clear_both"></div>
+<div class="label" style="width: auto; margin-right: 10px;">Discord:</div>
+<div class="value white" style="width: auto; margin-left: 0;"><%= profileUser.discord || 'не указано' %></div>
+<div class="clear_both"></div>
+<% if (typeof showFriendship !== 'undefined' && showFriendship && user && user.id !== profileUser.id && friendshipStatus !== 'none') { %>
+<div class="label" style="width: auto; margin-right: 10px;">Дружба:</div>
+<div class="value" style="width: auto; margin-left: 0;">
+  <% if (friendshipStatus === 'pending_sent') { %>
+    <span style="color: #aaa; font-style: italic;">Запрос отправлен</span>
+  <% } else if (friendshipStatus === 'pending_received') { %>
+    <a href="#" onclick="event.preventDefault(); friendsPost('/friends/accept', <%= JSON.stringify(profileUser.username) %>);" style="color: #8fdb5a; font-weight: bold; text-decoration: none;">Принять запрос</a>
+  <% } else if (friendshipStatus === 'accepted') { %>
+    <span style="color: #8fdb5a; font-weight: bold;">В друзьях</span>
+  <% } %>
+</div>
+<div class="clear_both"></div>
+<% } %>
+</div>
+</div> 
+</div>
+<div class="clear_both"></div> 
+<div style="margin: 15px 0; color: #c0c0b2; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; white-space: pre-wrap;"><%= profileUser.about || 'Нет информации о пользователе' %></div>
+<%- include('profile_nav', { profileUser, user, activeProfileNav: typeof activeProfileNav !== 'undefined' ? activeProfileNav : undefined, canSeeFriendsList: typeof canSeeFriendsList !== 'undefined' ? canSeeFriendsList : undefined }) %>
+<div class="clear_both"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div></div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<!-- << USER INFO -->

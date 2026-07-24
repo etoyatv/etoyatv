@@ -1,0 +1,180 @@
+<%- include('../panel_layout', { activeMenu: 'settings', activeSubmenu: 'moderation', breadcrumbs: '<a href="/panel,dashboard">Панель управления</a> &gt; Настройки &gt; Модерация', body: `
+
+<div style="background-color: #f7f7f7; background: linear-gradient(to bottom, #fff 0%, #e6e6e6 100%); padding: 10px; border-bottom: 1px solid #ccc; color: #333; margin: -10px -10px 15px -10px; display: flex; align-items: center; border-radius: 4px 4px 0 0;">
+    <div style="flex-grow: 1; font-weight: bold; font-size: 14px;">
+        <a href="/panel,dashboard" style="margin-right: 15px; color: #888; text-decoration: none;">Панель управления</a>
+        <span style="margin-right: 15px; color: #888;">Настройки</span>
+        <span style="color: #333;">Модерация</span>
+    </div>
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <div style="flex-grow: 1;">
+        ${ error ? '<div style="background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #f5c6cb;">' + error + '</div>' : '' }
+        ${ success ? '<div style="background-color: #d4edda; color: #155724; padding: 10px; margin-bottom: 15px; border-radius: 4px; border: 1px solid #c3e6cb;">' + success + '</div>' : '' }
+
+        <div id="ban-add-form">
+            <div style="font-size: 18px; color: #fff; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+                Заблокировать пользователя на канале
+            </div>
+            
+            <div style="margin: 0;">
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <label style="width: 150px; color: #8c989e;">Имя пользователя:</label>
+                    <div style="flex-grow: 1; display: flex; align-items: center; position: relative;">
+                        <input type="text" id="ban-username-input" class="form-control" placeholder="Найти пользователя..." style="width: 250px; margin-right: 10px;" autocomplete="off" required>
+                        <div id="ban-users-list" style="display: none; position: absolute; top: 100%; left: 0; width: 250px; background: #fff; border: 1px solid #ccc; border-top: none; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"></div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <label style="width: 150px; color: #8c989e;">Длительность:</label>
+                    <select id="ban-duration-select" class="form-control" style="width: 250px; background: #222; border: 1px solid #444; color: #fff;" required>
+                        <option value="10">10 минут</option>
+                        <option value="60" selected>1 час</option>
+                        <option value="1440">24 часа</option>
+                        <option value="perm">Навсегда (Бессрочно)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; margin-top: 20px;">
+                    <div style="width: 150px;"></div>
+                    <button type="button" id="btn-submit-ban" class="btn">Заблокировать</button>
+                </div>
+            </div>
+            
+            <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                const input = document.getElementById('ban-username-input');
+                const list = document.getElementById('ban-users-list');
+                let debounceTimeout;
+
+                input.addEventListener('input', (e) => {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(async () => {
+                        const q = e.target.value.trim();
+                        if (q.length < 1) {
+                            list.style.display = 'none';
+                            return;
+                        }
+                        try {
+                            const res = await fetch('/api/users/search?q=' + encodeURIComponent(q));
+                            const data = await res.json();
+                            list.innerHTML = '';
+                            if (data.length > 0) {
+                                const escapeHTML = str => str.replace(/[&<>'"]/g, tag => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[tag] || tag));
+                                data.forEach(user => {
+                                    const item = document.createElement('div');
+                                    item.style.padding = '8px 10px';
+                                    item.style.cursor = 'pointer';
+                                    item.style.borderBottom = '1px solid #eee';
+                                    item.style.color = '#333';
+                                    item.style.display = 'flex';
+                                    item.style.alignItems = 'center';
+                                    const safeAvatar = user.avatar ? escapeHTML(user.avatar) : '/images/default-avatar.png';
+                                    const safeUsername = escapeHTML(user.username);
+                                    item.innerHTML = '<img src="' + safeAvatar + '" style="width: 20px; height: 20px; border-radius: 50%; margin-right: 10px;"> ' + safeUsername;
+                                    
+                                    item.addEventListener('mouseover', () => item.style.backgroundColor = '#f0f0f0');
+                                    item.addEventListener('mouseout', () => item.style.backgroundColor = 'transparent');
+                                    item.addEventListener('click', () => {
+                                        input.value = user.username;
+                                        list.style.display = 'none';
+                                    });
+                                    list.appendChild(item);
+                                });
+                                list.style.display = 'block';
+                            } else {
+                                list.style.display = 'none';
+                            }
+                        } catch(err) {
+                            list.style.display = 'none';
+                        }
+                    }, 300);
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (e.target !== input && e.target !== list && !list.contains(e.target)) {
+                        list.style.display = 'none';
+                    }
+                });
+
+                document.getElementById('btn-submit-ban').addEventListener('click', () => {
+                    const username = document.getElementById('ban-username-input').value.trim();
+                    const duration = document.getElementById('ban-duration-select').value;
+                    if (!username) {
+                        alert('Введите имя пользователя');
+                        return;
+                    }
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/panel,settings,moderation,ban';
+                    form.style.display = 'none';
+
+                    const uInput = document.createElement('input');
+                    uInput.type = 'hidden';
+                    uInput.name = 'username';
+                    uInput.value = username;
+                    form.appendChild(uInput);
+
+                    const dInput = document.createElement('input');
+                    dInput.type = 'hidden';
+                    dInput.name = 'duration';
+                    dInput.value = duration;
+                    form.appendChild(dInput);
+
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = '_csrf';
+                    csrfInput.value = window.csrfToken || '';
+                    form.appendChild(csrfInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                });
+            });
+            </script>
+        </div>
+
+        <div style="font-size: 18px; color: #fff; margin-top: 30px; margin-bottom: 20px; border-bottom: 1px solid #4a5359; padding-bottom: 10px;">
+            Черный список (Заблокированные пользователи)
+        </div>
+
+        <div id="banned-users-list">
+        ${ bans && bans.length > 0 ? bans.map(ban => {
+            const formatBanTime = (dateStr) => {
+                const d = new Date(dateStr);
+                if (d.getFullYear() > 2100) return 'Бессрочно';
+                return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            };
+            return `
+            <div class="team-member-row" style="display: flex; align-items: center; justify-content: space-between; background-color: #3a4247; padding: 10px 15px; border-radius: 4px; border: 1px solid #1a1e20; margin-bottom: 10px; height: 50px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1;">
+                    <img src="${ ban.avatar ? escapeHtml(ban.avatar) : '/images/default-avatar.png' }" width="30" height="30" style="border-radius: 50%;">
+                    <a href="/account,userinfo?username=${ encodeURIComponent(ban.username) }" style="font-size: 14px; font-weight: bold; color: #6fdeee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none;">${ escapeHtml(ban.username) }</a>
+                </div>
+                <div style="font-size: 12px; color: #ff6666; display: flex; align-items: center; gap: 15px;">
+                    <span>Заблокирован до: ${ formatBanTime(ban.banned_until) }</span>
+                    <button type="button" class="btn" style="background: #c0392b; border-color: #e74c3c; color: white; padding: 3px 10px; font-size: 11px; margin-left: 10px;" onclick="yatvConfirm('Разблокировать пользователя ${ escapeHtml(ban.username) }?', () => { const f = document.createElement('form'); f.method='POST'; f.action='/panel,settings,moderation,unban'; const i = document.createElement('input'); i.type='hidden'; i.name='username'; i.value='${ escapeHtml(ban.username) }'; f.appendChild(i); const c = document.createElement('input'); c.type='hidden'; c.name='_csrf'; c.value=window.csrfToken || ''; f.appendChild(c); document.body.appendChild(f); f.submit(); });">Разблокировать</button>
+                </div>
+            </div>
+            `;
+        }).join('') : '<div style="color: #c0c0b2; padding: 10px; background-color: #3a4247; border-radius: 4px; border: 1px solid #1a1e20;">Черный список пуст. Все пользователи могут оставлять комментарии и общаться в чате.</div>' }
+        </div>
+
+    </div>
+    
+    <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 20px;">
+        <div style="background-color: #3a4247; padding: 15px; border-radius: 4px; border: 1px solid #1a1e20;">
+            <div style="font-size: 14px; color: #fff; font-weight: bold; margin-bottom: 10px; font-style: italic;">Модерация</div>
+            <div style="font-size: 11px; color: #8c989e; line-height: 1.6;">
+                На этой странице вы можете управлять черным списком пользователей вашего телеканала.<br><br>
+                Заблокированные пользователи **не смогут**:
+                - Отправлять сообщения в чат трансляции
+                - Оставлять комментарии на странице канала
+                - Оставлять комментарии к вашим видео (записям)
+            </div>
+        </div>
+    </div>
+</div>
+` }) %>

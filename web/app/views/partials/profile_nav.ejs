@@ -1,0 +1,34 @@
+<ul class="usermenu" style="margin-top: 15px;">
+  <li>
+    <div class="icon s_icon_profile"></div>
+    <a href="/account,userinfo/?username=<%= encodeURIComponent(profileUser.username) %>">Профиль пользователя</a>
+  </li>
+  <% if (typeof user !== 'undefined' && user && user.username === profileUser.username) { %>
+  <li>
+    <div class="icon s_icon_profile"></div>
+    <a href="/account,profile/">Настройки профиля</a>
+  </li>
+  <% } %>
+  <li>
+    <div class="icon s_icon_programs"></div>
+    <a href="/account,programs?username=<%= encodeURIComponent(profileUser.username) %>">Личное расписание пользователя</a>
+  </li>
+  <li>
+    <div class="icon s_icon_favrecords"></div>
+    <a href="/account,favrecords?username=<%= encodeURIComponent(profileUser.username) %>">Избранные записи пользователя</a>
+  </li>
+  <li class="<%= (typeof canSeeFriendsList !== 'undefined' && canSeeFriendsList === false) ? 'last' : '' %>">
+    <div class="icon s_icon_favchannels"></div>
+    <a href="/account,favchannels?username=<%= encodeURIComponent(profileUser.username) %>">Избранные телеканалы пользователя</a>
+  </li>
+  <% if (typeof canSeeFriendsList === 'undefined' || canSeeFriendsList !== false) { %>
+  <li>
+    <div class="icon s_icon_friends"></div>
+    <a href="/account,friends?username=<%= encodeURIComponent(profileUser.username) %>"<%= (typeof activeProfileNav !== 'undefined' && activeProfileNav === 'friends') ? ' class="grey"' : '' %>>Друзья пользователя</a>
+  </li>
+  <li class="last">
+    <div class="icon s_icon_friends"></div>
+    <a href="/account,friendof?username=<%= encodeURIComponent(profileUser.username) %>"<%= (typeof activeProfileNav !== 'undefined' && activeProfileNav === 'friendof') ? ' class="grey"' : '' %>>В друзьях у пользователей</a>
+  </li>
+  <% } %>
+</ul>

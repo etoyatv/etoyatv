@@ -1,0 +1,385 @@
+.stream-promo-page {
+  background: url("../images/css_img_119_promo-stream-bg-pattern.jpg") top center;
+} 
+
+.stream-promo-wrapper {
+  text-align:left;
+  width: 1000px;
+  margin: 0 auto;
+  background: url("../images/css_img_120_promo-stream-splash.jpg") top center no-repeat;
+  padding-top: 40px;
+}
+
+.stream-promo-wrapper h1 {
+
+  width:542px;
+  height:152px;
+  margin:0 auto;
+  background: url("../images/css_img_121_promo-stream-top-title.png") 0px 0px;
+}
+
+.stream-promo-wrapper h1 span {
+  display:none; 
+}
+
+
+.stream-promo-clients {
+  margin-left:40px;
+  float: right;
+  padding-left:20px;
+  width: 340px;
+  height: 269px;
+  background: url('../images/css_img_122_promo-stream-clients3.png') left 35px no-repeat;
+
+}
+
+
+.stream-promo-info {
+  font-size:16px;
+  color:#D2D2D2;
+  line-height:1.5em;
+  margin-top:20px;
+  height: 285px;
+}
+
+.stream-promo-info p {
+  padding-bottom: 1.5em; 
+}
+
+.stream-promo-info blockquote {
+  margin-top: 20px;
+  font-family: Georgia;
+  font-style: italic;
+  line-height:1.4em;
+  padding-left:70px;
+  margin-left:0px;
+  background: url("../images/css_img_123_hand.png") 15px 4px no-repeat;
+}
+
+.stream-promo-contacts {
+  text-align:center; 
+}
+
+.stream-promo-phone, .stream-promo-email {
+  width: 300px;
+  height: 67px;
+  background:url("../images/css_img_124_promo-stream-phone.png") no-repeat 0px 0px;
+  overflow: hidden;
+  display: inline-block 
+}
+
+.stream-promo-email {
+  background:url("../images/css_img_125_promo-stream-email.png") no-repeat 0px 0px;
+}
+.stream-promo-phone span, .stream-promo-email span {
+  display:none
+} 
+
+.stream-promo-title-1 {
+  text-align: center; 
+  margin-top: 35px;
+}
+.stream-promo-title-1 b {
+  background: url("../images/css_img_121_promo-stream-top-title.png") -2px -162px;
+  width:620px;
+  height:34px;
+  display: inline-block;
+  
+}
+.stream-promo-title-1 span, .stream-promo-title-2 span {
+  display:none; 
+}
+.stream-promo-services {
+   margin-bottom:30px;
+   margin-top:30px;
+}
+.stream-promo-light, .stream-promo-pro {
+  width: 328px;
+  padding: 10px 0px;
+  float:left;
+}
+.stream-promo-light div.sp-sps, .stream-promo-pro div.sp-sps {
+  background: url("../images/css_img_126_sps.png");
+  border-radius: 2px 0px 0px 2px;
+  -moz-border-radius: 2px 0px 0px 2px;
+  -webkit-border-radius: 2px 0px 0px 2px;
+}
+.stream-promo-pro div {
+  border-radius: 0px 2px 2px 0px;
+  -moz-border-radius: 0px 2px 2px 0px;
+  -webkit-border-radius: 0px 2px 2px 0px;
+}
+.stream-promo-standard {
+  float:left;
+  width: 323px;
+}
+
+.sp-option-price {
+  font-size: 24px;
+  padding: 20px 0px;
+}
+
+.sp-clear {
+  clear:both;
+} 
+
+.stream-promo-light div.sp-sps, .stream-promo-pro div.sp-sps, .stream-promo-standard div.sp-sps {
+  text-align:center; 
+  padding-top: 35px;
+}
+
+.stream-promo-standard div.sp-sps {
+  background: url("../images/css_img_127_sps10.png");
+  border:solid 3px #4D4D4D;
+  border-radius: 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  padding-top:43px;
+  padding-bottom: 5px;
+} 
+.stream-promo-services h3 {
+  font-family: "Trebuchet MS";
+  font-size:30px;
+}
+
+.stream-promo-services .sp-dscr {
+  color:#999;
+  font-size:11px;
+  padding: 0px 20px;
+} 
+
+.sp-dscr-fst {
+  height: 55px; 
+}
+
+.sp-option em {
+  background: url("../images/css_img_128_promo-stream-service-sprite.png") no-repeat 0px 0px;
+  width: 20px;
+  height:20px;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.sp-option {
+  background: url("../images/css_img_129_sps-hr.png") no-repeat bottom center;;
+  height:43px;
+  padding: 15px 0px 2px 0px;
+}
+
+.sp-option-two {
+  padding: 5px 0px 2px 0px;
+  height:53px;
+}
+.sp-option .sp-one-cam {background-position: 0px 0px}
+.sp-option .sp-more-cams {background-position: 0px -20px; width:60px}
+.sp-option .sp-notebook {background-position: 0px -80px}
+.sp-option .sp-comp {background-position: 0px -120px}
+.sp-option .sp-man {background-position: 0px -40px}
+.sp-option .sp-more-mans  {background-position: 0px -60px; width:60px}
+.sp-option .sp-pult {background-position: 0px -100px}
+.sp-option .sp-empty {background:none}
+.sp-option .sp-yatv-channel {background-position: 0px -140px}
+.sp-option .sp-announce {background-position: 0px -160px}
+
+
+.stream-promo-or {
+  background: url("../images/css_img_129_sps-hr.png") repeat-x center center;
+  text-align: center;
+  margin: 10px 0px;
+}
+.stream-promo-or span {
+  font-size:20px;
+  color:#999;
+  display: inline-block;
+  background: url("../images/css_img_119_promo-stream-bg-pattern.jpg") top center;
+  padding: 0px 10px;
+   
+}
+
+.stream-promo-title-2 {
+  text-align: center; 
+  margin-top: 35px;
+  margin-bottom: 10px;
+}
+.stream-promo-title-2 b {
+  background: url("../images/css_img_121_promo-stream-top-title.png") -1px -206px;
+  width:497px;
+  height:33px;
+  display: inline-block;
+  
+}
+
+
+.stream-promo-form fieldset {
+  border:none;
+  padding: 0;
+  margin: 0; 
+  width: 630px;
+  margin: 0 auto;
+
+}
+.stream-promo-form {
+  padding: 0px 0px 50px 0px; 
+}
+.stream-promo-form label {
+  font-size:12px;
+  display: block;
+  margin-bottom: 3px; 
+}
+
+.stream-promo-form-left {
+  width: 307px;
+  float:left; 
+}
+
+.stream-promo-form-right {
+  width: 300px;
+  float:right; 
+}
+
+.stream-promo-text-field {
+  background: url("../images/css_img_127_sps10.png");
+  padding: 4px;
+  border-radius: 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+}
+.stream-promo-text-field div {
+  border:solid 1px #000;
+  background:#fff;
+  padding: 4px;
+  
+   
+}
+.stream-promo-text-field input {
+  background:none;
+  border:none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  height:18px;
+  line-height:18px;
+  display: block;
+  width:100%;
+}
+
+.stream-promo-select-box  {
+  background: url("../images/css_img_127_sps10.png");
+  padding: 4px;
+  border-radius: 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+}
+.stream-promo-select-box .select-inner {
+  background-color:#fff;
+  color:#111; 
+}
+
+.stream-promo-select-box .options li {
+  background:  #fff;
+}
+.stream-promo-select-box .options li:hover {
+   background:  #eee;
+}
+
+.stream-promo-select-box   .options li.selected {
+  background:#ccc; 
+  color:#333;
+}
+
+.stream-promo-select-box .select-outer {
+  width:auto;
+  display: block;
+  float: none; 
+  background:#fff;
+}
+
+.stream-promo-text-area {
+  background: url("../images/css_img_127_sps10.png");
+  padding: 4px;
+  border-radius: 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+}
+
+
+.stream-promo-text-area div {
+  border:solid 1px #000;
+  background:#fff;
+  padding: 4px;
+}
+
+.stream-promo-text-area textarea {
+  background:none;
+  border:none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+
+  height: 76px;
+  display: block;
+  width:100%;
+}
+
+.stream-promo-field {
+  padding: 0px 0px 5px 0px;
+}
+
+.stream-promo-submit {
+  margin-top:5px;
+  float:right; 
+}
+.stream-promo-submit input {
+  background: url("../images/css_img_130_submit.png") no-repeat 0px 0px;
+  width:142px;
+  overflow: hidden;
+  height:47px;
+  border:none;
+  outline: none;
+  margin: 0px;
+  color:#fff;
+  cursor:pointer;
+  font-size:20px;
+  padding: 0;
+  text-shadow: 0px -1px 0px #999;
+  
+}
+
+
+.stream-promo-field label b {
+  color:#B76868; 
+  font-weight:bold;
+}
+
+
+.errored {
+  background: #B76868;
+  color: #000;
+  padding: 5px 10px;
+  margin-top: 15px;
+  border-radius: 4px;
+  float:left;
+}
+.stream-promo-text-field .inperr {
+  border:solid 1px #B76868
+} 
+/*
+     FILE ARCHIVED ON 18:33:38 Mar 03, 2013 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 18:25:17 Jun 03, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  captures_list: 0.481
+  exclusion.robots: 0.034
+  exclusion.robots.policy: 0.025
+  esindex: 0.01
+  cdx.remote: 86.044
+  LoadShardBlock: 40.586 (3)
+  PetaboxLoader3.datanode: 49.321 (4)
+  load_resource: 177.408
+  PetaboxLoader3.resolve: 166.156
+*/

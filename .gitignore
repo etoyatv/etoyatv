@@ -1,0 +1,30 @@
+# Secrets & local env
+.env
+**/.env
+!.env.example
+!**/.env.example
+
+# Dependencies & build
+**/node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Runtime / production data
+db/mysql_data/
+web/emails/
+web/public/uploads/**
+!web/public/uploads/.gitkeep
+web/public/tvsnapshots/**
+!web/public/tvsnapshots/.gitkeep
+web/storage/
+**/private/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Logs
+*.log

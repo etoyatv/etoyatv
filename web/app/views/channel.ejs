@@ -1,0 +1,1512 @@
+<%- include('partials/header') %>
+
+  <% if (channel.bg_color || channel.bg_url || channel.text_color) { %>
+    <style>
+      body {
+        <% if (channel.bg_color) { %>
+          background-color: <%= channel.bg_color %> !important;
+        <% } %>
+        <% if (channel.bg_url) { %>
+          background-image: url('<%= CDN_BASE_URL %><%= channel.bg_url %>') !important;
+          <% if (channel.bg_fit === 'tile') { %>
+            background-size: auto !important;
+            background-position: left top !important;
+            background-repeat: repeat !important;
+          <% } else if (channel.bg_fit === 'center') { %>
+            background-size: auto !important;
+            background-position: center top !important;
+            background-repeat: no-repeat !important;
+          <% } else if (channel.bg_fit === 'fit_width') { %>
+            background-size: 100% auto !important;
+            background-position: center top !important;
+            background-repeat: no-repeat !important;
+          <% } else { %>
+            background-size: cover !important;
+            background-position: center top !important;
+            background-repeat: no-repeat !important;
+          <% } %>
+        <% } %>
+        background-attachment: fixed !important;
+      }
+
+      <% if (channel.text_color) {
+
+        %>body,
+        .block-title,
+        .box-title,
+        .box-content,
+        .info-row {
+          color: <%=channel.text_color %> !important;
+        }
+
+        <%
+      }
+
+      %>
+    </style>
+    <% } %>
+
+      <div id="content">
+        <!-- BANNER -->
+        <div id="user_top_banner">
+          <a href="/<%= channel.shortname %>" style="display: block;">
+            <% if (channel.banner_url) { %>
+              <div
+                style="width: 970px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                <img src="<%= CDN_BASE_URL %><%= channel.banner_url  %>" style="max-width: 100%; border-radius: 4px;">
+              </div>
+              <% } else { %>
+                <% if (adsEnabled && adsConfig['header_970x90'] && adsConfig['header_970x90'].image) { %>
+                  <div style="width: 970px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
+                    <% if (adsConfig['header_970x90'].url) { %>
+                      <a href="<%= adsConfig['header_970x90'].url %>" target="_blank" style="display: block;">
+                        <img src="<%= adsConfig['header_970x90'].image %>" style="max-width: 100%; border-radius: 4px;">
+                      </a>
+                    <% } else { %>
+                      <img src="<%= adsConfig['header_970x90'].image %>" style="max-width: 100%; border-radius: 4px;">
+                    <% } %>
+                  </div>
+                <% } else if (!adsEnabled) { %>
+                  <!-- Ad is disabled -->
+                <% } else { %>
+                  <div style="width: 970px; height: 90px; background: #333; display: flex; align-items: center; justify-content: center; color: #777; margin-bottom: 10px;">
+                    Место для рекламы 970x90
+                  </div>
+                <% } %>
+              <% } %>
+          </a>
+        </div>
+        <!-- BANNER -->
+        <div class="mono_blocks" style="margin-bottom:10px;">
+          <div class="blackbox" id="playerchat" style="  width: auto;">
+            <div class="blackbox_tl"></div>
+            <div class="blackbox_tc"></div>
+            <div class="blackbox_tr"></div>
+            <div class="blackbox_cw">
+              <div class="blackbox_c" style="">
+                <div class="blackbox_ci">
+                  <div style="height:349px; width:1px; margin-left:-1px; float:left;"></div>
+                  <div style="width:100%; float:left;">
+                    <div class="block-head-bg"></div>
+                    <div class="block-head">
+                      <div class="block-head-right">
+                        <div class="block-title"><span id="channel_title" class="translatable"><%= channel.name %></span><% if (channel.is_verified) { %><span class="verified_icon <%= channel.is_premium ? 'blue' : '' %>" title="<%= channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>"></span><% } %>
+                          <% if (channel.is_18_plus) { %> <span class="label_18"
+                              style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span>
+                            <% } %> <span id="channel_program_title"></span>
+                        </div>
+                        <div class="block-buttons"><a onclick="return bookmark(this);"
+                            title="Добавить в закладки браузера" class="block-buttons-bg-last"
+                            style="cursor:pointer;"><span class="block-head-icon-star"></span></a>
+                          <div class="fb-share-button" data-type="icon_link"><span
+                              class="block-head-icon-facebook"></span></div><a
+                            href="https://t.me/share/url?url=<%= encodeURIComponent(APP_URL + '/' + channel.shortname) %>&text=<%= encodeURIComponent(channel.name) %>"
+                            title="Поделиться в Telegram" target="_blank" class="block-buttons-bg"
+                            style="display:flex; justify-content:center; align-items:center; text-decoration:none;"><svg
+                              width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                              style="margin-top:-2px;">
+                              <path
+                                d="M21.0188 3.52223L2.57018 10.6387C1.04278 11.2505 1.05604 12.1037 2.28913 12.4815L7.0423 13.965L18.043 7.03058C18.562 6.71536 19.0343 6.89201 18.6433 7.23963L9.73484 15.281L9.38797 19.8665C9.89617 19.8665 10.1206 19.6334 10.4042 19.3567L12.8465 16.9818L17.9254 20.7303C18.8601 21.246 19.5393 20.9785 19.7828 19.8398L23.2384 3.55138C23.5822 2.19062 22.7239 1.58359 21.0188 3.52223Z"
+                                fill="rgb(61,61,61)" />
+                            </svg></a>
+                            <% if (typeof user !== 'undefined' && user) { %>
+                            <a onclick="openReportModal('channel', <%= channel.id %>)" title="Пожаловаться на телеканал" class="block-buttons-bg" style="cursor:pointer;"><span class="block-head-icon-alarm"></span></a>
+                            <% } %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="block-content">
+                      <!-- Scoped player overrides -->
+                      <style>
+                        #etoyatv-offline-overlay {
+                          <% if (channel.player_bg_url) { %>
+                            background-image: url('<%= CDN_BASE_URL %><%= channel.player_bg_url %>') !important;
+                            background-size: cover !important;
+                            background-position: center !important;
+                            background-repeat: no-repeat !important;
+                            <% if (channel.player_bg_color) { %>
+                              background-color: <%= channel.player_bg_color %> !important;
+                            <% } %>
+                          <% } else { %>
+                            background-image: none !important;
+                            background-color: #000 !important;
+                          <% } %>
+                        }
+                        <% if (channel.player_menu_color) { %>
+                          #container_swf .player-menu-bg,
+                          #container_swf .player-actions button,
+                          #container_swf .player-actions a,
+                          #container_swf .volume-slider-wrapper {
+                            background: <%= channel.player_menu_color %> !important;
+                          }
+                        <% } %>
+                        <% if (channel.player_link_color) { %>
+                          #container_swf .player-ui a,
+                          #container_swf .player-ui button,
+                          #container_swf .player-ui span,
+                          #container_swf #viewers-count-player {
+                            color: <%= channel.player_link_color %> !important;
+                          }
+                        <% } %>
+                      </style>
+
+                      <div class="playerchat"
+                        style="display: flex; width: 978px; height: 331px; background: #000; font-family: Tahoma, sans-serif;">
+
+                        <!-- LEFT: PLAYER (578px) -->
+                        <div id="container_swf"
+                          style="width: 578px; height: 331px; position: relative; background: #000; border-right: 1px solid #333;">
+
+                          <video id="etoyatv-video" width="100%" height="100%"
+                            style="background: #000; object-fit: contain; cursor: pointer;"
+                            playsinline webkit-playsinline disableRemotePlayback></video>
+
+                          <!-- Transition Canvas -->
+                          <canvas id="etoyatv-transition-canvas"
+                            style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; opacity: 0; transition: opacity 0.5s ease-out; object-fit: contain;"></canvas>
+
+                           <!-- Overlays Canvas -->
+                           <canvas id="etoyatv-overlays-canvas" width="1280" height="720"
+                             style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; object-fit: contain; display: none;"></canvas>
+
+                          <!-- Loading Spinner -->
+                          <div id="etoyatv-spinner"
+                            style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; pointer-events: none;">
+                            <svg width="24" height="24" viewBox="0 0 24 24"
+                              style="animation: etoyatv-spin 1s steps(8, end) infinite;">
+                              <circle cx="12" cy="2" r="2.5" fill="rgba(255,255,255,1)" />
+                              <circle cx="19.07" cy="4.93" r="2" fill="rgba(255,255,255,0.8)" />
+                              <circle cx="22" cy="12" r="1.5" fill="rgba(255,255,255,0.6)" />
+                              <circle cx="19.07" cy="19.07" r="1.5" fill="rgba(255,255,255,0.4)" />
+                              <circle cx="12" cy="22" r="1.5" fill="rgba(255,255,255,0.2)" />
+                              <circle cx="4.93" cy="19.07" r="1.5" fill="rgba(255,255,255,0.1)" />
+                              <circle cx="2" cy="12" r="1.5" fill="rgba(255,255,255,0.1)" />
+                              <circle cx="4.93" cy="4.93" r="1.5" fill="rgba(255,255,255,0.1)" />
+                            </svg>
+                          </div>
+                          <style>
+                            @keyframes etoyatv-spin {
+                              to {
+                                transform: rotate(360deg);
+                              }
+                            }
+                          </style>
+
+                          <!-- Picture-in-Picture placeholder (YouTube-style) -->
+                          <div id="etoyatv-pip-overlay"
+                            style="display: none; position: absolute; inset: 0; z-index: 6; background: #181818; color: #fff; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-family: Tahoma, sans-serif; text-align: center; padding: 16px; box-sizing: border-box;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                              <rect x="2" y="3" width="20" height="14" rx="2"/>
+                              <path d="M8 21h8"/>
+                              <path d="M12 17v4"/>
+                              <rect x="11" y="8" width="8" height="6" rx="1" fill="#555" stroke="#888"/>
+                            </svg>
+                            <div style="font-size: 15px; font-weight: bold; color: #fff;">Видео вынесено в отдельное окно</div>
+                            <button type="button" id="btn-pip-return"
+                              style="margin-top: 4px; padding: 8px 16px; border: none; border-radius: 3px; background: #00a0e3; color: #fff; font-size: 12px; font-weight: bold; cursor: pointer; font-family: Tahoma, sans-serif;">
+                              Вернуть сюда
+                            </button>
+                          </div>
+
+                          <!-- Offline Overlay -->
+                          <div id="etoyatv-offline-overlay"
+                            style="display: <%= (channel.player_bg_url || channel.player_bg_color) ? 'flex' : 'none' %>; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2;">
+                            <% if (!channel.player_bg_url) { %>
+                              <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2" fill="white" />
+                                  <line x1="15" y1="9" x2="9" y2="15" stroke="black" stroke-width="2.5" stroke-linecap="round" />
+                                  <line x1="9" y1="9" x2="15" y2="15" stroke="black" stroke-width="2.5" stroke-linecap="round" />
+                                </svg>
+                                <span style="font-size: 16px; font-weight: bold; color: #fff; font-family: Tahoma, sans-serif;">Нет трансляции</span>
+                              </div>
+                            <% } %>
+                          </div>
+
+                          <!-- No Signal Overlay -->
+                          <div id="etoyatv-nosignal-overlay"
+                            style="display: none; flex-direction: column; gap: 15px; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: #fff; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; font-family: Tahoma, sans-serif; z-index: 2.5;">
+                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px;">
+                              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 7H3C1.9 7 1 7.9 1 9v6c0 1.1.9 2 2 2h8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                <path d="M17 8.5L22 5v14l-5-3.5v-7z" fill="white" />
+                                <path d="M15 13l5 5M20 13l-5 5" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+                              </svg>
+                              <span style="font-size: 16px; font-weight: bold; color: #fff; font-family: Tahoma, sans-serif;">Нет сигнала</span>
+                            </div>
+                          </div>
+
+                          <!-- 18+ Overlay -->
+                          <% if (channel.is_18_plus) { %>
+                            <div id="etoyatv-18plus-overlay"
+                              style="display: none; flex-direction: column; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; color: #fff; align-items: center; justify-content: center; font-family: Tahoma, sans-serif; z-index: 20;">
+                              <div style="font-size: 24px; font-weight: bold; margin-bottom: 15px;">Внимание! Контент
+                                18+</div>
+                              <div style="font-size: 16px; margin-bottom: 25px;">Подтвердите, что вам уже исполнилось 18
+                                лет.</div>
+                              <button onclick="confirm18Plus()"
+                                style="padding: 10px 20px; background: #3b9cd9; color: #fff; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer;">Мне
+                                есть 18 лет</button>
+                            </div>
+                            <script>
+                              function confirm18Plus() {
+                                localStorage.setItem('etoyatv_global_18plus', 'true');
+                                document.getElementById('etoyatv-18plus-overlay').style.display = 'none';
+                                const video = document.getElementById('etoyatv-video');
+                                if (video) video.play().catch(e => console.error('Play error after 18+ confirmation:', e));
+                              }
+
+                              // Проверяем сразу же, до загрузки остальной страницы (чтобы не было мигания)
+                              if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+                                document.getElementById('etoyatv-18plus-overlay').style.display = 'flex';
+                              }
+
+                              document.addEventListener('DOMContentLoaded', () => {
+                                if (localStorage.getItem('etoyatv_global_18plus') !== 'true') {
+                                  // Если 18+ не подтверждено, ставим видео на паузу
+                                  const video = document.getElementById('etoyatv-video');
+                                  if (video) video.pause();
+                                }
+                              });
+                            </script>
+                            <% } %>
+
+                              <!-- Include HLS.js -->
+                              <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17"></script>
+
+                              <!-- Always visible Live Label (fades out on hover) -->
+                              <div id="player_live_idle" style="position: absolute; top: 10px; left: 10px; z-index: 10; transition: opacity 0.3s; pointer-events: none; opacity: 0;">
+                                <div class="live_label" id="player_live_label"
+                                  style="display: none; width: 32px; height: 17px;">
+                                </div>
+                              </div>
+
+                              <!-- Logo and Title -->
+                              <div class="player-ui"
+                                style="position: absolute; top: 10px; left: 10px; display: flex; align-items: flex-start; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+                                <a href="/<%= channel.shortname %>" style="display: block;">
+                                  <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo_50.png'  %>" alt="Logo"
+                                    style="width: 50px; height: 50px; background: <%= channel.player_bg_color || '#000000' %>; border: 1px solid #444; box-sizing: border-box; object-fit: <%= channel.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                </a>
+                                <div style="display: flex; flex-direction: row; align-items: center; gap: 5px;">
+                                  <a href="/<%= channel.shortname %>"
+                                    style="background: rgba(0,0,0,0.6); color: #00A3E0; font-size: 11px; font-family: Tahoma, sans-serif; padding: 3px 6px; display: inline-flex; align-items: center; text-decoration: none; white-space: nowrap;">
+                                    <%= channel.name %>
+                                    <% if (channel.is_verified) { %>
+                                      <span class="verified_icon <%= channel.is_premium ? 'blue' : '' %>" title="<%= channel.is_premium ? 'Премиум канал' : 'Подтвержденный канал' %>" style="margin-left: 5px; display: inline-block;"></span>
+                                    <% } %>
+                                  </a>
+                                </div>
+                              </div>
+
+                              <!-- Right Action Bar -->
+                              <div class="player-actions player-ui"
+                                style="position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 5px; z-index: 10; transition: opacity 0.3s;">
+                                <button onclick="copyShareLink('<%= channel.shortname %>')" title="Поделиться"
+                                  style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></button>
+                                <button onclick="<% if (typeof user !== 'undefined' && user) { %>openReportModal('channel', <%= channel.id %>)<% } else { %>window.location.href='/login'<% } %>" title="Пожаловаться"
+                                  style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; font-size: 16px; display: flex; justify-content: center; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></button>
+                                <a href="/channel,records?shortname=<%= channel.shortname %>" title="Записи"
+                                  style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; text-decoration: none; font-size: 16px;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><rect x="2" y="2" width="20" height="14" rx="2.18" ry="2.18"></rect><line x1="12" y1="20" x2="12" y2="22"></line><line x1="8" y1="22" x2="16" y2="22"></line><line x1="12" y1="16" x2="12" y2="20"></line></svg></a>
+                                <button id="btn-popout" type="button" title="Мини-плеер"
+                                  style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; display: flex; justify-content: center; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="10" width="8" height="5" rx="1" fill="currentColor" stroke="none"/></svg></button>
+                                <button id="btn-cast" type="button" title="Chromecast"
+                                  style="width: 32px; height: 32px; background: rgba(0,0,0,0.7); border: none; color: #fff; cursor: pointer; border-radius: 3px; display: none; justify-content: center; align-items: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zM21 3H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg></button>
+                              </div>
+
+                              <!-- Bottom Left Controls -->
+                              <div class="player-ui player-menu-bg"
+                                style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px; z-index: 10; display: flex; align-items: center; justify-content: center; transition: opacity 0.3s; gap: 10px;">
+                                 <button id="btn-play-pause" title="Play/Pause"
+                                   style="background: transparent; border: none; color: #fff; font-size: 18px; cursor: pointer; outline: none; display: inline-flex; align-items: center; justify-content: center; padding: 0;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg></button>
+                              </div>
+
+                              <!-- Bottom Right Controls -->
+                              <div class="player-ui player-menu-bg"
+                                style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); padding: 5px 10px; border-radius: 3px; z-index: 10; display: flex; align-items: center; gap: 4px; transition: opacity 0.3s;">
+                                 <!-- Stream Selector Container -->
+                                 <div id="stream-selector-container" style="display: none; align-items: center; gap: 4px; margin: 0; padding: 0;">
+                                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; color: #fff; margin: 0;" title="Камера"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                   <div id="stream-buttons" style="display: flex; gap: 4px; margin: 0; padding: 0;"></div>
+                                 </div>
+
+                                <div
+                                  style="position: relative; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0;"
+                                  class="volume-container"
+                                  onmouseenter="this.querySelector('.volume-slider-wrapper').style.display='block'"
+                                  onmouseleave="this.querySelector('.volume-slider-wrapper').style.display='none'">
+                                  <button id="btn-volume"
+                                    style="background: transparent; border: none; color: #fff; font-size: 14px; cursor: pointer; outline: none; padding: 0 2px; margin: 0; position: relative; z-index: 5; display: flex; align-items: center; justify-content: center;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg></button>
+                                  <div class="volume-slider-wrapper"
+                                    style="position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border-radius: 3px; display: none; height: 90px; width: 30px; padding: 0; z-index: 4;">
+                                    <div
+                                      style="position: absolute; bottom: -25px; left: 0; width: 100%; height: 25px; background: transparent;">
+                                    </div>
+                                    <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="1"
+                                      style="position: absolute; top: 50%; left: 50%; width: 70px; height: 4px; cursor: pointer; transform: translate(-50%, -50%) rotate(-90deg); margin: 0; padding: 0;">
+                                  </div>
+                                </div>
+                                <div style="display: flex; align-items: center; color: #fff; font-size: 11px; margin: 0; padding: 0 2px;">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 16 16" fill="currentColor" style="vertical-align: middle; margin-right: 3px; color: #fff;"><g transform="translate(16, 0) scale(-1, 1)"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7Zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216ZM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"/></g></svg>
+                                  <span id="viewers-count-player" style="margin: 0;">1</span>
+                                </div>
+                                <button id="btn-fullscreen"
+                                  style="background: transparent; border: none; color: #fff; cursor: pointer; outline: none; display: flex; align-items: center; justify-content: center; padding: 0 2px; margin: 0;">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                                </button>
+                                <a href="/"
+                                  style="font-weight: bold; color: #fff; font-size: 12px; text-decoration: none;">ЭтоЯTV</a>
+                              </div>
+                        </div>
+
+                        <!-- RIGHT: CHAT (400px) -->
+                        <div id="chat_body"
+                          style="width: 400px; height: 331px; background: #000; display: flex; flex-direction: column; position: relative;">
+
+                          <!-- Top section: Messages (left) and Users (right) -->
+                          <div style="display: flex; height: 290px;">
+
+                            <!-- Messages List (270px) -->
+                            <style>
+                              .chat-message-row {
+                                position: relative;
+                              }
+                              .chat-message-row .btn-pin-message {
+                                display: none;
+                                cursor: pointer;
+                                margin-left: 5px;
+                                opacity: 0.7;
+                              }
+                              .chat-message-row:hover .btn-pin-message {
+                                display: inline;
+                              }
+                              .chat-message-row .btn-pin-message:hover {
+                                opacity: 1;
+                              }
+                              .chat-message-row .btn-delete-message {
+                                display: none;
+                                cursor: pointer;
+                                margin-left: 3px;
+                                opacity: 0.7;
+                              }
+                              .chat-message-row:hover .btn-delete-message {
+                                display: inline;
+                              }
+                              .chat-message-row .btn-delete-message:hover {
+                                opacity: 1;
+                              }
+                              .emoji-tab {
+                                opacity: 0.6;
+                                transition: opacity 0.2s, background-color 0.2s;
+                              }
+                              .emoji-tab:hover {
+                                opacity: 1;
+                                background-color: #333;
+                              }
+                              .emoji-tab.active {
+                                opacity: 1;
+                                background-color: #444;
+                              }
+                              .emoji-item {
+                                background: none;
+                                border: none;
+                                cursor: pointer;
+                                font-size: 16px;
+                                padding: 0;
+                                text-align: center;
+                                border-radius: 4px;
+                                transition: background-color 0.15s;
+                                outline: none;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                height: 26px;
+                                width: 100%;
+                                min-width: 0;
+                                box-sizing: border-box;
+                              }
+                              .emoji-item:hover {
+                                background-color: #444;
+                              }
+
+                              #emoji-grid::-webkit-scrollbar {
+                                width: 4px;
+                              }
+                              #emoji-grid::-webkit-scrollbar-track {
+                                background: #222;
+                              }
+                              #emoji-grid::-webkit-scrollbar-thumb {
+                                background: #555;
+                                border-radius: 2px;
+                              }
+                              #emoji-grid::-webkit-scrollbar-thumb:hover {
+                                background: #777;
+                              }
+                              /* Custom scrollbar for WebKit (Chrome, Safari, Edge) */
+                              #chat_text_field::-webkit-scrollbar,
+                              #chat_users::-webkit-scrollbar,
+                              #chat_pinned_box::-webkit-scrollbar {
+                                width: 6px;
+                              }
+                              #chat_text_field::-webkit-scrollbar-track,
+                              #chat_users::-webkit-scrollbar-track,
+                              #chat_pinned_box::-webkit-scrollbar-track {
+                                background: #000;
+                              }
+                              #chat_text_field::-webkit-scrollbar-thumb,
+                              #chat_users::-webkit-scrollbar-thumb,
+                              #chat_pinned_box::-webkit-scrollbar-thumb {
+                                background: #444;
+                                border-radius: 3px;
+                              }
+                              #chat_text_field::-webkit-scrollbar-thumb:hover,
+                              #chat_users::-webkit-scrollbar-thumb:hover,
+                              #chat_pinned_box::-webkit-scrollbar-thumb:hover {
+                                background: #666;
+                              }
+                              /* Standard scrollbar for Firefox */
+                              #chat_text_field,
+                              #chat_users,
+                              #chat_pinned_box {
+                                scrollbar-width: thin;
+                                scrollbar-color: #444 #000;
+                              }
+                            </style>
+                            <div style="width: 270px; height: 100%; position: relative; display: flex; flex-direction: column;">
+                              <!-- Stream Chat Tabs Selector -->
+                              <div id="chat-tabs-container" style="display: none; background: #111; border-bottom: 1px solid #333; padding: 4px; gap: 4px; flex-shrink: 0; align-items: center;">
+                                 <!-- Dynamic tab buttons rendered via player.js -->
+                              </div>
+                              
+                              <!-- Pinned Message -->
+                              <div id="chat_pinned_box" style="display: <%= channel.pinned_message ? 'flex' : 'none' %>; align-items: flex-start; justify-content: space-between; background: rgba(50, 108, 186, 0.2); border-bottom: 1px solid <%= channel.bg_color || '#326CBA' %>; padding: 4px 6px; font: 10px Verdana, Geneva, sans-serif; color: #fff; box-sizing: border-box; width: 100%; max-height: 75px; overflow-y: auto; gap: 4px; flex-shrink: 0;">
+                                <span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; flex-shrink: 0; margin-top: 1px; color: #fff;" title="Закрепленное сообщение"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.15.85-.44 1.18L5.78 14a2 2 0 0 0-.44 1.24z"></path></svg></span>
+                                <div style="flex-grow: 1; word-wrap: break-word; overflow-wrap: break-word; word-break: break-all; white-space: normal; font-size: 10px; line-height: 1.3;" id="chat_pinned_content">
+                                  <% if (channel.pinned_message) { %>
+                                    <span style="color: <%= channel.pinned_color || '#3b9cd9' %>; font-weight: bold;"><%= channel.pinned_username || channel.pinned_guest_name %></span>: <%= channel.pinned_message %>
+                                  <% } %>
+                                </div>
+                                <% if (typeof isModerator !== 'undefined' && isModerator) { %>
+                                  <button id="btn-chat-unpin" style="background: transparent; border: none; cursor: pointer; color: #aaa; font-size: 11px; padding: 0 2px; line-height: 1; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;" title="Открепить"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
+                                <% } %>
+                              </div>
+
+
+                              <div id="chat_text_field"
+                                style="width: 100%; flex: 1; overflow-y: auto; padding: 5px; box-sizing: border-box; display: <%= channel.chat_enabled ? 'flex' : 'none' %>; flex-direction: column; gap: 2px;">
+                                <% if (typeof chatMessages !=='undefined' && chatMessages.length > 0) { %>
+                                  <% 
+                                    const userColors = {};
+                                    const validNicks = new Set();
+                                    chatMessages.forEach(m => {
+                                      const nick = m.username || m.guest_name;
+                                      if (nick) {
+                                        const lower = nick.toLowerCase();
+                                        validNicks.add(lower);
+                                        userColors[lower] = m.color || '#3b9cd9';
+                                      }
+                                    });
+                                    if (channel && channel.username) {
+                                      const ownerLower = channel.username.toLowerCase();
+                                      validNicks.add(ownerLower);
+                                      userColors[ownerLower] = '#3b9cd9';
+                                    }
+                                    if (typeof user !== 'undefined' && user) {
+                                      const userLower = user.username.toLowerCase();
+                                      validNicks.add(userLower);
+                                      userColors[userLower] = user.chat_color || '#3b9cd9';
+                                    }
+                                  %>
+                                  <% chatMessages.forEach(msg=> { %>
+                                    <div class="chat-message-row" data-msg-id="<%= msg.id %>" data-stream-index="<%= msg.stream_index !== null && msg.stream_index !== undefined ? msg.stream_index : '' %>" style="font: 11px Verdana, Geneva, sans-serif; color: #fff; margin: 1px; word-wrap: break-word; overflow-wrap: break-word; white-space: pre-wrap;"><span style="color: #666;"><%= formatDate(msg.created_at, userTimezone, 'HH:mm') %></span> <% const displayNick = msg.username || msg.guest_name; let rawMsg = msg.message || ''; let isReply = false; let replyTo = ''; let restOfMsg = rawMsg; const replyMatch = rawMsg.match(/^([a-zA-Z0-9_\-\u0400-\u04FF\.]{2,25}),\s*(.*)$/); if (replyMatch && displayNick) { const potentialRecipient = replyMatch[1]; if (validNicks.has(potentialRecipient.toLowerCase()) && potentialRecipient.toLowerCase() !== displayNick.toLowerCase()) { isReply = true; replyTo = potentialRecipient; restOfMsg = replyMatch[2]; } } if (isReply) { const recipientColor = userColors[replyTo.toLowerCase()] || '#3b9cd9'; %><span style="color: <%= msg.color || '#3b9cd9' %>; font-weight: bold;"><span class="chat-username" data-username="<%= displayNick %>" data-color="<%= msg.color || '#3b9cd9' %>" data-role="<%= msg.role %>" style="cursor: pointer;"><%= displayNick %></span></span><span style="color: #fff;">&gt;</span><span style="color: <%= recipientColor %>; font-weight: bold;"><span class="chat-username" data-username="<%= replyTo %>" data-color="<%= recipientColor %>" style="cursor: pointer;"><%= replyTo %></span>,</span> <%= restOfMsg %><% } else { %><span style="color: <%= msg.color || '#3b9cd9' %>; font-weight: bold;"><span class="chat-username" data-username="<%= displayNick %>" data-color="<%= msg.color || '#3b9cd9' %>" data-role="<%= msg.role %>" style="cursor: pointer;"><%= displayNick %></span>:</span> <%= rawMsg %><% } %><% if (typeof isModerator !== 'undefined' && isModerator) { %><span class="btn-pin-message" data-msg-id="<%= msg.id %>" title="Закрепить" style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 5px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-.44-1.24l-2.78-3.5A2 2 0 0 1 15 9.24V5a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4.24c0 .43-.15.85-.44 1.18L5.78 14a2 2 0 0 0-.44 1.24z"></path></svg></span><span class="btn-delete-message" data-msg-id="<%= msg.id %>" title="Удалить" style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; margin-left: 3px;"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span><% } %></div>
+                                  <% }) %>
+                                <% } %>
+                              </div>
+                              <div id="chat_disabled_msg"
+                                style="display: <%= channel.chat_enabled ? 'none' : 'flex' %>; position: absolute; top: 0; left: 0; width: 100%; height: 100%; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; text-align: center; padding: 0 10px;">
+                                <%= channel.chat_disabled ? 'Чат выключен администрацией платформы' : 'Чат выключен' %>
+                              </div>
+                            </div>
+
+                            <!-- Users List (130px) -->
+                            <div id="chat_users"
+                              style="width: 130px; height: 100%; overflow-y: auto; padding: 5px; box-sizing: border-box; border-left: 1px solid <%= channel.bg_color || '#326CBA' %>; font: 11px Verdana, Geneva, sans-serif; color: #F2FFF9;">
+                              <div style="padding-bottom: 5px; color: #aaa; display: flex; align-items: center; gap: 4px;">
+                                <span id="chat-viewers-prefix" style="display: none;">В чате: </span><span
+                                  id="chat-viewers-count">Загрузка...</span></div>
+                              <div id="chat-users-list">
+                                <!-- Users will be injected here via JS -->
+                                <% if (typeof user !=='undefined' && user) { %>
+                                  <% if (user.mask_mode !== 'invisible') { %>
+                                  <% let myRole='guest' ; if (user.id===channel.user_id) myRole='owner' ; else if
+                                    (user.role==='admin' || (typeof channelRole !== 'undefined' && channelRole === 'alien')) myRole='admin' ; else if (typeof channelRole !== 'undefined' && channelRole === 'moderator') myRole='moderator'; else if (typeof channelRole !== 'undefined' && (channelRole === 'editor' || channelRole === 'reporter')) myRole='staff'; else myRole='registered' ;
+                                    if (user.mask_mode === 'user_mask' && myRole !== 'owner') myRole = 'registered';
+                                  %>
+                                    <div class="chat-username" data-username="<%= user.username %>"
+                                      data-role="<%= myRole %>" data-color="<%= user.chat_color || '#fff' %>"
+                                      style="margin-top: 5px; color: <%= user.chat_color || '#fff' %>; font-weight: bold; display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                      <% if (myRole==='owner' ) { %><img src="/images/chat/owner.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else if (myRole==='admin' ) { %><img src="/images/chat/admin.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else if (myRole==='moderator' ) { %><img src="/images/chat/moderator.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else if (myRole==='staff' ) { %><img src="/images/chat/staff.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } else { %><img src="/images/chat/user.svg" style="width: 14px; height: 14px; vertical-align: text-bottom;"><% } %>
+                                              <span>
+                                                <%= user.username %>
+                                              </span>
+                                    </div>
+                                    <% } %>
+                                    <% } else { %>
+                                      <div class="chat-username" data-username="Гость" data-role="guest" data-color="#fff"
+                                        style="margin-top: 5px; color: #fff; font-weight: bold; display: flex; align-items: center; gap: 3px; cursor: pointer;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom; flex-shrink: 0; color: #fff;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> <span>Гость</span></div>
+                                      <% } %>
+                              </div>
+                            </div>
+
+                          </div>
+
+                          <!-- Bottom Input Area -->
+                          <div
+                            style="height: 41px; background: #000; padding: 3px; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+                            <% const isUserLoggedIn=(typeof user !=='undefined' && user); const canWrite=isUserLoggedIn
+                              || channel.guests_allowed; %>
+                              <!-- Chat Input -->
+                              <div class="inputs"
+                                style="display: <%= canWrite ? 'flex' : 'none' %>; align-items: center; width: 380px; height: 30px; background-color: <%= channel.bg_color || '#1a1a1a' %>; border: 4px solid <%= channel.bg_color || '#1a1a1a' %>; border-radius: 5px; box-sizing: border-box;">
+                                <input type="text" id="chat-input" maxlength="400"
+                                  placeholder="<%= channel.chat_enabled ? 'Написать...' : 'Чат выключен' %>"
+                                  <%=channel.chat_enabled ? '' : 'disabled' %> style="flex-grow: 1; min-width: 50px; height: 100%;
+                                background: rgba(0,0,0,0.6); color: #F2FFF9; font: 12px Verdana, Geneva, sans-serif;
+                                border: 1px solid #000; padding: 0 5px; outline: none; border-radius: 2px; box-shadow:
+                                inset 1px 1px 3px rgba(0,0,0,0.5);">
+
+                                <div
+                                  style="display: flex; align-items: center; justify-content: flex-end; flex-shrink: 0; padding-right: 4px; gap: 3px;">
+                                  <!-- Submit Button -->
+                                  <button id="btn-chat-submit"
+                                    style="background: transparent; border: none; cursor: pointer; outline: none; padding: 0; display: flex; align-items: center; justify-content: center; height: 16px; width: 16px;"
+                                    title="Отправить">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; color: #fff;">
+                                      <polyline points="9 10 4 15 9 20"></polyline>
+                                      <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+                                    </svg>
+                                  </button>
+
+                                  <!-- Color Picker -->
+                                  <div style="position: relative; display: flex; align-items: center;">
+                                    <button id="chat-color-btn"
+                                      style="width: 16px; height: 16px; padding: 0; border: 2px solid #fff; cursor: pointer; background-color: <%= isUserLoggedIn ? (user.chat_color || '#3b9cd9') : '#3b9cd9' %>; box-shadow: 0 0 0 1px #000;"
+                                      title="Цвет ника"></button>
+                                    <input type="hidden" id="chat-color-picker"
+                                      value="<%= isUserLoggedIn ? (user.chat_color || '#3b9cd9') : '#3b9cd9' %>">
+
+                                    <div id="chat-color-palette"
+                                      style="display: none; position: absolute; bottom: 25px; right: 0; background: #222; border: 1px solid #444; padding: 8px; width: 195px; flex-direction: row; gap: 8px; z-index: 50; box-shadow: 0 4px 12px rgba(0,0,0,0.5); box-sizing: border-box;">
+                                      <canvas class="chat-color-spectrum" width="150" height="80" style="cursor: crosshair; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+                                      <canvas class="chat-color-slider" width="16" height="80" style="cursor: row-resize; border-radius: 3px; display: block; background: #000; flex-shrink: 0;"></canvas>
+                                    </div>
+                                  </div>
+
+                                  <!-- Emoji Picker -->
+                                  <div style="position: relative; display: flex; align-items: center;">
+                                    <button id="chat-emoji-btn" type="button"
+                                      style="background: transparent; border: none; cursor: pointer; padding: 0; outline: none; display: flex; align-items: center; justify-content: center; height: 16px; width: 16px;"
+                                      title="Эмодзи">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display: block; color: #fff;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+                                    </button>
+
+                                    <div id="chat-emoji-panel"
+                                      style="display: none; position: absolute; bottom: 30px; right: 0; background: #222; border: 1px solid #444; padding: 6px; width: 195px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border-radius: 5px; box-sizing: border-box; flex-direction: column; gap: 6px;">
+                                      <!-- Tabs -->
+                                      <div style="display: flex; gap: 2px; border-bottom: 1px solid #444; padding-bottom: 4px; justify-content: space-between;">
+                                        <button type="button" class="emoji-tab active" data-tab="smileys" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Смайлики">😄</button>
+                                        <button type="button" class="emoji-tab" data-tab="gestures" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Жесты и люди">👍</button>
+                                        <button type="button" class="emoji-tab" data-tab="animals" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Природа">🐱</button>
+                                        <button type="button" class="emoji-tab" data-tab="food" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Еда">🍏</button>
+                                        <button type="button" class="emoji-tab" data-tab="symbols" style="background:none; border:none; cursor:pointer; font-size:14px; padding:2px; outline:none; border-radius:3px;" title="Символы">🔥</button>
+                                      </div>
+                                      <!-- Grid Container -->
+                                      <div id="emoji-grid" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-height: 150px; overflow-y: auto; overflow-x: hidden; padding: 2px; box-sizing: border-box; width: 100%;">
+                                        <!-- Emojis will be dynamically loaded here by active tab -->
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <% if ((typeof user==='undefined' || !user) || (typeof isModerator !=='undefined' &&
+                                    isModerator) || (typeof user !=='undefined' && user && user.role==='admin' )) { %>
+                                    <button id="btn-chat-menu"
+                                      style="background: transparent; border: none; cursor: pointer; outline: none; color: #fff; font-family: Verdana, sans-serif; font-size: 12px; font-weight: bold; padding: 0; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;">Меню</button>
+                                    <% } %>
+                                </div>
+                              </div>
+
+                              <!-- Guest Not Authorized Box -->
+                              <div class="login"
+                                style="display: <%= canWrite ? 'none' : 'flex' %>; align-items: center; width: 380px; height: 25px; background-color: rgba(0,0,0,0.4); border: 5px solid <%= channel.bg_color || '#326CBA' %>; border-radius: 5px; box-sizing: border-box; font: 13px Verdana, Geneva, sans-serif; color: #F2FFF9; padding: 0 5px;">
+                                Вы не <a href="/login" target="_blank"
+                                  style="color: #F2FFF9; margin-left: 4px; text-decoration: underline;">авторизованы</a>
+                              </div>
+                          </div>
+
+                          <!-- Chat Overlay Menu (Hidden by default) -->
+                          <div id="chat-menu"
+                            style="display: none; position: absolute; bottom: 45px; right: 10px; background: #222; border: 1px solid #444; padding: 5px; z-index: 20; font-size: 11px; font-family: Verdana, sans-serif;">
+                            <% if ((typeof isModerator !=='undefined' && isModerator) || (typeof user !=='undefined' &&
+                              user && user.role==='admin' )) { %>
+                              <div class="menu-item" id="btn-clear-chat"
+                                style="padding: 5px 10px; color: #fff; cursor: pointer;">Очистить чат</div>
+                              <div class="menu-item" id="btn-ban-guests"
+                                style="padding: 5px 10px; color: #fff; cursor: pointer;">
+                                <%= channel.guests_allowed ? 'Запретить гостей' : 'Разрешить гостей' %>
+                              </div>
+                              <% if (!channel.chat_disabled) { %>
+                              <div class="menu-item" id="btn-toggle-chat"
+                                style="padding: 5px 10px; color: #3b9cd9; cursor: pointer;">
+                                <%= channel.chat_enabled ? 'Выключить чат' : 'Включить чат' %>
+                              </div>
+                              <% } %>
+                              <% } else if (typeof user==='undefined' || !user) { %>
+                                <div class="menu-item" id="btn-change-guest-nick"
+                                  style="padding: 5px 10px; color: #fff; cursor: pointer;">Сменить ник</div>
+                                <% } %>
+                          </div>
+
+                        </div>
+                      </div>
+
+
+                      <script src="/socket.io/socket.io.js"></script>
+                      <%
+                        let currentUserStr = 'null';
+                        let userToken = '';
+                        if (typeof user !== 'undefined' && user) {
+                          let finalRole = user.role;
+                          if (user.role !== 'admin' && typeof channelRole !== 'undefined' && channelRole !== 'guest') {
+                            finalRole = channelRole;
+                          }
+                          if (user.mask_mode === 'user_mask' || user.mask_mode === 'invisible') {
+                            finalRole = 'registered';
+                          }
+                          if (user.id === channel.user_id) {
+                            finalRole = 'owner';
+                          }
+                          const publicUser = {
+                            id: user.id,
+                            username: user.username,
+                            role: finalRole,
+                            chat_color: user.chat_color
+                          };
+                          currentUserStr = JSON.stringify(publicUser).replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+                          userToken = encryptUser(Object.assign({}, publicUser, { mask_mode: user.mask_mode }));
+                        }
+                      %>
+                       <script>
+                         window.CHANNEL_ID = <%= channel.id %>;
+                         window.CHANNEL_SHORTNAME = '<%= channel.shortname %>';
+                         window.HIDE_LIVE_BADGE = <%= channel.hide_live_badge ? 'true' : 'false' %>;
+                         window.CURRENT_USER = <%- currentUserStr %>;
+                         window.CURRENT_USER_TOKEN = <%- userToken ? `'${userToken}'` : 'null' %>;
+                         window.CHANNEL_OWNER_ID = <%= channel.user_id %>;
+                         window.CHAT_ENABLED = <%= channel.chat_enabled ? 'true' : 'false' %>;
+                         window.IS_MODERATOR = <%= typeof isModerator !== 'undefined' && isModerator ? 'true' : 'false' %>;
+                         window.USER_TIMEZONE = '<%= typeof userTimezone !== 'undefined' ? userTimezone : 'Europe/Moscow' %>';
+                         window.PINNED_MESSAGES = <%- JSON.stringify(channel.pinnedMessages || { common: null, 1: null, 2: null, 3: null }).replace(/</g, '\\u003c').replace(/>/g, '\\u003e') %>;
+                       </script>
+                       <script src="<%= CDN_BASE_URL %>/js/player.js?v=<%= ASSET_VERSION %>"></script>
+                      <script>
+                      (function() {
+                        function initEmojiPicker() {
+                          const chatEmojiBtn = document.getElementById('chat-emoji-btn');
+                          const chatEmojiPanel = document.getElementById('chat-emoji-panel');
+                          const emojiGrid = document.getElementById('emoji-grid');
+                          const chatInput = document.getElementById('chat-input');
+
+                          if (!chatEmojiBtn || !chatEmojiPanel || !emojiGrid) return;
+
+                          const emojiCategories = {
+                            smileys: [
+                              '😄', '😂', '😊', '🤣', '😍', '😉', '😏', '😒', '😭', '😱', '😡', '🤯', '😴', '🤓', '😎',
+                              '🤔', '🙄', '😋', '😜', '😇', '🥺', '💩', '🤡', '👽', '👾', '👻', '💀', '🎃', '😺'
+                            ],
+                            gestures: [
+                              '👍', '👎', '👏', '🙌', '🙏', '🤝', '✌️', '👌', '✊', '🖐', '🧠', '💬', '👀', '✍️',
+                              '💪', '🤘', '👋', '💅', '👄', '👅', '👂', '👃', '👤', '👥', '🫂', '❤️', '💔', '💖'
+                            ],
+                            animals: [
+                              '🐱', '🐶', '🐻', '🦊', '🦁', '🐯', '🐨', '🐼', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧',
+                              '🐦', '🦆', '🦅', '🦉', '🦄', '🐝', '🐛', '🦋', '🐞', '🕷', '🐙', '🐠', '🐬', '🐳'
+                            ],
+                            food: [
+                              '🍏', '🍉', '🍓', '🍕', '🍔', '🍟', '🌭', '🍿', '🍦', '🍰', '🍩', '🍪', '🍺', '🍷', '☕️',
+                              '🍎', '🍇', '🍒', '🥑', '🌮', '🍜', '🍣', '🍫', '🍬', '🥤', '🍼', '🧉', '🍾'
+                            ],
+                            symbols: [
+                              '🔥', '❤️', '💥', '🎉', '🌟', '✨', '💯', '💡', '📌', '🚀', '🚗', '🎮', '🛡️', '⚠️',
+                              '☀️', '🌙', '⭐', '🌈', '⚡', '❄️', '💤', '🎵', '🔔', '📢', '🎁', '🎈', '⚙️', '💎'
+                            ]
+                          };
+
+                          const loadTabEmojis = (tabName) => {
+                            const list = emojiCategories[tabName] || [];
+                            emojiGrid.innerHTML = '';
+                            list.forEach(emoji => {
+                              const btn = document.createElement('button');
+                              btn.type = 'button';
+                              btn.className = 'emoji-item';
+                              btn.textContent = emoji;
+                              btn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                if (chatInput && !chatInput.disabled) {
+                                  const startPos = chatInput.selectionStart;
+                                  const endPos = chatInput.selectionEnd;
+                                  const text = chatInput.value;
+                                  chatInput.value = text.substring(0, startPos) + emoji + text.substring(endPos);
+                                  chatInput.focus();
+                                  const newCursorPos = startPos + emoji.length;
+                                  chatInput.setSelectionRange(newCursorPos, newCursorPos);
+                                }
+                              });
+                              emojiGrid.appendChild(btn);
+                            });
+                          };
+
+                          const newBtn = chatEmojiBtn.cloneNode(true);
+                          chatEmojiBtn.parentNode.replaceChild(newBtn, chatEmojiBtn);
+
+                          newBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const isHidden = chatEmojiPanel.style.display === 'none' || chatEmojiPanel.style.display === '';
+                            if (isHidden) {
+                              const activeTab = chatEmojiPanel.querySelector('.emoji-tab.active');
+                              const defaultTab = activeTab ? activeTab.getAttribute('data-tab') : 'smileys';
+                              loadTabEmojis(defaultTab);
+                              
+                              const colorPalette = document.getElementById('chat-color-palette');
+                              if (colorPalette) colorPalette.style.display = 'none';
+                              const chatMenu = document.getElementById('chat-menu');
+                              if (chatMenu) chatMenu.style.display = 'none';
+
+                              chatEmojiPanel.style.display = 'flex';
+                            } else {
+                              chatEmojiPanel.style.display = 'none';
+                            }
+                          });
+
+                          chatEmojiPanel.querySelectorAll('.emoji-tab').forEach(tabBtn => {
+                            tabBtn.addEventListener('click', (e) => {
+                              e.stopPropagation();
+                              chatEmojiPanel.querySelectorAll('.emoji-tab').forEach(b => b.classList.remove('active'));
+                              tabBtn.classList.add('active');
+                              const tabName = tabBtn.getAttribute('data-tab');
+                              loadTabEmojis(tabName);
+                            });
+                          });
+
+                          document.addEventListener('click', (e) => {
+                            if (chatEmojiPanel.style.display === 'flex' && !chatEmojiPanel.contains(e.target) && e.target !== newBtn) {
+                              chatEmojiPanel.style.display = 'none';
+                            }
+                          });
+                        }
+
+                        if (document.readyState === 'loading') {
+                          document.addEventListener('DOMContentLoaded', initEmojiPicker);
+                        } else {
+                          initEmojiPicker();
+                        }
+                      })();
+                      </script>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+                <div class="clear_both"></div>
+              </div>
+            </div>
+            <div class="blackbox_bl"></div>
+            <div class="blackbox_bc"></div>
+            <div class="blackbox_br"></div>
+          </div>
+
+        </div>
+        <!-- LEFT COLUMN>> -->
+        <div class="left_blocks">
+          <a name="records"></a>
+          <!-- RECORDS LIST>> -->
+          <div class="block_item">
+            <div class="blackbox" style="  width: auto;">
+              <div class="blackbox_tl"></div>
+              <div class="blackbox_tc"></div>
+              <div class="blackbox_tr"></div>
+              <div class="blackbox_cw">
+                <div class="blackbox_c" style="">
+                  <div class="blackbox_ci">
+                    <div class="block-head-bg"></div>
+                    <div class="block-head">
+                      <div class="block-head-right">
+                        <div class="block-title">Записи телеканала <%- `(<a href="/channel,records?shortname=${channel.shortname}" title="Все записи телеканала" class="darkblue">${totalRecords}</a>)` %></div>
+                        <div class="block-buttons">
+                          <a href="/channel,records?shortname=<%= channel.shortname %>" title="Все записи телеканала"
+                            class="block-buttons-bg-last"><span class="block-head-icon-archive"></span></a>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="block-content">
+                      <div id="records_list">
+                        <div class="records_list" style="padding: 10px;">
+                          <% if (records.length===0) { %>
+                            <p style="color: #c0c0b2;">Нет записей</p>
+                            <% } else { %>
+                              <% records.forEach(function(rec, index) { %>
+                                <div
+                                  class="item <%= index === 0 ? 'first' : '' %> <%= index === records.length - 1 ? 'last item_end' : '' %>">
+                                  <div class="record_item" style="position: relative;" style="position: relative;">
+                                    <a href="/tv,viewrecord,<%= rec.id %>" class="thumb"
+                                      style="background: #000 url('<%= CDN_BASE_URL %><%= rec.thumbnail_url || '/images/default_record_thumb.png' %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden;">
+                                      <% if (rec.is_18_plus) { %>
+                                      <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(5px); background: rgba(0,0,0,0.1); z-index: 1;"></div>
+                                      <% } %>
+                                      <span class="border_thumb" style="position: relative; z-index: 2;">
+                                        <div class="record_time">
+                                          <%= ('0' + Math.floor(rec.duration / 3600)).slice(-2) %>:<%= ('0' +
+                                              Math.floor((rec.duration % 3600) / 60)).slice(-2) %>:<%= ('0' +
+                                                (rec.duration % 60)).slice(-2) %>
+                                        </div>
+                                      </span>
+                                    </a>
+                                    <div class="info">
+                                      <div class="title"><a href="/tv,viewrecord,<%= rec.id %>">
+                                          <%- include('partials/record_access_icon', { accessLevel: rec.access_level }) %><span class="translatable" data-ugc="1"><%= rec.title %></span>
+                                        </a><% if(rec.is_18_plus) { %> <span class="label_18" style="display:inline-block; vertical-align:middle; margin-left:5px; margin-top:0; float:none;"></span><% } %></div>
+                                      <div class="channel"><span class="label">Телеканал:</span> <a
+                                          href="/<%= channel.shortname %>">
+                                          <%= channel.name %>
+                                        </a></div>
+                                      <div class="date"><span class="label">Дата:</span> <span class="white">
+                                          <%= ('0' + new Date(rec.created_at).getDate()).slice(-2) %>.<%= ('0' + (new
+                                              Date(rec.created_at).getMonth() + 1)).slice(-2) %>.<%= new
+                                                Date(rec.created_at).getFullYear() %>
+                                        </span></div>
+                                      <div class="views"><span class="label">Просмотров:</span> <span class="white">
+                                          <%= rec.views || 0 %>
+                                        </span></div>
+                                    </div>
+                                    <div style="position: absolute; right: 0; top: 0;">
+                                      <% if (locals.user) { %>
+                                        <div class="likes-badge">
+                                          <span id="record_fans_count_<%= rec.id %>"
+                                            style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;">
+                                            <%= rec.fans_count || 0 %>
+                                          </span>
+                                          <a href="#" onclick="toggleFavoriteRecord('<%= rec.id %>'); return false;"
+                                            style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                              class="block-head-icon-heart heart-btn <%= rec.is_fan ? 'active' : '' %>"
+                                              id="record_fan_icon_<%= rec.id %>"
+                                              style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                        </div>
+                                        <% } %>
+                                    </div>
+
+                                  </div>
+                                  <div class="clear_both"></div>
+                                </div>
+                                <% }); %>
+                                  <% } %>
+                        </div>
+                        <div class="clear_both"></div>
+                      </div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+              </div>
+              <div class="blackbox_bl"></div>
+              <div class="blackbox_bc"></div>
+              <div class="blackbox_br"></div>
+            </div>
+
+          </div>
+          <!-- << RECORDS LIST -->
+          <!-- PROGRAMMS LIST>> -->
+          <div class="block_item">
+            <div class="blackbox" style="  width: auto;">
+              <div class="blackbox_tl"></div>
+              <div class="blackbox_tc"></div>
+              <div class="blackbox_tr"></div>
+              <div class="blackbox_cw">
+                <div class="blackbox_c" style="">
+                  <div class="blackbox_ci">
+                    <div class="block-head-bg"></div>
+                    <div class="block-head">
+                      <div class="block-head-right">
+                        <div class="block-title">Расписание телеканала (<a href="/channel,programs?shortname=<%= channel.shortname %>" title="Все передачи телеканала" class="darkblue" id="program_count"><%= (typeof totalPrograms !== 'undefined' && totalPrograms > 0 ? totalPrograms : (programs ? programs.length : 0)) + (channel.is_live ? 1 : 0) %></a>)</div>
+                        <div class="block-buttons">
+                          <a href="/channel,programs?shortname=<%= channel.shortname %>"
+                            title="Все расписание телеканала" class="block-buttons-bg-last"><span
+                              class="block-head-icon-archive"></span></a>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="block-content">
+                      <div id="translations_list">
+                        <div class="records_list" style="padding: 0;">
+                          <% if (channel.is_live) { %>
+                            <div class="item first item_end" id="schedule_live_item">
+                              <div class="record_item" style="position: relative;">
+                                <a href="/<%= channel.shortname %>" class="thumb"
+                                  style="background: #000 url('<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png' %>') no-repeat center center; background-size: cover; position: relative; overflow: hidden;">
+                                  <% if (channel.is_18_plus) { %>
+                                  <div style="position: absolute; top: -5px; left: -5px; right: -5px; bottom: -5px; backdrop-filter: blur(15px); background: rgba(0,0,0,0.3); z-index: 1;"></div>
+                                  <% } %>
+                                  <span class="border_thumb" style="position: relative; z-index: 2;">
+                                    <div class="record_time"
+                                      style="background: #111; padding: 1px 4px; color: #fff; font-size: 11px;"
+                                      id="schedule_viewers_count">
+                                      <%= channel.viewers || 0 %> зрителей
+                                    </div>
+                                  </span>
+                                </a>
+                                <div class="info">
+                                  <div class="title"><a href="/<%= channel.shortname %>"
+                                      style="color: #6FDEEE; font-size: 15px; text-decoration: none;" id="schedule_live_title" class="translatable">
+                                      <%= channel.live_title || ('Передача от ' + formatDate(channel.live_started_at || new Date(), userTimezone, 'DD.MM.YYYY HH:mm')) %>
+                                    </a></div>
+                                  <div class="channel" style="margin-top:4px; font-size: 11px; color: #8c989e;">Телеканал: <a
+                                      href="/<%= channel.shortname %>" style="color: #6FDEEE; text-decoration: none;">
+                                      <%= channel.name %>
+                                    </a></div>
+                                  <div class="date" style="margin-top:4px; font-size: 11px; color: #aaa; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">Описание передачи не заполнено
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="clear_both"></div>
+                            </div>
+                            <% } %>
+
+                            <% if (locals.programs && programs.length > 0) { %>
+                              <% programs.forEach((p, i) => { %>
+                                 <div class="item <%= (!channel.is_live && i === 0) ? 'first' : '' %> <%= i === programs.length - 1 ? 'last item_end' : '' %>" style="padding: 10px 0; border-bottom: 1px dotted #444; position: relative; clear: both; overflow: hidden;">
+                                  <div class="date" style="float: left; width: 70px; text-align: center; margin-right: 10px;">
+                                    <% const d = new Date(p.start_time); %>
+                                    <div class="time" style="font-size: 16px; font-weight: bold; color: #c0c0b2; line-height: 1.2;"><%= ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) %></div>
+                                    <div class="day" style="font-size: 11px; color: #777; margin-top: 4px; line-height: 1.2;"><%= d.getDate() %> <%= ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][d.getMonth()] %></div>
+                                  </div>
+                                  <div class="logo" style="float: left; width: 60px; height: 60px; padding: 1px; background: url('<%= CDN_BASE_URL %>/images/css_img_38_border.bg.png') repeat; margin-right: 10px;">
+                                    <img src="<%= CDN_BASE_URL %><%= channel.logo_url || '/images/default_channel_logo.png'  %>" style="width: 100%; height: 100%; object-fit: <%= channel.logo_fit === 'contain' ? 'contain' : 'cover' %>; <%= channel.logo_fit === 'contain' ? 'background: #000;' : '' %> display: block; <%= channel.is_18_plus ? 'filter: blur(4px);' : '' %>">
+                                  </div>
+                                  <div class="info" style="overflow: hidden; padding-top: 5px;">
+                                    <div class="title" style="margin-bottom: 5px;">
+                                      <span style="color: #6FDEEE; font-size: 13px;"><%= p.title %></span>
+                                    </div>
+                                    <div class="channel" style="margin-bottom: 5px; font-size: 11px; color: #8c989e;">
+                                      Телеканал: <a href="/<%= channel.shortname %>" style="color: #6FDEEE; text-decoration: none;"><%= channel.name %></a>
+                                    </div>
+                                    <div class="description" style="font-size: 11px; color: #555; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;">
+                                      <%= p.description || 'Описание передачи не заполнено' %>
+                                    </div>
+                                     <div class="likes-badge" style="position: absolute; right: 0; top: 10px;">
+                                       <span id="program_bookmarks_count_<%= p.id %>"
+                                         style="color:#fff; font-size:10px; font-weight:bold; line-height: 18px; padding-top: 1px;">
+                                         <%= p.bookmarks_count || 0 %>
+                                       </span>
+                                       <% if (locals.user) { %>
+                                         <a href="#" onclick="toggleBookmark(<%= p.id %>); return false;"
+                                           style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                             class="block-head-icon-heart heart-btn <%= p.is_bookmarked ? 'active' : '' %>"
+                                             id="program_bookmark_icon_<%= p.id %>"
+                                             style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                       <% } else { %>
+                                         <a href="/login"
+                                           style="display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; text-decoration: none;"><span
+                                             class="block-head-icon-heart heart-btn"
+                                             style="display: block; width: 16px; height: 16px; margin: 0; padding: 0;"></span></a>
+                                       <% } %>
+                                     </div>
+                                  </div>
+                                </div>
+                              <% }); %>
+                            <% } else if (!channel.is_live) { %>
+                              <table cellpadding="0" cellspacing="0" class="translations" id="schedule_empty_msg">
+                                <tbody>
+                                  <tr class="no_items">
+                                    <td>Нет передач</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            <% } %>
+                        </div>
+                        <div class="clear_both"></div>
+                      </div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+              </div>
+              <div class="blackbox_bl"></div>
+              <div class="blackbox_bc"></div>
+              <div class="blackbox_br"></div>
+            </div>
+
+          </div>
+          <!-- << PROGRAMMS LIST -->
+          <!-- CHANNEL NEWS LIST>> -->
+          <div class="block_item">
+            <div class="blackbox" style="  width: auto;">
+              <div class="blackbox_tl"></div>
+              <div class="blackbox_tc"></div>
+              <div class="blackbox_tr"></div>
+              <div class="blackbox_cw">
+                <div class="blackbox_c" style="">
+                  <div class="blackbox_ci">
+                    <div class="block-head-bg"></div>
+                    <div class="block-head">
+                      <div class="block-head-right">
+                        <div class="block-title"><%= t('Новости телеканала') %> <%- `(<a href="/news?cat=channel&item=${channel.id}" title="Все новости телеканала" class="darkblue">${news ? news.length : 0}</a>)` %></div>
+                        <div class="block-buttons">
+                          <a href="/news?cat=channel&item=<%= channel.id %>" target="_blank" title="Архив новостей"
+                            class="block-buttons-bg-last"><span class="block-head-icon-archive"></span></a>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="block-content">
+                      <div class="news">
+                        <% if (typeof news !=='undefined' && news && news.length> 0) { %>
+                          <% news.forEach((item, index)=> { %>
+                            <div class="item <%= index === news.length - 1 ? 'last' : '' %> item-<%= item.id %>">
+                              <div class="date">
+                                <div class="day">
+                                  <%= new Date(item.created_at).getDate() %>
+                                </div>
+                                <%=
+                                  ['Января','Февраля','Марта','Апреля','Мая','Июня','Июля','Августа','Сентября','Октября','Ноября','Декабря'][new
+                                  Date(item.created_at).getMonth()] %>
+                              </div>
+                              <div class="body">
+                                <div class="title" style="font-weight: bold; font-size: 14px;"><a
+                                    href="/channels/<%= channel.shortname %>/news/<%= item.id %>"
+                                    style="color: #6fdeee;">
+                                    <%= item.title %>
+                                  </a></div>
+                                <% if (item.announce) { %>
+                                  <div class="announce translatable" style="white-space: pre-line; overflow-wrap: break-word; word-wrap: break-word; word-break: break-word;"><%= item.announce %></div>
+                                  <% } %>
+                              </div>
+
+                              <div class="clear_both"></div>
+                            </div>
+                            <% }) %>
+                              <% } else { %>
+                                <p style="color: #c0c0b2; padding: 10px;">Нет новостей</p>
+                                <% } %>
+                      </div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+              </div>
+              <div class="blackbox_bl"></div>
+              <div class="blackbox_bc"></div>
+              <div class="blackbox_br"></div>
+            </div>
+
+          </div>
+          <!-- << CHANNEL NEWS LIST -->
+          <a name="comments"></a>
+          <!-- COMMENTS LIST>> -->
+          <div class="block_item">
+
+
+            <div class="blackbox" style="  width: auto;">
+              <div class="blackbox_tl"></div>
+              <div class="blackbox_tc"></div>
+              <div class="blackbox_tr"></div>
+              <div class="blackbox_cw">
+                <div class="blackbox_c" style="">
+                  <div class="blackbox_ci">
+                    <div class="block-head-bg"></div>
+                    <div class="block-head">
+                      <div class="block-head-right">
+                        <div class="block-title">Комментарии <%- `(<span class="blue" id="comments_count">${typeof totalComments !== 'undefined' ? totalComments : 0}</span>)` %></div>
+                        <div class="block-buttons">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="block-content">
+                      <div id="comments_list">
+                        <div id="comment_add_form" style="display: block;">
+                          <% if (typeof user !=='undefined' && user) { %>
+                            <form action="#"
+                              onsubmit="addChannelComment(event, '<%= channel.shortname %>'); return false;">
+                              <textarea class="input-textarea" id="channelCommentText" name="text" cols="10" rows="10"
+                                style="width: 540px; height: 50px; font-family: Arial, Helvetica, sans-serif; font-size: 12px; padding: 5px;"
+                                maxlength="300" required></textarea>
+
+                              <div class="button button_grey" style="width: 120px; margin-top: 10px;">
+                                <div class="button_left"></div>
+                                <input type="submit" class="button_right" style="width: 108px" value="Отправить">
+                              </div>
+                              <div id="comment_form_error"></div>
+                              <div class="clear_both"></div>
+                            </form>
+                            <% } else { %>
+                              <p style="color: #c0c0b2; margin-bottom: 20px;">Пожалуйста, <a href="/login"
+                                  style="color: #6fdeee;">войдите</a> или <a href="/register"
+                                  style="color: #6fdeee;">зарегистрируйтесь</a>, чтобы оставить комментарий.</p>
+                              <% } %>
+                        </div>
+                        <div class="comments" id="channel_comments_container">
+                          <%- include('partials/channel_comments_list') %>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                  <div class="clear_both"></div>
+                </div>
+              </div>
+              <div class="blackbox_bl"></div>
+              <div class="blackbox_bc"></div>
+              <div class="blackbox_br"></div>
+            </div>
+
+          </div>
+          <!-- << COMMENTS LIST -->
+        </div>
+        <!-- << LEFT COLUMN -->
+        <!-- RIGHT COLUMN>> -->
+        <div class="right_blocks">
+
+          <%- include('partials/channel_sidebar', { activePage: 'home' , showDescription: true, showButtons: true }) %>
+            <!-- << CHANNEL INFO -->
+
+            <!-- CHANNEL FANS MINI>> -->
+            <div class="blocks" style="margin-top: 15px;">
+              <div class="blackbox" style="  width: auto;">
+                <div class="blackbox_tl"></div>
+                <div class="blackbox_tc"></div>
+                <div class="blackbox_tr"></div>
+                <div class="blackbox_cw">
+                  <div class="blackbox_c" style="">
+                    <div class="blackbox_ci">
+                      <div class="block-head-bg"></div>
+                      <div class="block-head">
+                        <div class="block-head-right">
+                          <div class="block-title">Фанаты <%- `(<a href="/channel,friends?shortname=${channel.shortname}" title="Все фанаты телеканала" class="darkblue" id="fans_count">${fansCount}</a>)` %></div>
+                          <div class="block-buttons">
+                            <a href="/channel,friends?shortname=<%= channel.shortname %>" title="Все фанаты"
+                              class="block-buttons-bg-last"><span class="block-head-icon-users"></span></a>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="block-content" style="padding: 10px;">
+                        <div id="fans_list_container">
+                          <% if (fans.length> 0) { %>
+                            <div class="users" style="display: flex; flex-wrap: wrap; gap: 15px 7px;">
+                              <% fans.forEach(fan=> { %>
+                                <div class="item" style="margin-right: 0;">
+                                  <a class="logo" href="/account,userinfo/?username=<%= encodeURIComponent(fan.username) %>"
+                                    style="background: url('<%= CDN_BASE_URL %><%= fan.avatar || '/images/default_user_avatar.png' %>') no-repeat center center; background-size: cover; width: 100px; height: 100px; display: block;"><span
+                                      class="border_logo"></span></a>
+                                  <a href="/account,userinfo/?username=<%= encodeURIComponent(fan.username) %>"
+                                    class="<%= fan.is_online ? 'green' : '' %>"
+                                    style="font-size: 11px; display: block; word-break: break-all; margin-top: 5px;">
+                                    <%= fan.username %>
+                                  </a>
+                                </div>
+                                <% }) %>
+                            </div>
+                            <% } else { %>
+                              <p style="color: #c0c0b2;">Нет фанатов</p>
+                              <% } %>
+                        </div>
+                        <div class="clear_both"></div>
+                      </div>
+                      <div class="clear_both"></div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                </div>
+                <div class="blackbox_bl"></div>
+                <div class="blackbox_bc"></div>
+                <div class="blackbox_br"></div>
+              </div>
+
+            </div>
+            <!-- << CHANNEL FANS MINI -->
+
+            <!-- CHANNEL EMBED>> -->
+            <div class="blocks">
+              <div class="blackbox" style="  width: auto;">
+                <div class="blackbox_tl"></div>
+                <div class="blackbox_tc"></div>
+                <div class="blackbox_tr"></div>
+                <div class="blackbox_cw">
+                  <div class="blackbox_c" style="">
+                    <div class="blackbox_ci">
+                      <div class="block-head-bg"></div>
+                      <div class="block-head">
+                        <div class="block-head-right">
+                          <div class="block-title">Экспорт</div>
+                        </div>
+                      </div>
+                      <div class="block-content">
+                        <div class="channel_description">
+                          <form class="embed_settings" onsubmit="return false;" style="padding-bottom: 0;">
+                            <!-- Player Section -->
+                            <div style="font-weight: bold; margin-bottom: 10px; color: #fff; font-size: 13px;">Встраивание плеера:</div>
+                            <div id="selectbox">
+                              <div class="clear_both">
+                                <div class="label" style="color: #c0c0b2;">Формат:</div>
+                                <select id="player_format" name="player_format" class="input-select jselect">
+                                  <option selected="selected" value="0">16:9</option>
+                                  <option value="1">4:3</option>
+                                </select>
+                                <div class="select-outer input-select jselect" id="jselect-player_format">
+                                  <div class="select-inner">
+                                    <p>16:9</p>
+                                    <div class="options" style="left: -9999px;">
+                                      <ul>
+                                        <li class="item_0 selected" data-value="0">16:9</li>
+                                        <li class="item_1" data-value="1">4:3</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div class="clear_both" style="padding-top:10px;">
+                                <div class="label" style="color: #c0c0b2;">Размер:</div>
+                                <select id="player_size" name="player_size" class="input-select jselect">
+                                  <option value="0">512x288</option>
+                                  <option selected="selected" value="1">640x360</option>
+                                  <option value="2">768x432</option>
+                                </select>
+                                <div class="select-outer input-select jselect" id="jselect-player_size">
+                                  <div class="select-inner flyout">
+                                    <p>640x360</p>
+                                    <div class="options" style="left: -9999px;">
+                                      <ul>
+                                        <li class="item_0" data-value="0">512x288</li>
+                                        <li class="item_1 selected" data-value="1">640x360</li>
+                                        <li class="item_2" data-value="2">768x432</li>
+                                      </ul>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div class="clear_both" style="padding-top:10px;">
+                              <div class="input-checkbox-wraper" id="player_autoplay-wraper">
+                                <input type="checkbox" class="input-checkbox" id="player_autoplay" name="player_autoplay" value="1" checked="checked">
+                                <label for="player_autoplay" class="checked" style="color: #c0c0b2;">Автовоспроизведение</label>
+                              </div>
+                            </div>
+                            
+                            <div class="clear_both"></div>
+                            
+                            <div class="channel_embed" style="padding-top: 10px;">
+                              <div class="label" style="color: #c0c0b2;">HTML-код плеера:</div>
+                              <input type="text" name="embedcode" id="embedcode" onfocus="$(this).select();" value="" class="input-text"
+                                style="width: 310px; background: #333; color: #fff; border: 1px solid #555; padding: 4px; text-align: left;">
+                            </div>
+
+                            <!-- Chat Section -->
+                            <div style="font-weight: bold; margin-top: 20px; margin-bottom: 10px; color: #fff; font-size: 13px;">Встраивание чата:</div>
+                            <div class="channel_embed" style="padding-top: 0;">
+                              <div class="label" style="color: #c0c0b2;">HTML-код чата:</div>
+                              <input type="text" name="chat_embedcode" id="chat_embedcode" onfocus="$(this).select();" value="" class="input-text"
+                                style="width: 310px; background: #333; color: #fff; border: 1px solid #555; padding: 4px; text-align: left;">
+                            </div>
+                            <div class="clear_both"></div>
+                          </form>
+                          
+                          <div class="channel_link" style="margin-top: 15px;">
+                            <div class="label" style="color: #c0c0b2;">Прямая ссылка на телеканал:</div>
+                            <input type="text" name="channelurl" id="channelurl" onfocus="$(this).select();"
+                              value="https://etoyatv.top/<%= channel.shortname %>" class="input-text"
+                              style="width: 310px; background: #333; color: #fff; border: 1px solid #555; padding: 4px;">
+                          </div>
+                        </div>
+                        <div class="clear_both"></div>
+                      </div>
+
+                      <script type="text/javascript">
+                        $(document).ready(function() {
+                          var sizes = {
+                            0: [ {w: 512, h: 288}, {w: 640, h: 360}, {w: 768, h: 432} ], // 16:9
+                            1: [ {w: 384, h: 288}, {w: 480, h: 360}, {w: 576, h: 432} ]  // 4:3
+                          };
+
+                          var shortname = "<%= channel.shortname %>";
+                          var protocol = window.location.protocol;
+                          var hostname = window.location.host;
+
+                          // Set initial channel URL correctly based on active host
+                          $('#channelurl').val(protocol + '//' + hostname + '/' + shortname);
+
+                          // Set initial chat embed code
+                          var chatSrc = protocol + '//' + hostname + '/widget/chat/' + shortname;
+                          $('#chat_embedcode').val('<iframe src="' + chatSrc + '" width="400" height="331" frameborder="0" scrolling="no"></iframe>');
+
+                          function updateSizes() {
+                            var pFormat = parseInt($('#player_format').val());
+                            var available = sizes[pFormat];
+
+                            var select = $('#player_size');
+                            select.empty();
+
+                            var ul = $('#jselect-player_size .options ul');
+                            ul.empty();
+
+                            var selectedIdx = 1; // Default to middle size
+                            
+                            available.forEach(function(size, idx) {
+                              var text = size.w + 'x' + size.h;
+                              
+                              // Native option
+                              var opt = $('<option>').val(idx).text(text);
+                              if (idx === selectedIdx) {
+                                opt.attr('selected', 'selected');
+                              }
+                              select.append(opt);
+
+                              // Custom list item
+                              var li = $('<li>')
+                                .addClass('item_' + idx)
+                                .attr('data-value', idx)
+                                .text(text);
+                              if (idx === selectedIdx) {
+                                li.addClass('selected');
+                              }
+                              ul.append(li);
+                            });
+
+                            var defaultText = available[selectedIdx].w + 'x' + available[selectedIdx].h;
+                            $('#jselect-player_size p').text(defaultText);
+                            select.val(selectedIdx);
+
+                            updateEmbedCode();
+                          }
+
+                          function updateEmbedCode() {
+                            var pFormat = parseInt($('#player_format').val());
+                            var sizeIdx = parseInt($('#player_size').val());
+                            var autoplay = $('#player_autoplay').is(':checked') ? 1 : 0;
+
+                            var sizeObj = sizes[pFormat][sizeIdx];
+                            if (!sizeObj) return;
+                            
+                            var src = protocol + '//' + hostname + '/widget/player/' + shortname + '?autoplay=' + autoplay;
+                            var iframeCode = '<iframe src="' + src + '" width="' + sizeObj.w + '" height="' + sizeObj.h + '" frameborder="0" allowfullscreen></iframe>';
+                            $('#embedcode').val(iframeCode);
+                          }
+
+                          // Bind change on native select elements
+                          $('#player_format').on('change', function() {
+                            updateSizes();
+                          });
+
+                          $('#player_size').on('change', function() {
+                            updateEmbedCode();
+                          });
+
+                          $('#player_autoplay').on('change', function() {
+                            var label = $('label[for="player_autoplay"]');
+                            if (this.checked) {
+                              label.addClass('checked');
+                            } else {
+                              label.removeClass('checked');
+                            }
+                            updateEmbedCode();
+                          });
+
+                          // Custom styled dropdown toggle click
+                          $(document).on('click', '.select-inner p', function(e) {
+                            e.stopPropagation();
+                            var currentOptions = $(this).siblings('.options');
+                            var isClosed = currentOptions.css('left') === '-9999px';
+                            $('.select-inner .options').css('left', '-9999px'); // Close all first
+                            if (isClosed) {
+                              currentOptions.css('left', '-1px');
+                            }
+                          });
+
+                          // Custom styled dropdown items selection
+                          $(document).on('click', '.select-inner .options li', function(e) {
+                            e.stopPropagation();
+                            var li = $(this);
+                            var text = li.text();
+                            var val = parseInt(li.attr('data-value'));
+                            var container = li.closest('.select-outer');
+                            var selectId = container.attr('id').replace('jselect-', '');
+                            var nativeSelect = $('#' + selectId);
+
+                            // Update paragraph text
+                            container.find('p').text(text);
+                            
+                            // Set active class
+                            li.addClass('selected').siblings().removeClass('selected');
+
+                            // Close options list
+                            li.closest('.options').css('left', '-9999px');
+
+                            // Update native select and trigger change
+                            nativeSelect.val(val).trigger('change');
+                          });
+
+                          $(document).on('click', function() {
+                            $('.select-inner .options').css('left', '-9999px');
+                          });
+
+                          // Initial sizing trigger
+                          updateSizes();
+                        });
+                      </script>
+                      <div class="clear_both"></div>
+                    </div>
+                    <div class="clear_both"></div>
+                  </div>
+                </div>
+                <div class="blackbox_bl"></div>
+                <div class="blackbox_bc"></div>
+                <div class="blackbox_br"></div>
+              </div>
+
+            </div>
+            <!-- << CHANNEL EMBED -->
+
+        </div>
+        <!-- << RIGHT COLUMN -->
+        <div class="clear_both"></div>
+      </div>
+
+      <script>window.YATV_CDN_BASE = <%- JSON.stringify(CDN_BASE_URL || '') %>;</script>
+      <script src="/js/channel-page.js?v=<%= ASSET_VERSION %>"></script>
+
+      <!-- Context Menu for Chat Usernames -->
+      <div id="user-context-menu"
+        style="display: none; position: fixed; background: #222; border: 1px solid #444; padding: 5px; z-index: 999999; font-size: 11px; font-family: Verdana, sans-serif;">
+        <!-- Content dynamically populated by JS -->
+      </div>
+
+      <% if (typeof isModerator !== 'undefined' && isModerator) { %>
+      <div id="yatv-clear-chat-modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 20000; align-items: center; justify-content: center; font-family: Tahoma, sans-serif;">
+        <div style="background: #1e1e1e; width: 400px; border-radius: 6px; border: 1px solid #333; box-shadow: 0 4px 12px rgba(0,0,0,0.5); overflow: hidden; color: #fff;">
+          <div style="background: #2a2a2a; border-bottom: 1px solid #333; color: #fff; padding: 12px 15px; font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Очистить чат</span>
+            <span style="cursor: pointer; font-size: 18px; line-height: 1; color: #aaa;" onclick="window.closeClearChatModal()">&times;</span>
+          </div>
+          <div style="padding: 15px;">
+            <p style="margin: 0 0 15px; font-size: 13px; color: #ccc;">Вы уверены, что хотите очистить чат?</p>
+            <div style="text-align: right;">
+              <button onclick="window.closeClearChatModal()" style="padding: 6px 15px; border: 1px solid #555; background: transparent; color: #fff; cursor: pointer; border-radius: 4px; margin-right: 5px; font-size: 12px; transition: background 0.2s;">Отмена</button>
+              <button onclick="window.submitClearChat()" style="padding: 6px 15px; border: none; background: #cc3333; color: #fff; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 12px; transition: background 0.2s;">Очистить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% } %>
+
+
+<%- include('partials/footer') %>

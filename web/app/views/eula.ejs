@@ -1,0 +1,123 @@
+<%- include('partials/header') %>
+
+<div id="content"> 
+<!-- LEFT COLUMN>> -->
+<div class="left_blocks"> 
+  <div class="blackbox" style="width: auto;">
+    <div class="blackbox_tl"></div>
+    <div class="blackbox_tc"></div>
+    <div class="blackbox_tr"></div>
+    <div class="blackbox_cw">
+      <div class="blackbox_c">
+        <div class="blackbox_ci"> 
+          <div style="height:400px; width:1px; margin-left:-1px; float:left;"></div>
+          <div style="width:100%; float:left;">
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">Пользовательское соглашение ЭтоЯTV</div>
+              </div> 
+            </div>
+            <div class="block-content">
+              <div style="color: #c0c0b2; line-height: 1.6; font-size: 13px; font-family: Tahoma, sans-serif; padding: 10px;">
+                <p align="center" style="color: #fff; font-size: 16px; font-weight: bold; margin-bottom: 20px;">СОГЛАШЕНИЕ<br>о доступе и использовании сервисов ЭтоЯTV</p>
+                <p>Настоящее Соглашение о доступе и использовании сервисов ЭтоЯTV (далее — «Соглашение») определяет условия использования некоммерческой открытой (open-source) мультимедийной платформы ЭтоЯTV (далее — «Проект» или «ЭтоЯTV»), доступной по адресу <a href="<%= APP_URL %>" style="color: #6fdeee;"><%= APP_URL %></a>, а также всех сопутствующих сервисов, приложений и сетей, находящихся под управлением независимого сообщества разработчиков.</p>
+                
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">1. Понятия и основные положения</h3>
+                <p><strong>Сервисы ЭтоЯTV</strong> — приложения, платформа, программное обеспечение, чат и веб-сайт, разрабатываемые и поддерживаемые сообществом Проекта.</p>
+                <p><strong>Материалы</strong> — программный код, дизайн, интерфейс, логотипы, базы данных и иные элементы Проекта, являющиеся интеллектуальной собственностью разработчиков Проекта или используемые по открытым лицензиям.</p>
+                <p><strong>Телеканал</strong> — индивидуальная страница на сайте, предоставляющая возможность вещания потокового видео в реальном времени или воспроизведения записей (автопилот).</p>
+                <p><strong>Выпущенный контент</strong> — созданный, загруженный и/или транслируемый Пользователем аудиовизуальный контент, сообщения в чатах, записи эфиров и иные материалы.</p>
+                <p><strong>Пользователь</strong> — физическое лицо, осуществляющее доступ к сайту в качестве Гостя или Зарегистрированного пользователя.</p>
+
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">2. Условия пользования и регистрация</h3>
+                <p>2.1. Используя сайт ЭтоЯTV или регистрируя учетную запись, вы подтверждаете, что вам исполнилось 14 лет и вы полностью согласны с условиями настоящего Соглашения.</p>
+                <p>2.2. Регистрация учетной записи требует ввода уникального имени пользователя, пароля и адреса электронной почты. Вы несете полную ответственность за сохранность ваших учетных данных и конфиденциальность пароля.</p>
+                <p>2.3. Администрация Проекта не несет ответственности за любой ущерб, понесенный в результате несанкционированного доступа к вашей учетной записи по вашей вине.</p>
+                <p>2.4. Проект предоставляет вам личную, некоммерческую, неисключительную и свободно отзываемую лицензию на использование плееров, чата и иных публичных функций сайта.</p>
+
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">3. Запрещенные способы использования</h3>
+                <p>Пользователям строго запрещается совершать следующие действия:</p>
+                <ul style="padding-left: 20px; list-style-type: disc; margin-top: 10px;">
+                  <li style="margin-bottom: 8px;">Загружать или транслировать материалы, нарушающие законы Российской Федерации и нормы международного права.</li>
+                  <li style="margin-bottom: 8px;">Размещать ложную информацию, клевету, угрозы или оскорбления в адрес других пользователей.</li>
+                  <li style="margin-bottom: 8px;">Транслировать порнографию, контент, пропагандирующий насилие, жестокость или расовую/религиозную вражду.</li>
+                  <li style="margin-bottom: 8px;">Размещать несанкционированную рекламу, спам, реферальные ссылки, вредоносный код или вирусы.</li>
+                  <li style="margin-bottom: 8px;">Осуществлять действия, направленные на взлом, декомпиляцию платформы или создание чрезмерной нагрузки на серверное оборудование.</li>
+                  <li style="margin-bottom: 8px;">Использовать более 5 учетных записей или создавать более 1 телеканала одним физическим лицом.</li>
+                </ul>
+
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">4. Защита интеллектуальных прав</h3>
+                <p>4.1. Администрация Проекта уважает интеллектуальную собственность. Если вы считаете, что какой-либо контент нарушает ваши авторские права, вы можете направить жалобу по официальным каналам связи (или воспользовавшись кнопкой «Пожаловаться»).</p>
+                <p>4.2. Жалоба должна содержать информацию о правообладателе, ссылку на спорный материал и подтверждение ваших полномочий на представление интересов правообладателя.</p>
+
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">5. Ограничение ответственности</h3>
+                <p>5.1. Все сервисы и функции Проекта предоставляются по принципу «как есть» (AS IS). Разработчики и администрация Проекта не гарантируют бесперебойную работу сайта и отсутствие ошибок.</p>
+                <p>5.2. Проект не несет ответственности за содержание трансляций пользователей, их чатов или записей. Вся ответственность за транслируемый контент лежит на его создателе (владельце телеканала).</p>
+                <p>5.3. Администрация Проекта оставляет за собой право в любой момент ограничить доступ, заблокировать учетную запись или удалить любой канал без объяснения причин при нарушении правил Соглашения.</p>
+              </div>
+            </div>
+            <div class="clear_both"></div>
+          </div>
+          <div class="clear_both"></div>
+        </div>
+        <div class="clear_both"></div>
+      </div>
+    </div>
+    <div class="blackbox_bl"></div>
+    <div class="blackbox_bc"></div>
+    <div class="blackbox_br"></div>
+  </div>
+</div>
+<!-- << LEFT COLUMN -->
+
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks">
+  <div class="blocks"> 
+    <div class="blackbox" style="width: auto;">
+      <div class="blackbox_tl"></div>
+      <div class="blackbox_tc"></div>
+      <div class="blackbox_tr"></div>
+      <div class="blackbox_cw">
+        <div class="blackbox_c">
+          <div class="blackbox_ci"> 
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">Реклама</div>
+              </div> 
+            </div>
+            <div class="block-content">
+              <% if (adsEnabled && adsConfig['sidebar_320x240'] && adsConfig['sidebar_320x240'].image) { %>
+                <div style="width: 320px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                  <% if (adsConfig['sidebar_320x240'].url) { %>
+                    <a href="<%= adsConfig['sidebar_320x240'].url %>" target="_blank" style="display: block;">
+                      <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+                    </a>
+                  <% } else { %>
+                    <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+                  <% } %>
+                </div>
+              <% } else if (!adsEnabled) { %>
+                <!-- Ad is disabled -->
+              <% } else { %>
+                <div style="width: 320px; height: 240px; background: #333; display: flex; align-items: center; justify-content: center; color: #777; margin: 0 auto;">Место для рекламы</div>
+              <% } %>
+            </div>
+            <div class="clear_both"></div>
+          </div>
+          <div class="clear_both"></div>
+        </div>
+      </div>
+      <div class="blackbox_bl"></div>
+      <div class="blackbox_bc"></div>
+      <div class="blackbox_br"></div>
+    </div>
+  </div> 
+</div>
+<!-- << RIGHT COLUMN -->
+
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

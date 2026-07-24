@@ -1,0 +1,160 @@
+<div style="margin-top: auto; width: 100%;">
+<div class="clear_both"></div>
+<div id="footer">
+<div class="border"></div> 
+<div class="center">
+<div class="right">
+<h3>Общая информация</h3>
+<p><a href="/about">ЭтоЯTV</a></p>
+<p><a href="/feedback">Контакты</a></p>
+<p><a href="/news">Новости</a></p>
+<p><a href="/developer">API Разработчикам</a></p>
+</div>
+
+<div class="right"> 
+<h3>Юридическая информация</h3>
+<p><a href="/eula">Пользовательское соглашение</a></p>
+<p><a href="/channel_eula">Соглашение для владельцев телеканалов</a></p>
+<p><a href="/rules">Правила размещения материалов на сайте</a></p> 
+</div>
+<div class="right" style="overflow:hidden;">
+<h3>ЭтоЯTV в сети Интернет</h3>
+<p><a href="https://t.me/etoyatv">Telegram</a></p>
+<p><a href="https://github.com/etoyatv">GitHub</a></p>
+<% if (typeof WEBLATE_URL !== 'undefined' && WEBLATE_URL) { %>
+<p><a href="<%= WEBLATE_URL %>" target="_blank" rel="noopener noreferrer">Weblate</a></p>
+<% } %>
+</div>
+</div>
+<div class="copyright grey">
+<div class="center">
+<div class="partners">
+<div class="label"></div></div>
+<div class="text">ЭтоЯTV © 2026. Открытая (open-source) мультимедийная платформа</div>	
+<div class="clear_both"></div>
+<div style="padding:10px 10px 0 10px;font-size:10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+  <span>
+    Проект развивается независимым сообществом разработчиков.
+    <span style="margin-left: 10px; color: #666;">|</span>
+    <span id="footer-lang-switcher" style="margin-left: 10px; display: inline-flex; gap: 8px;">
+      <% if (typeof supportedLangs !== 'undefined') { %>
+        <% const langLabels = { ru: 'RU', en: 'EN', uk: 'UA', be: 'BY' }; %>
+        <% supportedLangs.forEach(function(lang) { %>
+          <a href="#" data-lang="<%= lang %>" style="color: <%= typeof currentLang !== 'undefined' && currentLang === lang ? '#fff' : '#6fdeee' %>; font-weight: <%= typeof currentLang !== 'undefined' && currentLang === lang ? 'bold' : 'normal' %>; text-decoration: none;"><%= langLabels[lang] || lang.toUpperCase() %></a>
+        <% }); %>
+      <% } else { %>
+        <a href="#" data-lang="ru" style="color: <%= typeof currentLang !== 'undefined' && currentLang === 'ru' ? '#fff' : '#6fdeee' %>; font-weight: <%= typeof currentLang !== 'undefined' && currentLang === 'ru' ? 'bold' : 'normal' %>; text-decoration: none;">RU</a>
+        <a href="#" data-lang="en" style="color: <%= typeof currentLang !== 'undefined' && currentLang === 'en' ? '#fff' : '#6fdeee' %>; font-weight: <%= typeof currentLang !== 'undefined' && currentLang === 'en' ? 'bold' : 'normal' %>; text-decoration: none;">EN</a>
+        <a href="#" data-lang="uk" style="color: <%= typeof currentLang !== 'undefined' && currentLang === 'uk' ? '#fff' : '#6fdeee' %>; font-weight: <%= typeof currentLang !== 'undefined' && currentLang === 'uk' ? 'bold' : 'normal' %>; text-decoration: none;">UA</a>
+        <a href="#" data-lang="be" style="color: <%= typeof currentLang !== 'undefined' && currentLang === 'be' ? '#fff' : '#6fdeee' %>; font-weight: <%= typeof currentLang !== 'undefined' && currentLang === 'be' ? 'bold' : 'normal' %>; text-decoration: none;">BY</a>
+      <% } %>
+    </span>
+  </span>
+  <span style="color: #888;">Скорость подключения к RTMP: <strong id="footer-rtmp-speed" style="color: #6fdeee; font-weight: bold;">не измерена</strong> (<a href="/speedtest" id="footer-speedtest-link" style="color: #6fdeee; text-decoration: underline;">тест</a>)</span>
+</div>
+
+</div>
+</div> 
+</div>
+<div style="position:absolute;top:0;left:-9999px;">
+<a href="https://github.com/etoyatv/etoyatv/issues/new" class="bugreport"></a>
+</div>
+<%- include('report_modal') %>
+<%- include('confirm_modal') %>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Footer Language Switcher logic
+  const footerLangSwitcher = document.getElementById('footer-lang-switcher');
+  if (footerLangSwitcher) {
+    footerLangSwitcher.querySelectorAll('a').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const lang = this.getAttribute('data-lang');
+        fetch('/api/set-lang', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lang })
+        }).then(res => {
+          if (res.ok) {
+            window.location.reload();
+          }
+        });
+      });
+    });
+  }
+
+  setTimeout(() => {
+    // Target EJS status/success/error elements on pages like settings/profile
+    const alertDivs = document.querySelectorAll(
+      'div[style*="color:#39b54a"], div[style*="color: #39b54a"], ' +
+      'div[style*="color:#ff6666"], div[style*="color: #ff6666"]'
+    );
+    alertDivs.forEach(el => {
+      const text = el.textContent || '';
+      // Don't fade out persistent critical block errors/warnings
+      if (text.includes('отключена') || text.includes('удален') || text.includes('заблокирован') || text.includes('ограничил')) {
+        return;
+      }
+      el.style.transition = 'opacity 0.5s ease-out, height 0.5s ease-out, margin 0.5s ease-out, padding 0.5s ease-out';
+      el.style.opacity = '0';
+      setTimeout(() => {
+        el.style.height = '0';
+        el.style.margin = '0';
+        el.style.padding = '0';
+        el.style.overflow = 'hidden';
+        setTimeout(() => el.remove(), 500);
+      }, 500);
+    });
+  }, 5000);
+
+  // RTMP Speed indicator setup
+  const footerSpeedVal = document.getElementById('footer-rtmp-speed');
+  const footerSpeedLink = document.getElementById('footer-speedtest-link');
+
+  function updateFooterSpeed(result) {
+    if (result && (result.downloadRaw !== undefined || result.download)) {
+      const t = (str) => window.t ? window.t(str) : str;
+      const speedUnit = t('Мбит/с');
+      const pingUnit = t('мс');
+      const titleInbound = t('Входящая');
+      const titleOutbound = t('Исходящая');
+
+      let dl = result.downloadRaw !== undefined ? parseFloat(result.downloadRaw) : parseFloat(result.download);
+      let ul = result.uploadRaw !== undefined ? parseFloat(result.uploadRaw) : parseFloat(result.upload);
+      let pg = result.pingRaw !== undefined ? parseFloat(result.pingRaw) : parseFloat(result.ping);
+
+      if (isNaN(dl)) dl = 0;
+      if (isNaN(ul)) ul = 0;
+      if (isNaN(pg)) pg = 0;
+
+      const download = `${dl.toFixed(1)} ${speedUnit}`;
+      const upload = `${ul.toFixed(1)} ${speedUnit}`;
+      const ping = `${Math.round(pg)} ${pingUnit}`;
+      
+      footerSpeedVal.textContent = download;
+      footerSpeedVal.title = `${titleInbound}: ${download}, ${titleOutbound}: ${upload}, Ping: ${ping}`;
+    } else {
+      const t = (str) => window.t ? window.t(str) : str;
+      footerSpeedVal.textContent = t('не измерена');
+      footerSpeedVal.title = '';
+    }
+  }
+
+  // Initial load
+  try {
+    const saved = localStorage.getItem('rtmp_speed_result');
+    if (saved) {
+      updateFooterSpeed(JSON.parse(saved));
+    }
+  } catch (e) {
+    console.error('Error reading rtmp speed from localStorage:', e);
+  }
+
+  // Listen to custom updates
+  window.addEventListener('rtmpSpeedUpdate', function(event) {
+    updateFooterSpeed(event.detail);
+  });
+
+});
+</script>
+</body></html>

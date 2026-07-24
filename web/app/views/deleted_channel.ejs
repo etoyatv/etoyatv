@@ -1,0 +1,86 @@
+<%- include('partials/header') %>
+
+<% if (typeof channel !== 'undefined' && channel) { %>
+  <%
+    const _delBgColor = safeColor(channel.bg_color);
+    const _delTextColor = safeColor(channel.text_color);
+    const _delBgPath = safeUrlPath(channel.bg_url);
+    const _delCdn = (typeof CDN_BASE_URL !== 'undefined' ? CDN_BASE_URL : (locals.CDN_BASE_URL || ''));
+  %>
+  <%- `<style>
+    body, #body {
+      ${_delBgColor ? `background-color: ${_delBgColor} !important;` : ''}
+      ${_delBgPath ? `
+        background-image: url('${_delCdn}${_delBgPath}') !important;
+        background-attachment: fixed !important;
+        ${channel.bg_fit === 'tile' ? `
+          background-size: auto !important;
+          background-position: left top !important;
+          background-repeat: repeat !important;
+        ` : channel.bg_fit === 'center' ? `
+          background-size: auto !important;
+          background-position: center top !important;
+          background-repeat: no-repeat !important;
+        ` : channel.bg_fit === 'fit_width' ? `
+          background-size: 100% auto !important;
+          background-position: center top !important;
+          background-repeat: no-repeat !important;
+        ` : `
+          background-size: cover !important;
+          background-position: center top !important;
+          background-repeat: no-repeat !important;
+        `}
+      ` : ''}
+    }
+    ${_delTextColor ? `
+      body, #body,
+      .block-title,
+      .box-title,
+      .box-content,
+      .info-row {
+        color: ${_delTextColor} !important;
+      }
+    ` : ''}
+  </style>` %>
+<% } %>
+
+<div id="content" style="min-height: 400px; padding: 20px 0;"> 
+  <!-- LEFT COLUMN -->
+  <div class="left_blocks">
+    <div class="blackbox" style="width: auto;">
+      <div class="blackbox_tl"></div>
+      <div class="blackbox_tc"></div>
+      <div class="blackbox_tr"></div>
+      <div class="blackbox_cw">
+        <div class="blackbox_c">
+          <div class="blackbox_ci"> 
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">Телеканал удален</div>
+              </div> 
+            </div>
+            <div class="block-content" style="padding: 25px; line-height: 1.8;">
+              <p style="color: #ccc; font-size: 13px; margin: 0 0 12px 0;">Телеканал был удален владельцем или администратором.</p>
+              <p style="color: #ccc; font-size: 13px; margin: 0;">Вы можете выбрать другие <a href="/tv,channels" style="color: #6fdeee; text-decoration: underline;">телеканалы из списка</a>.</p>
+            </div>
+            <div class="clear_both"></div>
+          </div>
+          <div class="clear_both"></div>
+        </div>
+      </div>
+      <div class="blackbox_bl"></div>
+      <div class="blackbox_bc"></div>
+      <div class="blackbox_br"></div>
+    </div>
+  </div>
+
+  <!-- RIGHT COLUMN -->
+  <div class="right_blocks">
+    <%- include('partials/sidebar_ad_320x240') %>
+  </div>
+
+  <div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

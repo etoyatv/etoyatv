@@ -1,0 +1,887 @@
+<%- include('partials/header') %>
+
+<style>
+  /* Developer Documentation Portal Styles - Matching Site Theme */
+  #dev-portal-container {
+    font-family: 'Tahoma', sans-serif;
+    color: #c0c0b2;
+    background: transparent;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    min-height: 700px;
+    overflow: hidden;
+  }
+
+  /* Sidebar styling - transparent dark overlay matching retro site elements */
+  .dev-sidebar {
+    width: 250px;
+    background: rgba(0, 0, 0, 0.25);
+    border-right: 1px solid #2d2d2d;
+    padding: 15px 10px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+
+  .dev-brand {
+    font-size: 13px;
+    font-weight: bold;
+    color: #6fdeee;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px dotted #333;
+    padding-bottom: 10px;
+  }
+
+  .dev-brand span {
+    color: #fff;
+  }
+
+  .dev-menu-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .dev-menu-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: #777777;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    padding-left: 8px;
+  }
+
+  .dev-menu-item {
+    font-size: 12px;
+    color: #c0c0b2;
+    text-decoration: none;
+    padding: 6px 10px;
+    transition: all 0.1s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: normal;
+  }
+
+  .dev-menu-item:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .dev-menu-item.active {
+    color: #6fdeee;
+    background: #111111;
+    border-left: 3px solid #6fdeee;
+    font-weight: bold;
+    padding-left: 7px;
+  }
+
+  /* Retro styled badge */
+  .method-badge {
+    font-size: 9px;
+    font-weight: bold;
+    padding: 1px 4px;
+    text-transform: uppercase;
+  }
+
+  .method-badge.get {
+    border: 1px solid #39b54a;
+    color: #39b54a;
+    background: rgba(57, 181, 74, 0.1);
+  }
+
+  /* Main content area */
+  .dev-content {
+    flex-grow: 1;
+    padding: 20px 25px;
+    box-sizing: border-box;
+    overflow-y: auto;
+    max-height: 800px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+  }
+
+  /* Sections */
+  .dev-section {
+    display: none;
+    flex-direction: column;
+    gap: 20px;
+    animation: fadeIn 0.15s ease-in-out forwards;
+  }
+
+  .dev-section.active {
+    display: flex;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .dev-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+    margin: 0;
+    border-bottom: 1px solid #2d2d2d;
+    padding-bottom: 8px;
+  }
+
+  .dev-subtitle {
+    font-size: 12px;
+    color: #c0c0b2;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* Info block styled like site's classic blocks */
+  .api-card {
+    background: #161616;
+    border: 1px solid #2d2d2d;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .api-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .api-url-wrapper {
+    background: #0c0c0c;
+    border: 1px solid #252525;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-grow: 1;
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  .api-url {
+    color: #6fdeee;
+    word-break: break-all;
+  }
+
+  .btn-copy {
+    background: #252525;
+    border: 1px solid #333;
+    color: #6fdeee;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 3px 6px;
+    transition: all 0.1s;
+  }
+
+  .btn-copy:hover {
+    color: #fff;
+    background: #333;
+    border-color: #555;
+  }
+
+  /* Retro styled table */
+  .params-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+
+  .params-table th, .params-table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px dotted #2d2d2d;
+  }
+
+  .params-table th {
+    color: #fff;
+    font-weight: bold;
+    background: #222222;
+    border-bottom: 1px solid #2d2d2d;
+  }
+
+  .params-table td {
+    color: #c0c0b2;
+  }
+
+  .param-name {
+    font-family: monospace;
+    color: #6fdeee;
+    font-weight: bold;
+  }
+
+  .param-type {
+    font-size: 11px;
+    color: #777777;
+    font-style: italic;
+  }
+
+  .param-req {
+    font-size: 9px;
+    font-weight: bold;
+    padding: 1px 3px;
+    text-transform: uppercase;
+  }
+
+  .param-req.required {
+    border: 1px solid #b76868;
+    color: #b76868;
+    background: rgba(183, 104, 104, 0.1);
+  }
+
+  .param-req.optional {
+    border: 1px solid #777;
+    color: #777;
+    background: rgba(119, 119, 119, 0.1);
+  }
+
+  /* Playground tester panel */
+  .playground-panel {
+    background: #111111;
+    border: 1px dashed #333333;
+    padding: 15px;
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .playground-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px dotted #333;
+    padding-bottom: 6px;
+  }
+
+  .playground-title {
+    font-size: 12px;
+    font-weight: bold;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .playground-inputs {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .playground-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex-grow: 1;
+    min-width: 150px;
+  }
+
+  .playground-input-group label {
+    font-size: 11px;
+    color: #c0c0b2;
+    font-weight: bold;
+  }
+
+  .playground-input {
+    background: #0c0c0c;
+    border: 1px solid #2d2d2d;
+    color: #fff;
+    padding: 5px 8px;
+    font-size: 12px;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.1s;
+  }
+
+  .playground-input:focus {
+    border-color: #6fdeee;
+  }
+
+  .btn-execute {
+    background: #252525;
+    border: 1px solid #444;
+    color: #6fdeee;
+    padding: 6px 14px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-end;
+  }
+
+  .btn-execute:hover {
+    background: #333;
+    color: #fff;
+    border-color: #555;
+  }
+
+  /* Response visualizer */
+  .response-box {
+    background: #080808;
+    border: 1px solid #252525;
+    padding: 12px;
+    max-height: 350px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 11px;
+    white-space: pre-wrap;
+    color: #c0c0b2;
+    display: none;
+  }
+
+  .response-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #777777;
+    margin-bottom: 5px;
+  }
+
+  /* Highlight colors matching site console */
+  .response-box .key { color: #3fa9c8; }
+  .response-box .string { color: #ffffff; }
+  .response-box .number { color: #39b54a; }
+  .response-box .boolean { color: #ffcc00; }
+  .response-box .null { color: #b76868; }
+</style>
+
+<div id="content">
+  <div class="mono_blocks" style="margin-bottom:20px;">
+    <div class="blackbox" style="width: auto;">
+      <div class="blackbox_tl"></div>
+      <div class="blackbox_tc"></div>
+      <div class="blackbox_tr"></div>
+      <div class="blackbox_cw">
+        <div class="blackbox_c" style="">
+          <div class="blackbox_ci">
+            <div style="height:700px; width:1px; margin-left:-1px; float:left;"></div>
+            <div style="width:100%; float:left;">
+              <div class="block-head-bg"></div>
+              <div class="block-head">
+                <div class="block-head-right">
+                  <div class="block-title">Документация API для сторонних приложений</div>
+                </div>
+              </div>
+              <div class="block-content" style="padding: 0;">
+                
+                <div id="dev-portal-container">
+                  <!-- Sidebar navigation -->
+                  <div class="dev-sidebar">
+                    
+                    <div class="dev-menu-group">
+                      <div class="dev-menu-title">Основное</div>
+                      <a href="#intro" class="dev-menu-item active" onclick="switchSection('intro', this)">Введение</a>
+                      <a href="#stats" class="dev-menu-item" onclick="switchSection('stats', this)">
+                        Статистика <span class="method-badge get">GET</span>
+                      </a>
+                    </div>
+
+                    <div class="dev-menu-group">
+                      <div class="dev-menu-title">Телеканалы</div>
+                      <a href="#channels-list" class="dev-menu-item" onclick="switchSection('channels-list', this)">
+                        Список каналов <span class="method-badge get">GET</span>
+                      </a>
+                      <a href="#channel-detail" class="dev-menu-item" onclick="switchSection('channel-detail', this)">
+                        Детали канала <span class="method-badge get">GET</span>
+                      </a>
+                      <a href="#channel-streams" class="dev-menu-item" onclick="switchSection('channel-streams', this)">
+                        Эфирные стримы <span class="method-badge get">GET</span>
+                      </a>
+                    </div>
+
+                    <div class="dev-menu-group">
+                      <div class="dev-menu-title">Контент канала</div>
+                      <a href="#channel-schedule" class="dev-menu-item" onclick="switchSection('channel-schedule', this)">
+                        Расписание <span class="method-badge get">GET</span>
+                      </a>
+                      <a href="#channel-news" class="dev-menu-item" onclick="switchSection('channel-news', this)">
+                        Новости <span class="method-badge get">GET</span>
+                      </a>
+                      <a href="#channel-records" class="dev-menu-item" onclick="switchSection('channel-records', this)">
+                        Записи эфиров <span class="method-badge get">GET</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  <!-- Main documentation body -->
+                  <div class="dev-content">
+                    
+                    <!-- Introduction section -->
+                    <div id="section-intro" class="dev-section active">
+                      <h1 class="dev-title">Публичный API для разработчиков</h1>
+                      <p class="dev-subtitle">
+                        Добро пожаловать в центр документации разработчиков платформы ЭтоЯTV! Здесь собраны API эндпоинты, которые позволят вам создавать ботов, внешние виджеты, плееры, мобильные приложения или собственные сервисы интеграции на базе нашей платформы.
+                      </p>
+                      <div style="background: rgba(111, 222, 238, 0.05); border: 1px solid rgba(111, 222, 238, 0.15); border-radius: 4px; padding: 20px; line-height: 1.6; font-size: 13px;">
+                        <h3 style="margin-top: 0; color: #6fdeee; font-size: 14px;">🔒 Важная информация о безопасности</h3>
+                        Все описанные ниже API-методы являются публичными и доступны исключительно для <strong>чтения (Read-Only)</strong>. Доступ к админ-панели канала, панели управления трансляциями, ключам вещания (Stream Key) и паролям через эти методы полностью исключен. Авторизация или регистрация для выполнения запросов не требуются.
+                      </div>
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span style="font-weight: bold; color: #fff; font-size: 13px;">Базовый URL для запросов:</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="base-url-display"><%= APP_URL %></span>
+                            <button class="btn-copy" onclick="copyText('base-url-display')">📋</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Stats section -->
+                    <div id="section-stats" class="dev-section">
+                      <h1 class="dev-title">Глобальная статистика платформы</h1>
+                      <p class="dev-subtitle">Возвращает сводную статистику всей платформы в режиме реального времени: общее число активных каналов, количество онлайн стримов, суммарную аудиторию зрителей и общее количество обработанных записей.</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-stats">/api/public/stats</span>
+                            <button class="btn-copy" onclick="copyText('url-stats')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/stats</span>
+                          </div>
+                          <button class="btn-execute" onclick="executeApi('/api/public/stats', 'stats')">Выполнить запрос</button>
+                          <div id="res-stats" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Channels List section -->
+                    <div id="section-channels-list" class="dev-section">
+                      <h1 class="dev-title">Список телеканалов</h1>
+                      <p class="dev-subtitle">Возвращает постраничный список всех активных публичных каналов платформы с их текущим статусом вещания и ссылками на медиа-ресурсы.</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-channels">/api/public/channels</span>
+                            <button class="btn-copy" onclick="copyText('url-channels')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Query параметры</h3>
+                        <table class="params-table">
+                          <thead>
+                            <tr>
+                              <th>Параметр</th>
+                              <th>Тип</th>
+                              <th>Требование</th>
+                              <th>Описание</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td class="param-name">q</td>
+                              <td class="param-type">string</td>
+                              <td><span class="param-req optional">Optional</span></td>
+                              <td>Поисковый запрос по названию или короткому имени канала (shortname)</td>
+                            </tr>
+                            <tr>
+                              <td class="param-name">live</td>
+                              <td class="param-type">string</td>
+                              <td><span class="param-req optional">Optional</span></td>
+                              <td>Фильтр по эфиру: <code>1</code> - только онлайн, <code>0</code> - только оффлайн</td>
+                            </tr>
+                            <tr>
+                              <td class="param-name">limit</td>
+                              <td class="param-type">integer</td>
+                              <td><span class="param-req optional">Optional</span></td>
+                              <td>Лимит результатов (от 1 до 100, по умолчанию 20)</td>
+                            </tr>
+                            <tr>
+                              <td class="param-name">offset</td>
+                              <td class="param-type">integer</td>
+                              <td><span class="param-req optional">Optional</span></td>
+                              <td>Смещение для пагинации (по умолчанию 0)</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/channels</span>
+                          </div>
+                          <div class="playground-inputs">
+                            <div class="playground-input-group">
+                              <label>Поиск (q)</label>
+                              <input type="text" id="play-channels-q" class="playground-input" placeholder="например, рвота">
+                            </div>
+                            <div class="playground-input-group">
+                              <label>В эфире (live)</label>
+                              <input type="text" id="play-channels-live" class="playground-input" placeholder="1 или 0">
+                            </div>
+                            <div class="playground-input-group">
+                              <label>Лимит (limit)</label>
+                              <input type="number" id="play-channels-limit" class="playground-input" value="5">
+                            </div>
+                          </div>
+                          <button class="btn-execute" onclick="runChannelsListTest()">Выполнить запрос</button>
+                          <div id="res-channels-list" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Channel Detail section -->
+                    <div id="section-channel-detail" class="dev-section">
+                      <h1 class="dev-title">Детали конкретного телеканала</h1>
+                      <p class="dev-subtitle">Возвращает профиль и подробные характеристики одного указанного канала по его короткому названию (shortname).</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-channel-detail">/api/public/channels/:shortname</span>
+                            <button class="btn-copy" onclick="copyText('url-channel-detail')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Параметры пути</h3>
+                        <table class="params-table">
+                          <thead>
+                            <tr>
+                              <th>Параметр</th>
+                              <th>Тип</th>
+                              <th>Описание</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td class="param-name">:shortname</td>
+                              <td class="param-type">string</td>
+                              <td>Короткое имя канала из URL (например, <code>rvota_tv_official</code>)</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/channels/{shortname}</span>
+                          </div>
+                          <div class="playground-inputs">
+                            <div class="playground-input-group">
+                              <label>Короткое имя (shortname)</label>
+                              <input type="text" id="play-detail-name" class="playground-input" value="rvota_tv_official">
+                            </div>
+                          </div>
+                          <button class="btn-execute" onclick="runChannelDetailTest()">Выполнить запрос</button>
+                          <div id="res-channel-detail" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Channel Streams section -->
+                    <div id="section-channel-streams" class="dev-section">
+                      <h1 class="dev-title">Эфирные стримы</h1>
+                      <p class="dev-subtitle">Возвращает список всех каналов, вещающих в настоящий момент (включая автопилот-плейлисты), отсортированных по количеству зрителей.</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-streams">/api/public/streams</span>
+                            <button class="btn-copy" onclick="copyText('url-streams')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/streams</span>
+                          </div>
+                          <button class="btn-execute" onclick="executeApi('/api/public/streams', 'streams-list')">Выполнить запрос</button>
+                          <div id="res-streams-list" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Channel Schedule section -->
+                    <div id="section-channel-schedule" class="dev-section">
+                      <h1 class="dev-title">Программа передач (Расписание)</h1>
+                      <p class="dev-subtitle">Возвращает расписание телепередач канала на сегодня или на выбранную дату.</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-schedule">/api/public/channels/:shortname/schedule</span>
+                            <button class="btn-copy" onclick="copyText('url-schedule')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Query параметры</h3>
+                        <table class="params-table">
+                          <thead>
+                            <tr>
+                              <th>Параметр</th>
+                              <th>Тип</th>
+                              <th>Требование</th>
+                              <th>Описание</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td class="param-name">date</td>
+                              <td class="param-type">string</td>
+                              <td><span class="param-req optional">Optional</span></td>
+                              <td>Конкретная дата в формате <code>YYYY-MM-DD</code>. Если не передано, возвращает текущие и будущие программы.</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/channels/{shortname}/schedule</span>
+                          </div>
+                          <div class="playground-inputs">
+                            <div class="playground-input-group">
+                              <label>Короткое имя (shortname)</label>
+                              <input type="text" id="play-schedule-name" class="playground-input" value="rvota_tv_official">
+                            </div>
+                            <div class="playground-input-group">
+                              <label>Дата (date)</label>
+                              <input type="text" id="play-schedule-date" class="playground-input" placeholder="ГГГГ-ММ-ДД">
+                            </div>
+                          </div>
+                          <button class="btn-execute" onclick="runScheduleTest()">Выполнить запрос</button>
+                          <div id="res-schedule" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Channel News section -->
+                    <div id="section-channel-news" class="dev-section">
+                      <h1 class="dev-title">Новости телеканала</h1>
+                      <p class="dev-subtitle">Возвращает ленту публичных новостей и анонсов, опубликованных вещателем канала.</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-news">/api/public/channels/:shortname/news</span>
+                            <button class="btn-copy" onclick="copyText('url-news')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/channels/{shortname}/news</span>
+                          </div>
+                          <div class="playground-inputs">
+                            <div class="playground-input-group">
+                              <label>Короткое имя (shortname)</label>
+                              <input type="text" id="play-news-name" class="playground-input" value="rvota_tv_official">
+                            </div>
+                          </div>
+                          <button class="btn-execute" onclick="runNewsTest()">Выполнить запрос</button>
+                          <div id="res-news" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Channel Records section -->
+                    <div id="section-channel-records" class="dev-section">
+                      <h1 class="dev-title">Записи прошедших эфиров</h1>
+                      <p class="dev-subtitle">Возвращает архив успешно обработанных записей телеэфиров канала с прямыми ссылками на видеофайлы и превью-изображения.</p>
+                      
+                      <div class="api-card">
+                        <div class="api-header">
+                          <span class="method-badge get">GET</span>
+                          <div class="api-url-wrapper">
+                            <span class="api-url" id="url-records">/api/public/channels/:shortname/records</span>
+                            <button class="btn-copy" onclick="copyText('url-records')">📋</button>
+                          </div>
+                        </div>
+
+                        <h3 style="color:#6fdeee; font-size: 14px; margin-bottom:0;">Интерактивная песочница</h3>
+                        <div class="playground-panel">
+                          <div class="playground-header">
+                            <span class="playground-title">⚡ Тест GET /api/public/channels/{shortname}/records</span>
+                          </div>
+                          <div class="playground-inputs">
+                            <div class="playground-input-group">
+                              <label>Короткое имя (shortname)</label>
+                              <input type="text" id="play-records-name" class="playground-input" value="rvota_tv_official">
+                            </div>
+                          </div>
+                          <button class="btn-execute" onclick="runRecordsTest()">Выполнить запрос</button>
+                          <div id="res-records" class="response-box"></div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div> <!-- closes block-content -->
+              <div class="clear_both"></div>
+            </div> <!-- closes float container -->
+            <div class="clear_both"></div>
+          </div> <!-- closes blackbox_ci -->
+          <div class="clear_both"></div>
+        </div> <!-- closes blackbox_c -->
+      </div> <!-- closes blackbox_cw -->
+      <div class="blackbox_bl"></div>
+      <div class="blackbox_bc"></div>
+      <div class="blackbox_br"></div>
+    </div> <!-- closes blackbox -->
+  </div> <!-- closes mono_blocks -->
+</div> <!-- closes #content -->
+
+<script>
+  // Section switcher logic
+  function switchSection(secId, menuEl) {
+    // Switch active menu item
+    document.querySelectorAll('.dev-menu-item').forEach(el => el.classList.remove('active'));
+    menuEl.classList.add('active');
+
+    // Switch active section panel
+    document.querySelectorAll('.dev-section').forEach(el => el.classList.remove('active'));
+    const targetSec = document.getElementById('section-' + secId);
+    if (targetSec) targetSec.classList.add('active');
+    
+    // Smooth scroll inside container
+    document.querySelector('.dev-content').scrollTop = 0;
+  }
+
+  // Copy to clipboard utility
+  function copyText(elId) {
+    const textEl = document.getElementById(elId);
+    if (!textEl) return;
+    
+    let text = textEl.textContent.trim();
+    if (elId !== 'base-url-display' && !text.startsWith('http')) {
+      const baseUrl = window.location.origin;
+      text = baseUrl + text;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+      // Success toast or feedback
+      const originalText = textEl.style.color;
+      textEl.style.color = '#10b981';
+      setTimeout(() => {
+        textEl.style.color = originalText;
+      }, 1000);
+    }).catch(err => {
+      console.error('Copy failed:', err);
+    });
+  }
+
+  // Highlight syntax inside JSON response box
+  function syntaxHighlight(json) {
+    if (typeof json !== 'string') {
+      json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g, function (match) {
+      let cls = 'number';
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) {
+          cls = 'key';
+        } else {
+          cls = 'string';
+        }
+      } else if (/true|false/.test(match)) {
+        cls = 'boolean';
+      } else if (/null/.test(match)) {
+        cls = 'null';
+      }
+      return '<span class="' + cls + '">' + match + '</span>';
+    });
+  }
+
+  // API query executor
+  async function executeApi(endpoint, resBoxSuffix) {
+    const resBox = document.getElementById('res-' + resBoxSuffix);
+    if (!resBox) return;
+
+    resBox.style.display = 'block';
+    resBox.innerHTML = '<span style="color:#718096">Загрузка...</span>';
+
+    try {
+      const start = Date.now();
+      const res = await fetch(endpoint);
+      const latency = Date.now() - start;
+      const data = await res.json();
+      
+      resBox.innerHTML = `<div class="response-meta">` +
+        `<span>Status: ${res.status} ${res.statusText}</span>` +
+        `<span>Time: ${latency}ms</span>` +
+        `</div>` +
+        `<code>${syntaxHighlight(data)}</code>`;
+    } catch (err) {
+      resBox.innerHTML = `<span style="color:#f56565">Ошибка выполнения запроса: ${err.message}</span>`;
+    }
+  }
+
+  // Tester implementations for dynamic fields
+  function runChannelsListTest() {
+    const q = document.getElementById('play-channels-q').value.trim();
+    const live = document.getElementById('play-channels-live').value.trim();
+    const limit = document.getElementById('play-channels-limit').value.trim();
+    
+    let path = '/api/public/channels?';
+    const params = [];
+    if (q) params.push('q=' + encodeURIComponent(q));
+    if (live) params.push('live=' + encodeURIComponent(live));
+    if (limit) params.push('limit=' + encodeURIComponent(limit));
+    path += params.join('&');
+
+    executeApi(path, 'channels-list');
+  }
+
+  function runChannelDetailTest() {
+    const name = document.getElementById('play-detail-name').value.trim() || 'rvota_tv_official';
+    executeApi('/api/public/channels/' + encodeURIComponent(name), 'channel-detail');
+  }
+
+  function runScheduleTest() {
+    const name = document.getElementById('play-schedule-name').value.trim() || 'rvota_tv_official';
+    const date = document.getElementById('play-schedule-date').value.trim();
+    
+    let path = '/api/public/channels/' + encodeURIComponent(name) + '/schedule';
+    if (date) path += '?date=' + encodeURIComponent(date);
+    
+    executeApi(path, 'schedule');
+  }
+
+  function runNewsTest() {
+    const name = document.getElementById('play-news-name').value.trim() || 'rvota_tv_official';
+    executeApi('/api/public/channels/' + encodeURIComponent(name) + '/news', 'news');
+  }
+
+  function runRecordsTest() {
+    const name = document.getElementById('play-records-name').value.trim() || 'rvota_tv_official';
+    executeApi('/api/public/channels/' + encodeURIComponent(name) + '/records', 'records');
+  }
+</script>
+
+<%- include('partials/footer') %>

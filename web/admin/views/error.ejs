@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Ошибка' %> | Админ-панель ЭтоЯTV</title>
+  <link rel="icon" href="/images/admin_favicon.svg" type="image/svg+xml">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    .error-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 60vh;
+      text-align: center;
+      background: rgba(255, 60, 60, 0.05);
+      border: 1px solid rgba(255, 60, 60, 0.2);
+      border-radius: 12px;
+      padding: 40px;
+      margin-top: 20px;
+    }
+    .error-code {
+      font-size: 80px;
+      font-weight: 900;
+      color: #ef4444;
+      margin: 0;
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+    }
+    .error-title {
+      font-size: 24px;
+      color: #fff;
+      margin: 20px 0 10px 0;
+    }
+    .error-message {
+      color: #aaa;
+      font-size: 16px;
+      max-width: 500px;
+      line-height: 1.5;
+    }
+    .btn-back {
+      margin-top: 30px;
+      background: #4ade80;
+      color: #111;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-back:hover {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body>
+
+  <%- include('partials/header') %>
+
+  <div class="layout-container">
+    <%- include('partials/sidebar') %>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <div class="page-header">
+        <h1 class="page-title"><%= title || 'Ошибка' %></h1>
+      </div>
+
+      <div class="error-container">
+        <h1 class="error-code"><%= status || 403 %></h1>
+        <h2 class="error-title"><%= title || 'Доступ запрещен' %></h2>
+        <p class="error-message"><%= message || 'У вас нет прав для просмотра этой страницы или выполнения этого действия.' %></p>
+        
+        <a href="javascript:history.back()" class="btn-back">Вернуться назад</a>
+      </div>
+
+    </main>
+  </div>
+</body>
+</html>

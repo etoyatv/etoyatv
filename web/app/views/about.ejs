@@ -1,0 +1,102 @@
+<%- include('partials/header') %>
+
+<div id="content"> 
+<!-- LEFT COLUMN>> -->
+<div class="left_blocks"> 
+  <div class="blackbox" style="width: auto;">
+    <div class="blackbox_tl"></div>
+    <div class="blackbox_tc"></div>
+    <div class="blackbox_tr"></div>
+    <div class="blackbox_cw">
+      <div class="blackbox_c">
+        <div class="blackbox_ci"> 
+          <div style="height:400px; width:1px; margin-left:-1px; float:left;"></div>
+          <div style="width:100%; float:left;">
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">О проекте ЭтоЯTV</div>
+              </div> 
+            </div>
+            <div class="block-content">
+              <div style="color: #c0c0b2; line-height: 1.6; font-size: 13px; font-family: Tahoma, sans-serif; padding: 10px;">
+                <p align="center" style="color: #fff; font-size: 16px; font-weight: bold; margin-bottom: 20px;">ЭтоЯTV — Я есть телевидение!</p>
+                <p><strong>ЭтоЯTV</strong> — это открытая (open-source) мультимедийная платформа нового поколения, созданная независимым сообществом разработчиков и энтузиастов. Наша цель — предоставить каждому желающему свободу вещания и самовыражения в глобальной сети Интернет.</p>
+                
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">Основные возможности платформы</h3>
+                <ul style="padding-left: 20px; list-style-type: disc; margin-top: 10px;">
+                  <li style="margin-bottom: 8px;"><strong>Прямые трансляции:</strong> Вещание в реальном времени с минимальной задержкой.</li>
+                  <li style="margin-bottom: 8px;"><strong>Автопилот:</strong> Линейный автоматизированный эфир 24/7 на основе загруженных пользователем видеозаписей.</li>
+                  <li style="margin-bottom: 8px;"><strong>Медиа-архив:</strong> Удобный доступ к записям прошедших трансляций и загруженным роликам.</li>
+                  <li style="margin-bottom: 8px;"><strong>Социальные функции:</strong> Живой интерактивный чат со зрителями, система личных сообщений, френд-лента и новости телеканалов.</li>
+                </ul>
+
+                <h3 style="color: #6fdeee; font-size: 14px; margin: 20px 0 10px 0; border-bottom: 1px solid #333; padding-bottom: 5px;">Принципы проекта</h3>
+                <p>Проект развивается по модели свободного программного обеспечения. Исходный код платформы открыт и доступен на GitHub для любого разработчика, желающего внести свой вклад в развитие или запустить собственную версию медиа-сервиса.</p>
+                <p>Мы не являемся коммерческой организацией и поддерживаем сайт исключительно силами сообщества и за счет добровольных пожертвований.</p>
+              </div>
+            </div>
+            <div class="clear_both"></div>
+          </div>
+          <div class="clear_both"></div>
+        </div>
+        <div class="clear_both"></div>
+      </div>
+    </div>
+    <div class="blackbox_bl"></div>
+    <div class="blackbox_bc"></div>
+    <div class="blackbox_br"></div>
+  </div>
+</div>
+<!-- << LEFT COLUMN -->
+
+<!-- RIGHT COLUMN>> -->
+<div class="right_blocks">
+  <div class="blocks"> 
+    <div class="blackbox" style="width: auto;">
+      <div class="blackbox_tl"></div>
+      <div class="blackbox_tc"></div>
+      <div class="blackbox_tr"></div>
+      <div class="blackbox_cw">
+        <div class="blackbox_c">
+          <div class="blackbox_ci"> 
+            <div class="block-head-bg"></div>
+            <div class="block-head">
+              <div class="block-head-right">
+                <div class="block-title">Реклама</div>
+              </div> 
+            </div>
+            <div class="block-content">
+              <% if (adsEnabled && adsConfig['sidebar_320x240'] && adsConfig['sidebar_320x240'].image) { %>
+                <div style="width: 320px; display: flex; align-items: center; justify-content: center; margin: 0 auto;">
+                  <% if (adsConfig['sidebar_320x240'].url) { %>
+                    <a href="<%= adsConfig['sidebar_320x240'].url %>" target="_blank" style="display: block;">
+                      <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+                    </a>
+                  <% } else { %>
+                    <img src="<%= adsConfig['sidebar_320x240'].image %>" style="max-width: 100%;">
+                  <% } %>
+                </div>
+              <% } else if (!adsEnabled) { %>
+                <!-- Ad is disabled -->
+              <% } else { %>
+                <div style="width: 320px; height: 240px; background: #333; display: flex; align-items: center; justify-content: center; color: #777; margin: 0 auto;">Место для рекламы</div>
+              <% } %>
+            </div>
+            <div class="clear_both"></div>
+          </div>
+          <div class="clear_both"></div>
+        </div>
+      </div>
+      <div class="blackbox_bl"></div>
+      <div class="blackbox_bc"></div>
+      <div class="blackbox_br"></div>
+    </div>
+  </div> 
+</div>
+<!-- << RIGHT COLUMN -->
+
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,60 @@
+<%- include('partials/header') %>
+
+<div id="content">
+<div class="left_blocks" style="width: 1000px; float: left;">
+<div class="blackbox" style="width: auto;">
+<div class="blackbox_tl"></div>
+<div class="blackbox_tc"></div>
+<div class="blackbox_tr"></div>
+<div class="blackbox_cw">
+<div class="blackbox_c" style="">
+<div class="blackbox_ci"> 
+<div class="block-head-bg"></div>
+<div class="block-head">
+<div class="block-head-right">
+<div class="block-title">Панель управления</div>
+</div> 
+</div>
+<div class="block-content" style="padding: 20px;">
+  <p style="color: #c0c0b2;">Добро пожаловать в панель управления.</p>
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div style="background: #cc0000; color: #fff; padding: 10px; margin-bottom: 15px;"><%= error %></div>
+  <% } %>
+  
+  <% if (typeof channels !== 'undefined' && channels.length > 0) { %>
+    <h3 style="color: #fff; margin-top: 20px; margin-bottom: 10px; font-size: 14px;">Добавить новость телеканала</h3>
+    <form action="/channels/<%= channels[0].shortname %>/news/add" method="POST" style="background: #2b2b2b; padding: 15px; border-radius: 5px;">
+      <div style="margin-bottom: 10px;">
+        <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Заголовок новости *</label>
+        <input type="text" name="title" required style="width: 100%; padding: 5px; background: #111; color: #fff; border: 1px solid #444;">
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Анонс (кратко)</label>
+        <textarea name="announce" rows="2" style="width: 100%; padding: 5px; background: #111; color: #fff; border: 1px solid #444;"></textarea>
+      </div>
+      <div style="margin-bottom: 10px;">
+        <label style="color: #c0c0b2; display: block; margin-bottom: 5px;">Полный текст</label>
+        <textarea name="content" rows="6" style="width: 100%; padding: 5px; background: #111; color: #fff; border: 1px solid #444;"></textarea>
+      </div>
+      <div class="button button_grey" style="width: 150px; margin-top: 10px;">
+        <div class="button_left"></div>
+        <input type="submit" class="button_right" style="width: 138px" value="Опубликовать новость">
+      </div>
+      <div class="clear_both"></div>
+    </form>
+  <% } else { %>
+    <p style="color: #c0c0b2; margin-top: 20px;">У вас пока нет своего телеканала. <a href="/channels/create" style="color: #6fdeee;">Создайте его сейчас</a>.</p>
+  <% } %>
+<div class="clear_both"></div>
+</div>
+</div>
+</div>
+<div class="blackbox_bl"></div>
+<div class="blackbox_bc"></div>
+<div class="blackbox_br"></div>
+</div>
+</div>
+<div class="clear_both"></div>
+</div>
+
+<%- include('partials/footer') %>
