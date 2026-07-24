@@ -13,6 +13,7 @@
   <a href="https://etoyatv.top">etoyatv.top</a> ·
   <a href="#карта-сервисов-что-поднимать">Карта сервисов</a> ·
   <a href="#пошаговый-запуск-для-новичка">Пошаговый запуск</a> ·
+  <a href="#карта-файлов-и-папок-что-где-править">Карта файлов</a> ·
   <a href="#weblate-и-переводы-ui">Weblate</a> ·
   <a href="#подводные-камни">Подводные камни</a>
 </p>
@@ -39,7 +40,8 @@
 16. [Подводные камни](#подводные-камни)
 17. [Частые ошибки и что делать](#частые-ошибки-и-что-делать)
 18. [Остановка и обновление](#остановка-и-обновление)
-19. [Ссылки](#ссылки)
+19. [Карта файлов и папок (что где править)](#карта-файлов-и-папок-что-где-править)
+20. [Ссылки](#ссылки)
 
 ---
 
@@ -987,19 +989,247 @@ node scripts/bundle-studio.js
 
 ---
 
-## Структура репозитория
+## Карта файлов и папок (что где править)
+
+Ниже — «шпаргалка новичка»: **что это**, **когда трогать**, **чего не трогать**.  
+Легенда:
+
+| Метка | Смысл |
+|-------|--------|
+| 🔧 **Настройка** | правите при установке / смене домена |
+| 🎨 **UI** | внешний вид, вёрстка, тексты страниц |
+| 🧠 **Логика** | поведение сервера / API |
+| 🎥 **Стрим** | эфир, MediaMTX, плеер, студия |
+| 🚫 **Не коммитить** | секреты, данные пользователей |
+
+---
+
+### Корень репозитория
+
+| Путь | Зачем | Когда трогать |
+|------|--------|----------------|
+| `README.md` | эта инструкция | почти никогда (кроме правок доков) |
+| `LICENSE` | лицензия | не трогать без причины |
+| `.gitignore` | что git игнорирует (`.env`, `mysql_data`, uploads…) | если добавляете новые runtime-папки |
+| `.env.example` | **сводный справочник** всех env-ключей | смотреть как шпаргалку; **не** копировать как единственный `.env` — рабочие файлы в `db/`, `rtmp/`, `web/` |
+| `docs/weblate.md` | гайд по Weblate | когда поднимаете переводы UI |
+| `scripts/bundle-player.js` | склеивает `web/public/js/player/*.js` → `player.js` | после правок исходников плеера |
+| `scripts/bundle-studio.js` | то же для студии → `studio.js` | после правок исходников студии |
+
+---
+
+### `db/` — база данных
 
 ```text
-├── db/                 # MySQL compose + .env.example
-├── rtmp/               # MediaMTX, hooks, worker
-├── web/                # сайт (app/) + админка (admin/)
-├── samples/media/      # образец MEDIA_STORAGE_PATH
-├── scripts/            # bundle-player / bundle-studio
-├── docs/weblate.md     # подробный гайд по Weblate
-├── .env.example        # сводный справочник ключей
-├── LICENSE
-└── README.md
+db/
+├── docker-compose.yml   # контейнер MySQL 8
+└── .env.example         # шаблон паролей БД
 ```
+
+| Файл | Отвечает за | Новичку |
+|------|-------------|---------|
+| `docker-compose.yml` | образ MySQL, порт `3306`, volume `mysql_data/` | менять порт только если конфликт |
+| `.env.example` → копируете в `.env` | `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MYSQL_ROOT_PASSWORD` | 🔧 **обязательно** задать свои пароли |
+| `mysql_data/` (появляется после запуска) | живые данные БД | 🚫 не в git; бэкапить отдельно |
+
+Таблицы создаёт не SQL из `db/`, а приложение при старте: `web/config/migrations.js`.
+
+---
+
+### `rtmp/` — эфир (MediaMTX + worker)
+
+```text
+rtmp/
+├── docker-compose.yml   # сервисы rtmp + worker
+├── .env.example
+├── mediamtx.yml         # конфиг MediaMTX (порты, HLS, WHIP, auth)
+├── entrypoint.sh        # подставляет auth URL из env при старте
+├── on_ready.sh          # hook: эфир стал ready → пинг web
+└── worker/
+    ├── Dockerfile
+    ├── package.json
+    └── worker.js        # VOD HLS, снапшоты, фоновые задачи из БД
+```
+
+| Файл | Отвечает за | Когда править |
+|------|-------------|----------------|
+| `docker-compose.yml` | порты 1935/8000/8889/8189/9997, mount медиа | 🎥 открытие портов, путь `MEDIA_STORAGE_PATH` |
+| `.env` (из example) | БД, API-логин MediaMTX, `WEB_SERVER_IP` / `AUTH_WEB_IP` | 🔧 при установке |
+| `mediamtx.yml` | HLS (fMP4), WebRTC/WHIP, ICE-порт, `webrtcAdditionalHosts` | 🎥 WHIP/студия, публичный hostname |
+| `entrypoint.sh` | собирает итоговый конфиг MediaMTX | редко; не ломайте без нужды |
+| `on_ready.sh` | уведомляет сайт, что стрим online | если меняете webhook-логику |
+| `worker/worker.js` | нарезка записей в HLS, превью, claim задач | 🧠 баги обработки VOD / очереди |
+
+---
+
+### `web/` — сайт + админка
+
+Два Docker-сервиса из одного `docker-compose.yml`: **`app`** (`:3001`) и **`admin`** (`:3002`).
+
+```text
+web/
+├── docker-compose.yml
+├── Dockerfile              # образ сайта (app)
+├── .env.example            → копируете в .env
+├── package.json
+├── emailService.js         # SMTP-письма (сброс пароля и т.п.)
+├── config/                 # БД, миграции, upload
+├── middlewares/            # auth, i18n, panel, …
+├── utils/                  # хелперы (стрим, перевод, telegram, …)
+├── locales/                # JSON переводов UI
+├── public/                 # CSS/JS/картинки сайта
+├── app/                    # код сайта
+├── admin/                  # код админки (отдельный package)
+├── scripts/                # утилиты (каналы, переводы)
+└── migrations/             # старые SQL-файлы (справочно; живые миграции в config/)
+```
+
+#### Корень `web/` и конфиг
+
+| Путь | Зачем | Новичку |
+|------|--------|---------|
+| `docker-compose.yml` | как поднимаются app+admin, volume медиа | 🔧 пути `MEDIA_STORAGE_PATH` |
+| `.env` | почти все секреты и URL сайта | 🔧 **главный файл настройки web** |
+| `Dockerfile` / `admin/Dockerfile` | сборка образов | трогать при смене Node/зависимостей |
+| `package.json` | npm-зависимости сайта | `npm install` внутри образа при build |
+| `emailService.js` | отправка почты | SMTP / шаблоны писем |
+| `config/db.js` | пул MySQL + запуск миграций | 🧠 подключение к БД |
+| `config/migrations.js` | `CREATE TABLE IF NOT EXISTS …` | 🧠 новые таблицы/колонки |
+| `config/upload.js` | multer / пути загрузок | лимиты размера, типы файлов |
+| `middlewares/auth.js` | «залогинен ли пользователь» | 🧠 доступ к кабинету |
+| `middlewares/panel.js` | доступ к панели канала | права владельца/команды |
+| `middlewares/i18n.js` | язык + подстановка `locales/*.json` | 🎨/🌍 переводы UI |
+| `middlewares/langPrefix.js` | URL без/с языковым префиксом | роутинг языков |
+| `middlewares/rtmpInternalAuth.js` | защита internal API MediaMTX | 🎥 auth webhook |
+| `middlewares/xff.js` | IP за прокси | если странные IP в банах/логах |
+| `locales/*.json` | строки интерфейса RU/EN/UA/BY/… | 🎨 тексты UI; Weblate пишет сюда |
+| `utils/validateEnv.js` | fail-fast без `SESSION_SECRET` и т.п. | если app не стартует — читайте ошибку отсюда |
+| `utils/mediaServer.js` | kick стрима через MediaMTX API | 🎥 |
+| `utils/streamValidator.js` | битрейт/валидация live | 🎥 |
+| `utils/translator.js` | LibreTranslate / MyMemory для UGC | 🌍 |
+| `utils/telegram.js` | алерты в Telegram | опционально |
+| `utils/hcaptcha.js` | проверка капчи | регистрация |
+| `utils/profileTransfer/*` | экспорт/импорт профиля | админские transfers |
+| `utils/safePath.js` / `safeRedirect.js` | защита от path traversal / open redirect | безопасность |
+| `utils/channelAccess.js` / `channelPassword.js` | доступ к каналу/записи | 🧠 |
+| `utils/chatCrypto.js` / `chatFormatter.js` | чат | 🧠 |
+| `utils/wordFilter.js` | фильтр слов | модерация |
+| `utils/boosty.js` | Boosty | опционально |
+| `utils/logger.js` / `systemMessage.js` / `cleanup.js` / `pinnedMessages.js` / `ipChecker.js` | логи, системные ЛС, чистка, пины, IP-баны | по задаче |
+
+#### `web/app/` — основной сайт
+
+| Путь | Зачем | Когда править |
+|------|--------|----------------|
+| `app/server.js` | точка входа Express: сессии, socket.io, middleware, mount роутов | 🧠 «сердце» сайта; большие фичи |
+| `app/bootstrap/startup-heal.js` | при старте сбрасывает залипшие live/recording | 🎥 рассинхрон эфира и БД |
+| `app/jobs/background.js` | фоновые джобы (письма, чистка…) | 🧠 |
+| `app/utils/broadcastProcessor.js` | обработка системных рассылок | редко |
+| `app/routes/auth.js` | логин / регистрация / пароль | 🧠 auth |
+| `app/routes/public.js` | публичные страницы (главная, about…) | 🎨+🧠 |
+| `app/routes/chat.js` | чат / socket-связанное | 🧠 |
+| `app/routes/records.js` | страницы записей | 🧠+🎨 |
+| `app/routes/developer_api.js` | публичное API разработчика | 🧠 |
+| `app/routes/404.js` | 404 | мелочи |
+| `app/routes/account/*` | кабинет: профиль, друзья, ЛС, 2FA, Boosty, export… | смотрите имя файла |
+| `app/routes/account/index.js` | собирает роутер account | не дублируйте mount |
+| `app/routes/channel/*` | страница канала, API, live/autopilot, виджеты, social… | 🎥+🧠 |
+| `app/routes/panel/*` | панель управления каналом (студия, записи, дизайн, команда…) | 🎨+🧠 |
+| `app/routes/api/*` | JSON API: rtmp internal, translate, recording, stats… | 🧠 |
+| `app/views/*.ejs` | HTML-шаблоны страниц | 🎨 вёрстка/тексты |
+| `app/views/panel/*.ejs` | шаблоны панели канала | 🎨 |
+| `app/views/partials/*.ejs` | куски: header, footer, чат-списки, модалки | 🎨 общая шапка/подвал |
+
+**Быстрый ориентир по views:** имя файла ≈ URL/экран (`login.ejs`, `channel.ejs`, `panel/studio.ejs`).
+
+#### `web/public/` — статика сайта
+
+| Путь | Зачем | Когда править |
+|------|--------|----------------|
+| `public/css/` | стили | 🎨 |
+| `public/images/` | UI-картинки (не пользовательские аватары) | 🎨 |
+| `public/js/player.js` | **собранный** плеер (то, что грузит браузер) | лучше править `player/`, потом `bundle-player.js` |
+| `public/js/player/*.js` | исходники плеера по кускам | 🎥 баги плеера/чата в эфире |
+| `public/js/studio.js` | **собранная** студия | после правок — `bundle-studio.js` |
+| `public/js/studio/*.js` | исходники студии (WHIP, canvas, devices…) | 🎥 |
+| `public/js/toast.js` | тосты + клиентский UGC-translate | 🎨/🌍 |
+| `public/js/channel-page.js`, `chat_widget.js` | логика страницы канала / виджета | 🧠+🎨 |
+| `public/uploads/`, `tvsnapshots/` | заглушки в git (`.gitkeep`) | реальные файлы — на `MEDIA_STORAGE_PATH` |
+
+> В проде с CDN после деплоя копируйте свежие `player.js` / `toast.js` / `studio.js` в `{MEDIA}/js/`.
+
+#### `web/admin/` — админка (`:3002`)
+
+Отдельное Express-приложение (свой `package.json`), но логин через **ту же сессию**, что у сайта.
+
+| Путь | Зачем |
+|------|--------|
+| `admin/server.js` | входная точка админки |
+| `admin/middlewares/auth.js` | только `staff` + обязательная 2FA |
+| `admin/routes/*.js` | разделы: users, channels, records, reports, bans, staff, transfers… |
+| `admin/routes/dashboard/*` | дашборд, инвайты, settings, users |
+| `admin/views/*.ejs` | страницы админки |
+| `admin/views/partials/sidebar.ejs` | меню слева |
+| `admin/public/css/admin.css` | стили админки |
+| `admin/utils/*` | логи, safePath, systemMessage |
+| `admin/config/db.js` | БД админки |
+
+**Чинить жалобы/баны/персонал** → `admin/routes/` + `admin/views/`.  
+**Не пускает в админку** → `staff` в БД + 2FA + `admin/middlewares/auth.js`.
+
+---
+
+### `samples/media/` — образец диска CDN
+
+| Путь | Зачем |
+|------|--------|
+| `samples/media/README.md` | описание дерева |
+| `images/`, `uploads/`, `tvsnapshots/`, `js/`, `private/` | те же каталоги, что ждут `MEDIA_STORAGE_PATH` |
+
+Указываете `MEDIA_STORAGE_PATH` сюда для локалки **или** копируете структуру на свой диск/SMB.
+
+| Подкаталог | Содержимое |
+|------------|------------|
+| `images/avatars` | аватары |
+| `images/design` | оформление каналов |
+| `uploads/records` | исходники записей |
+| `uploads/hls` | HLS VOD |
+| `uploads/ads` | реклама |
+| `tvsnapshots` | превью эфиров |
+| `js/` | копии player/toast/studio для CDN |
+| `private/exports`, `private/transfers` | архивы экспорта/импорта (не светить в CDN!) |
+
+---
+
+### Что править при типичных задачах
+
+| Хочу… | Куда идти |
+|-------|-----------|
+| Сменить домен / URL | `web/.env` (`APP_URL`, `ADMIN_URL`, `CDN_BASE_URL`, `RTMP_*`), `rtmp/.env`, `mediamtx.yml` (`webrtcAdditionalHosts`), Nginx |
+| Пароли БД | `db/.env` + те же значения в `web/.env` и `rtmp/.env` |
+| Сайт не стартует (env) | `web/.env` + логи `validateEnv` |
+| Главная / логин / вёрстка | `web/app/views/*.ejs`, `web/public/css/` |
+| Шапка / футер | `web/app/views/partials/header.ejs`, `footer.ejs` |
+| Переводы кнопок UI | `web/locales/*.json` (или Weblate) |
+| Плеер глючит | `web/public/js/player/*` → bundle → CDN sync |
+| Студия / WHIP | `web/public/js/studio/*`, `rtmp/mediamtx.yml`, порты 8889/8189 |
+| OBS не пускает | `rtmp` логи, `AUTH_WEB_IP`, `web/app/routes/api/rtmp.js`, ключ в панели |
+| Записи не режутся в HLS | `rtmp/worker/worker.js`, права на `MEDIA_STORAGE_PATH` |
+| Админка / жалобы | `web/admin/routes/*`, `views/*` |
+| Выдать админа | SQL в таблицу `staff` (см. раздел выше) + 2FA |
+| Письма не уходят | `web/.env` SMTP + `web/emailService.js` |
+| Капча | `HCAPTCHA_*` в `web/.env` + `utils/hcaptcha.js` |
+| UGC-перевод при смене языка | `LIBRETRANSLATE_URL` / `TRANSLATE_EMAIL`, `utils/translator.js` |
+| Новая таблица в БД | `web/config/migrations.js` |
+
+---
+
+### Чего новичкам лучше не коммитить
+
+- любые `.env` (только `.env.example`)  
+- `db/mysql_data/`  
+- содержимое пользовательских `uploads/`, `avatars/`, `private/`  
+- реальные SMTP/API/Boosty/Telegram токены  
 
 ---
 
