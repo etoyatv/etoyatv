@@ -456,8 +456,16 @@
         if (hlsInstance) {
           if (currentlyPlayingLive && wasPausedLive) {
             wasPausedLive = false;
-            console.log('[PLAYER] Resumed live stream. Reloading to snap to live edge.');
-            fetchAutopilotStatus(true); // Force reload
+            // Do NOT force-reload the whole live session — that paints transition-canvas
+            // and often leaves a frozen frame until PiP nudges play(). Just resume HLS.
+            console.log('[PLAYER] Resumed live stream. Keeping session, starting load.');
+            clearStuckTransitionFrameSafe();
+            try { hlsInstance.startLoad(); } catch (e) {}
+            try {
+              if (Number.isFinite(hlsInstance.liveSyncPosition)) {
+                video.currentTime = hlsInstance.liveSyncPosition;
+              }
+            } catch (e) {}
           } else {
             console.log('[PLAYER] Resumed. Resuming Hls.js loading.');
             hlsInstance.startLoad();

@@ -2,22 +2,35 @@
   // --- Video Controls ---
   function playOrResume() {
     enableAutoplay = true; // User interacted
+    clearStuckTransitionFrameSafe();
     if (video && video.paused) {
       if (currentlyPlayingLive) {
-        if (lastAutopilotData && lastAutopilotData.rtmp_url) {
+        // Resume existing live HLS session — never tear it down on a simple click.
+        if (hlsInstance && lastLoadedLiveUrl) {
+          wasPausedLive = false;
+          userPauseGuardUntil = 0;
+          try { hlsInstance.startLoad(); } catch (e) {}
+          video.play().catch(e => { console.log('Synchronous play failed, retrying:', e); });
+        } else if (lastAutopilotData && lastAutopilotData.rtmp_url) {
+          wasPausedLive = false;
+          userPauseGuardUntil = 0;
           let streamUrl = getStreamUrl(lastAutopilotData.rtmp_url, currentSelectedStreamIndex, lastAutopilotData.shortname);
           loadStream(streamUrl, true);
         } else {
+          wasPausedLive = false;
+          userPauseGuardUntil = 0;
           video.play().catch(e => { console.log('Synchronous play failed, retrying:', e); });
         }
       } else {
         video.play().catch(e => { console.log('Play failed:', e); });
       }
       btnPlayPause.innerHTML = svgPause;
-      if (window.CHANNEL_ID && typeof fetchAutopilotStatus === 'function') {
-        setTimeout(() => fetchAutopilotStatus(false), 500);
-      }
     } else if (video) {
+      // Mark intentional pause BEFORE pause() so freeze-recovery cannot immediately play()
+      if (currentlyPlayingLive) {
+        wasPausedLive = true;
+        userPauseGuardUntil = Date.now() + 5000;
+      }
       video.pause();
       btnPlayPause.innerHTML = svgPlay;
     }

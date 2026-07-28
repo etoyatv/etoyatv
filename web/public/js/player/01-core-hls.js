@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let hlsInstance = null;
   let currentlyPlayingLive = false;
   let wasPausedLive = false;
+  let userPauseGuardUntil = 0;
 
   let activePinnedMessages = window.PINNED_MESSAGES || {
     common: null,
@@ -230,9 +231,25 @@ document.addEventListener('DOMContentLoaded', () => {
   let autopilotFetchInFlight = false;
   let castReloadIfActive = function () {};
 
+  function clearStuckTransitionFrameSafe() {
+    const tc = document.getElementById('etoyatv-transition-canvas');
+    if (!tc) return;
+    tc.style.transition = 'none';
+    tc.style.opacity = '0';
+    tc.style.display = 'none';
+  }
+
   function loadStream(url, isLive, offset = 0) {
     // Don't tear down an already-playing live session for the same URL
     if (isLive && currentlyPlayingLive && lastLoadedLiveUrl === url && hlsInstance) {
+      // Resume path: previous click paused the <video> but left HLS attached.
+      // Returning without play() left the UI stuck until PiP forced play().
+      if (video && video.paused) {
+        wasPausedLive = false;
+        try { hlsInstance.startLoad(); } catch (e) {}
+        clearStuckTransitionFrameSafe();
+        video.play().catch(e => console.log('Resume play failed:', e));
+      }
       return;
     }
 
@@ -241,6 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastLoadedLiveUrl = isLive ? url : null;
     lastLoadedStreamUrl = url || null;
     castReloadIfActive(url);
+    clearStuckTransitionFrameSafe();
     if (video) {
       video.pause();
       video.removeAttribute('src');
@@ -690,7 +708,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!video || !currentlyPlayingLive) return;
       // Always drop a stuck freeze-frame overlay (even during PiP transitions)
       clearStuckTransitionFrame();
+      // Never fight an intentional user pause (center click / pause button)
+      if (wasPausedLive || Date.now() < userPauseGuardUntil) return;
       if (pipIgnoreMediaEvents) return;
+      if (video.paused) return;
       if (Date.now() < freezeRecoveryUntil) return;
       freezeRecoveryUntil = Date.now() + 2500;
       console.warn('[PLAYER] Frozen live recovery:', reason, {
@@ -704,16 +725,12 @@ document.addEventListener('DOMContentLoaded', () => {
           try { hlsInstance.startLoad(); } catch (e) {}
           try { hlsInstance.recoverMediaError(); } catch (e) {}
         }
-        if (video.paused) {
-          video.play().catch(() => {});
-        } else {
-          // Nudge decoder without a visible seek jump when possible
-          const t = video.currentTime;
-          try {
-            if (Number.isFinite(t) && t > 0.25) video.currentTime = t;
-          } catch (e) {}
-          video.play().catch(() => {});
-        }
+        // Nudge decoder without a visible seek jump when possible
+        const t = video.currentTime;
+        try {
+          if (Number.isFinite(t) && t > 0.25) video.currentTime = t;
+        } catch (e) {}
+        video.play().catch(() => {});
       } catch (e) {
         console.warn('[PLAYER] freeze recovery failed:', e);
       }
@@ -729,7 +746,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tc && tc.style.display !== 'none' && parseFloat(tc.style.opacity || '0') > 0.4) {
         clearStuckTransitionFrame();
       }
-      if (video.paused || pipIgnoreMediaEvents) return;
+      if (wasPausedLive || video.paused || pipIgnoreMediaEvents) return;
+      if (Date.now() < userPauseGuardUntil) return;
       if (!lastProgressAt) return;
       if (Date.now() - lastProgressAt < 2800) return;
       // currentTime not advancing while "playing" — decoder/UI stall

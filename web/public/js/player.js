@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let hlsInstance = null;
   let currentlyPlayingLive = false;
   let wasPausedLive = false;
+  let userPauseGuardUntil = 0;
 
   let activePinnedMessages = window.PINNED_MESSAGES || {
     common: null,
@@ -231,9 +232,25 @@ document.addEventListener('DOMContentLoaded', () => {
   let autopilotFetchInFlight = false;
   let castReloadIfActive = function () {};
 
+  function clearStuckTransitionFrameSafe() {
+    const tc = document.getElementById('etoyatv-transition-canvas');
+    if (!tc) return;
+    tc.style.transition = 'none';
+    tc.style.opacity = '0';
+    tc.style.display = 'none';
+  }
+
   function loadStream(url, isLive, offset = 0) {
     // Don't tear down an already-playing live session for the same URL
     if (isLive && currentlyPlayingLive && lastLoadedLiveUrl === url && hlsInstance) {
+      // Resume path: previous click paused the <video> but left HLS attached.
+      // Returning without play() left the UI stuck until PiP forced play().
+      if (video && video.paused) {
+        wasPausedLive = false;
+        try { hlsInstance.startLoad(); } catch (e) {}
+        clearStuckTransitionFrameSafe();
+        video.play().catch(e => console.log('Resume play failed:', e));
+      }
       return;
     }
 
@@ -242,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
     lastLoadedLiveUrl = isLive ? url : null;
     lastLoadedStreamUrl = url || null;
     castReloadIfActive(url);
+    clearStuckTransitionFrameSafe();
     if (video) {
       video.pause();
       video.removeAttribute('src');
@@ -691,7 +709,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!video || !currentlyPlayingLive) return;
       // Always drop a stuck freeze-frame overlay (even during PiP transitions)
       clearStuckTransitionFrame();
+      // Never fight an intentional user pause (center click / pause button)
+      if (wasPausedLive || Date.now() < userPauseGuardUntil) return;
       if (pipIgnoreMediaEvents) return;
+      if (video.paused) return;
       if (Date.now() < freezeRecoveryUntil) return;
       freezeRecoveryUntil = Date.now() + 2500;
       console.warn('[PLAYER] Frozen live recovery:', reason, {
@@ -705,16 +726,12 @@ document.addEventListener('DOMContentLoaded', () => {
           try { hlsInstance.startLoad(); } catch (e) {}
           try { hlsInstance.recoverMediaError(); } catch (e) {}
         }
-        if (video.paused) {
-          video.play().catch(() => {});
-        } else {
-          // Nudge decoder without a visible seek jump when possible
-          const t = video.currentTime;
-          try {
-            if (Number.isFinite(t) && t > 0.25) video.currentTime = t;
-          } catch (e) {}
-          video.play().catch(() => {});
-        }
+        // Nudge decoder without a visible seek jump when possible
+        const t = video.currentTime;
+        try {
+          if (Number.isFinite(t) && t > 0.25) video.currentTime = t;
+        } catch (e) {}
+        video.play().catch(() => {});
       } catch (e) {
         console.warn('[PLAYER] freeze recovery failed:', e);
       }
@@ -730,7 +747,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tc && tc.style.display !== 'none' && parseFloat(tc.style.opacity || '0') > 0.4) {
         clearStuckTransitionFrame();
       }
-      if (video.paused || pipIgnoreMediaEvents) return;
+      if (wasPausedLive || video.paused || pipIgnoreMediaEvents) return;
+      if (Date.now() < userPauseGuardUntil) return;
       if (!lastProgressAt) return;
       if (Date.now() - lastProgressAt < 2800) return;
       // currentTime not advancing while "playing" — decoder/UI stall
@@ -1524,22 +1542,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Video Controls ---
   function playOrResume() {
     enableAutoplay = true; // User interacted
+    clearStuckTransitionFrameSafe();
     if (video && video.paused) {
       if (currentlyPlayingLive) {
-        if (lastAutopilotData && lastAutopilotData.rtmp_url) {
+        // Resume existing live HLS session — never tear it down on a simple click.
+        if (hlsInstance && lastLoadedLiveUrl) {
+          wasPausedLive = false;
+          userPauseGuardUntil = 0;
+          try { hlsInstance.startLoad(); } catch (e) {}
+          video.play().catch(e => { console.log('Synchronous play failed, retrying:', e); });
+        } else if (lastAutopilotData && lastAutopilotData.rtmp_url) {
+          wasPausedLive = false;
+          userPauseGuardUntil = 0;
           let streamUrl = getStreamUrl(lastAutopilotData.rtmp_url, currentSelectedStreamIndex, lastAutopilotData.shortname);
           loadStream(streamUrl, true);
         } else {
+          wasPausedLive = false;
+          userPauseGuardUntil = 0;
           video.play().catch(e => { console.log('Synchronous play failed, retrying:', e); });
         }
       } else {
         video.play().catch(e => { console.log('Play failed:', e); });
       }
       btnPlayPause.innerHTML = svgPause;
-      if (window.CHANNEL_ID && typeof fetchAutopilotStatus === 'function') {
-        setTimeout(() => fetchAutopilotStatus(false), 500);
-      }
     } else if (video) {
+      // Mark intentional pause BEFORE pause() so freeze-recovery cannot immediately play()
+      if (currentlyPlayingLive) {
+        wasPausedLive = true;
+        userPauseGuardUntil = Date.now() + 5000;
+      }
       video.pause();
       btnPlayPause.innerHTML = svgPlay;
     }
@@ -2106,8 +2137,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (hlsInstance) {
           if (currentlyPlayingLive && wasPausedLive) {
             wasPausedLive = false;
-            console.log('[PLAYER] Resumed live stream. Reloading to snap to live edge.');
-            fetchAutopilotStatus(true); // Force reload
+            // Do NOT force-reload the whole live session — that paints transition-canvas
+            // and often leaves a frozen frame until PiP nudges play(). Just resume HLS.
+            console.log('[PLAYER] Resumed live stream. Keeping session, starting load.');
+            clearStuckTransitionFrameSafe();
+            try { hlsInstance.startLoad(); } catch (e) {}
+            try {
+              if (Number.isFinite(hlsInstance.liveSyncPosition)) {
+                video.currentTime = hlsInstance.liveSyncPosition;
+              }
+            } catch (e) {}
           } else {
             console.log('[PLAYER] Resumed. Resuming Hls.js loading.');
             hlsInstance.startLoad();
