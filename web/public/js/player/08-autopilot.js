@@ -130,6 +130,10 @@
 
       function onNewVideoPlaying() {
         isSwitchingAutopilotVOD = false;
+        if (transitionSafetyTimer) {
+          clearTimeout(transitionSafetyTimer);
+          transitionSafetyTimer = null;
+        }
 
         // Restore volume and muted state to override any browser/load resets
         let savedVol = localStorage.getItem('etoyatv_volume');
@@ -152,6 +156,17 @@
         video.removeEventListener('playing', onNewVideoPlaying);
       }
       video.addEventListener('playing', onNewVideoPlaying);
+      // If 'playing' never fires (live stall), don't leave a frozen frame forever
+      let transitionSafetyTimer = setTimeout(() => {
+        transitionSafetyTimer = null;
+        video.removeEventListener('playing', onNewVideoPlaying);
+        isSwitchingAutopilotVOD = false;
+        if (transitionCanvas) {
+          transitionCanvas.style.transition = 'none';
+          transitionCanvas.style.opacity = '0';
+          transitionCanvas.style.display = 'none';
+        }
+      }, 4000);
 
       if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 

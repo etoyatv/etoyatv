@@ -478,10 +478,14 @@
         clearTimeout(hideTimeout);
 
         if (hlsInstance) {
-          console.log('[PLAYER] Paused. Stopping Hls.js loading.');
-          hlsInstance.stopLoad();
+          // Live: never stopLoad on pause — race with PiP/brief pauses freezes the picture.
+          // Mark wasPausedLive so play() snaps back to the live edge.
           if (currentlyPlayingLive) {
             wasPausedLive = true;
+            console.log('[PLAYER] Paused live. Keeping Hls.js loading; will reload on resume.');
+          } else {
+            console.log('[PLAYER] Paused. Stopping Hls.js loading.');
+            hlsInstance.stopLoad();
           }
         }
       });

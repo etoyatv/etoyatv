@@ -16,6 +16,12 @@
 
 
   <style type="text/css">
+    /* Player Live badge: sprite (RU). List pages already have .channels_* rules. */
+    #container_swf .live_label,
+    #player_live_label.live_label {
+      background: url(<%= CDN_BASE_URL %>/images/css_img_2_sprite1.png) no-repeat -124px -254px;
+    }
+
     /* Live / autopilot badges: sprite is Russian — use text for other langs */
     html[lang="en"] .live_label,
     html[lang="uk"] .live_label,

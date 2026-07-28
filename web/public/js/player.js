@@ -689,15 +689,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const kickFrozenPlayback = (reason) => {
       if (!video || !currentlyPlayingLive) return;
-      if (document.pictureInPictureElement === video || pipIgnoreMediaEvents) return;
+      // Always drop a stuck freeze-frame overlay (even during PiP transitions)
+      clearStuckTransitionFrame();
+      if (pipIgnoreMediaEvents) return;
       if (Date.now() < freezeRecoveryUntil) return;
       freezeRecoveryUntil = Date.now() + 2500;
       console.warn('[PLAYER] Frozen live recovery:', reason, {
         paused: video.paused,
         currentTime: video.currentTime,
-        readyState: video.readyState
+        readyState: video.readyState,
+        pip: document.pictureInPictureElement === video
       });
-      clearStuckTransitionFrame();
       try {
         if (hlsInstance) {
           try { hlsInstance.startLoad(); } catch (e) {}
@@ -722,13 +724,13 @@ document.addEventListener('DOMContentLoaded', () => {
       lastProgressAt = Date.now();
     });
     setInterval(() => {
-      if (!video || !currentlyPlayingLive || video.paused || video.ended) return;
-      if (document.pictureInPictureElement === video || pipIgnoreMediaEvents) return;
+      if (!video || !currentlyPlayingLive || video.ended) return;
       // Stuck freeze-frame overlay covering a live video underneath
       const tc = document.getElementById('etoyatv-transition-canvas');
       if (tc && tc.style.display !== 'none' && parseFloat(tc.style.opacity || '0') > 0.4) {
         clearStuckTransitionFrame();
       }
+      if (video.paused || pipIgnoreMediaEvents) return;
       if (!lastProgressAt) return;
       if (Date.now() - lastProgressAt < 2800) return;
       // currentTime not advancing while "playing" — decoder/UI stall
@@ -2126,10 +2128,14 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(hideTimeout);
 
         if (hlsInstance) {
-          console.log('[PLAYER] Paused. Stopping Hls.js loading.');
-          hlsInstance.stopLoad();
+          // Live: never stopLoad on pause — race with PiP/brief pauses freezes the picture.
+          // Mark wasPausedLive so play() snaps back to the live edge.
           if (currentlyPlayingLive) {
             wasPausedLive = true;
+            console.log('[PLAYER] Paused live. Keeping Hls.js loading; will reload on resume.');
+          } else {
+            console.log('[PLAYER] Paused. Stopping Hls.js loading.');
+            hlsInstance.stopLoad();
           }
         }
       });
@@ -2570,6 +2576,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       function onNewVideoPlaying() {
         isSwitchingAutopilotVOD = false;
+        if (transitionSafetyTimer) {
+          clearTimeout(transitionSafetyTimer);
+          transitionSafetyTimer = null;
+        }
 
         // Restore volume and muted state to override any browser/load resets
         let savedVol = localStorage.getItem('etoyatv_volume');
@@ -2592,6 +2602,17 @@ document.addEventListener('DOMContentLoaded', () => {
         video.removeEventListener('playing', onNewVideoPlaying);
       }
       video.addEventListener('playing', onNewVideoPlaying);
+      // If 'playing' never fires (live stall), don't leave a frozen frame forever
+      let transitionSafetyTimer = setTimeout(() => {
+        transitionSafetyTimer = null;
+        video.removeEventListener('playing', onNewVideoPlaying);
+        isSwitchingAutopilotVOD = false;
+        if (transitionCanvas) {
+          transitionCanvas.style.transition = 'none';
+          transitionCanvas.style.opacity = '0';
+          transitionCanvas.style.display = 'none';
+        }
+      }, 4000);
 
       if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
 

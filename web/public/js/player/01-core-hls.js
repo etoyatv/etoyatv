@@ -688,15 +688,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const kickFrozenPlayback = (reason) => {
       if (!video || !currentlyPlayingLive) return;
-      if (document.pictureInPictureElement === video || pipIgnoreMediaEvents) return;
+      // Always drop a stuck freeze-frame overlay (even during PiP transitions)
+      clearStuckTransitionFrame();
+      if (pipIgnoreMediaEvents) return;
       if (Date.now() < freezeRecoveryUntil) return;
       freezeRecoveryUntil = Date.now() + 2500;
       console.warn('[PLAYER] Frozen live recovery:', reason, {
         paused: video.paused,
         currentTime: video.currentTime,
-        readyState: video.readyState
+        readyState: video.readyState,
+        pip: document.pictureInPictureElement === video
       });
-      clearStuckTransitionFrame();
       try {
         if (hlsInstance) {
           try { hlsInstance.startLoad(); } catch (e) {}
@@ -721,13 +723,13 @@ document.addEventListener('DOMContentLoaded', () => {
       lastProgressAt = Date.now();
     });
     setInterval(() => {
-      if (!video || !currentlyPlayingLive || video.paused || video.ended) return;
-      if (document.pictureInPictureElement === video || pipIgnoreMediaEvents) return;
+      if (!video || !currentlyPlayingLive || video.ended) return;
       // Stuck freeze-frame overlay covering a live video underneath
       const tc = document.getElementById('etoyatv-transition-canvas');
       if (tc && tc.style.display !== 'none' && parseFloat(tc.style.opacity || '0') > 0.4) {
         clearStuckTransitionFrame();
       }
+      if (video.paused || pipIgnoreMediaEvents) return;
       if (!lastProgressAt) return;
       if (Date.now() - lastProgressAt < 2800) return;
       // currentTime not advancing while "playing" — decoder/UI stall
