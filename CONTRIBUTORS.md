@@ -28,7 +28,7 @@
 | **RusikShowPro** | Донат |
 | **grillowz** | Донат |
 | **Fureon Nerd** | Донат |
-| **Mr. Ovsyannikoff** | Донат |
+| **ovsyannikoff** | Донат |
 | **Сашиновский** | Донат |
 | **ЛЕГИОН** | Донат |
 | **Slim Chao** | Донат |
